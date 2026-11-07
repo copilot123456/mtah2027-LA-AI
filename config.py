@@ -53,6 +53,9 @@ CFG = dict(
     d_activity_thr_ms=2.0,        # mean player speed (m/s) below which play looks stopped
 
     # --- abstention policy (docs-derived, a priori) ---
+    x_use=False,                  # X on graded frames OFF by default: for a Viterbi-smoothed
+                                  # path, emit weakly dominates X (analysis in x_policy docstring);
+                                  # P5 ablates on IDSSE with x_stable_s/x_conf_max
     x_stable_s=5.0,               # only X when decoder this stable and confidence low
     x_conf_max=0.3,               # posterior margin below this counts as "low"
 )
@@ -88,6 +91,7 @@ PROVENANCE = {
     "ball_stationary_thr_ms": ("prior", "~1 m/s is a still ball; measured p50 pass speed is ~7 m/s (deep-dive 2)"),
     "d_missing_run_s": ("prior", "10 s without a ball: matches the median missing run (~10.7 s)"),
     "d_activity_thr_ms": ("prior", "players walking (<~2 m/s) is the stoppage signature"),
+    "x_use": ("prior", "off by default: emit>=X for a dwell/gated path; P5 ablates on IDSSE"),
     "x_stable_s": ("prior", "EVALUATION.md: abstain inside a stable possession, guess at changes"),
     "x_conf_max": ("prior", "abstain only when the decoder is genuinely unsure"),
 }
