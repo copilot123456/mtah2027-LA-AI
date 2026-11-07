@@ -38,14 +38,18 @@ CFG = dict(
     c0_atd=1.0,                   # confidence of raw tracking observations
     c0_kinematic=0.8,             # confidence of kinematic fills (before decay)
     tau_kinematic_s=3.0,          # confidence decay time for fills, seconds
+    err_kinematic_m=1.5,          # position-error prior that widens sigma for fills
 
-    # --- dead-ball term (sigmoid weights) ---
+    # --- dead-ball term (sigmoid: p_d = sigmoid(d_bias + sum w_i f_i)) ---
+    d_bias=-0.70,                 # logit(≈1/3): dead ball is about a third of football
     d_w_out_of_pitch=1.0,
     d_w_stationary=1.0,
     d_w_boundary=0.5,
     d_w_long_missing=0.5,
     d_w_low_activity=0.5,
-    ball_stationary_thr=0.01,     # normalized units/s (~1.05 m/s); p50 pass speed is 0.066
+    ball_stationary_thr_ms=1.0,   # m/s below which the ball counts as at rest
+    d_missing_run_s=10.0,         # no-ball run length (s) that saturates the missing feature
+    d_activity_thr_ms=2.0,        # mean player speed (m/s) below which play looks stopped
 
     # --- abstention policy (docs-derived, a priori) ---
     x_stable_s=5.0,               # only X when decoder this stable and confidence low
@@ -72,12 +76,16 @@ PROVENANCE = {
     "c0_atd": ("fixed_default", "raw tracking is full evidence"),
     "c0_kinematic": ("prior", "fills are estimates: start 20% below raw tracking"),
     "tau_kinematic_s": ("prior", "trust decays over a few seconds (Jose plan init)"),
+    "err_kinematic_m": ("prior", "filled positions are a couple of metres off (Jose plan init)"),
+    "d_bias": ("prior", "logit of ~1/3 dead ball; IDSSE sample showed 33% dead frames (P5 re-derives on all 7 matches)"),
     "d_w_out_of_pitch": ("prior", "ball beyond margin => dead (Jose WP3 design)"),
     "d_w_stationary": ("prior", "ball at rest => dead (restarts)"),
     "d_w_boundary": ("prior", "ball on the line => dead (throw-ins, corners)"),
     "d_w_long_missing": ("prior", "long no-ball runs correlate with stoppages (measured 75% of gaps are 5-30 s)"),
     "d_w_low_activity": ("prior", "low team activity during stoppages (Jose WP3 design)"),
-    "ball_stationary_thr": ("prior", "~1 m/s; below p50 pass speed 0.066 norm units/s (deep-dive 2)"),
+    "ball_stationary_thr_ms": ("prior", "~1 m/s is a still ball; measured p50 pass speed is ~7 m/s (deep-dive 2)"),
+    "d_missing_run_s": ("prior", "10 s without a ball: matches the median missing run (~10.7 s)"),
+    "d_activity_thr_ms": ("prior", "players walking (<~2 m/s) is the stoppage signature"),
     "x_stable_s": ("prior", "EVALUATION.md: abstain inside a stable possession, guess at changes"),
     "x_conf_max": ("prior", "abstain only when the decoder is genuinely unsure"),
 }

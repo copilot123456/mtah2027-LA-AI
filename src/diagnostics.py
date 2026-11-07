@@ -62,9 +62,21 @@ def main() -> None:
     print(f"graded frames: {int(m.graded.sum())}  half1 {int((m.half == 1).sum())}  half2 {int((m.half == 2).sum())}")
 
     from src.ball_fill import build_ball_track, describe
+    from src.emission import build_emission
 
     track = build_ball_track(m.ball, m.half)
     print(describe(track, m.graded))
+
+    em = build_emission(track, m.players, m.players_s, m.slot_team)
+    for code, name in ((0, "atd"), (2, "kinematic"), (3, "none")):
+        sel = track.source == code
+        if sel.any():
+            print(f"  conf[{name}]: mean {em.conf[sel].mean():.3f}")
+    print(f"  p_d: p10 {np.percentile(em.p_d, 10):.3f}  p50 {np.percentile(em.p_d, 50):.3f}"
+          f"  p90 {np.percentile(em.p_d, 90):.3f}  share>0.5 {100 * (em.p_d > 0.5).mean():.1f}%")
+    vis = em.ev.sum(axis=1) > 0
+    print(f"  team margin (ball visible): H ahead {100 * (em.margin[vis] > 0).mean():.1f}%"
+          f"  A ahead {100 * (em.margin[vis] < 0).mean():.1f}%")
 
 
 if __name__ == "__main__":
