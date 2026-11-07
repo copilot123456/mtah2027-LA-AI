@@ -61,6 +61,11 @@ def main() -> None:
 
     print(f"graded frames: {int(m.graded.sum())}  half1 {int((m.half == 1).sum())}  half2 {int((m.half == 2).sum())}")
 
+    from src.ball_fill import build_ball_track, describe
+
+    track = build_ball_track(m.ball, m.half)
+    print(describe(track, m.graded))
+
 
 if __name__ == "__main__":
     main()
