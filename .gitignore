@@ -65,3 +65,6 @@ env/
 
 # our test tooling
 .pytest_cache/
+
+# local-only copies of the challenge docs for reference (upstream: metrica-sports/more-than-a-hack-2027)
+reference-docs/
