@@ -78,6 +78,14 @@ def main() -> None:
     print(f"  team margin (ball visible): H ahead {100 * (em.margin[vis] > 0).mean():.1f}%"
           f"  A ahead {100 * (em.margin[vis] < 0).mean():.1f}%")
 
+    from src.decoder import decode, segment_stats
+
+    decoded = decode(em, track.source, m.half)
+    stats = segment_stats(decoded.labels)
+    print(f"  decoded: segments {stats['n_segments']} (possessions {stats['n_possessions']})"
+          f"  median {stats['median_len_s']:.1f}s  sub-second {100 * stats['subsecond_share']:.1f}%"
+          f"  D share {100 * stats['d_share']:.1f}%  reverted switches {decoded.reverted_switches}")
+
 
 if __name__ == "__main__":
     main()

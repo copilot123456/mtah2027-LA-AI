@@ -26,6 +26,7 @@ CFG = dict(
     dead_pen=5.0,                 # log-cost of entering/leaving D (nats)
     min_dwell_s=1.0,              # minimum segment length, seconds
     switch_support_s=0.6,         # non-ATD evidence must persist this long to switch
+    gate_switches=True,           # revert switches unsupported by nearby ATD frames (P5 ablates)
 
     # --- ball fill tiers ---
     fill_long_gap_s=10.0,         # kinematic fill covers bracketed gaps <= this
@@ -68,6 +69,7 @@ PROVENANCE = {
     "dead_pen": ("prior", "D transitions are restarts; cheaper than team switches (Jose plan init)"),
     "min_dwell_s": ("prior", "sub-second possessions are tracker flicker, not football"),
     "switch_support_s": ("prior", "weak (filled) evidence must persist before a switch (Jose plan init)"),
+    "gate_switches": ("prior", "tier-2/3 must not switch alone; P5 ablates +/- gating on IDSSE"),
     "fill_long_gap_s": ("prior", "Hermite fill is trustworthy only over short bracketed gaps"),
     "fill_tau_s": ("prior", "damp boundary velocity so short gaps follow momentum (Jose design)"),
     "fill_vel_window": ("prior", "5 known frames = 0.2 s of velocity estimate at 25 fps"),
