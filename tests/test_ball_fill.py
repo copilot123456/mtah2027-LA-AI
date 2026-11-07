@@ -15,9 +15,20 @@ from src.ball_fill import (
 )
 
 
+FILL_ON = {**CFG, "fill_long_gap_s": 10.0}   # mechanism tests: tier enabled
+
+
 @pytest.fixture(scope="session")
 def track(arrays):
-    return build_ball_track(arrays.ball, arrays.half)
+    """Fill-enabled track for the mechanism tests (the shipped config has the tier off;
+    see test_fill_tier_ships_disabled)."""
+    return build_ball_track(arrays.ball, arrays.half, FILL_ON)
+
+
+def test_fill_tier_ships_disabled(arrays):
+    """Shipped default: the kinematic tier is off (IDSSE ablation; config provenance)."""
+    default = build_ball_track(arrays.ball, arrays.half)
+    assert (default.source != SOURCE_KINEMATIC).all()
 
 
 def test_atd_never_overwritten(arrays, track):
@@ -56,7 +67,7 @@ def test_filled_gaps_within_time_limit(arrays, track):
     known = ~np.isnan(arrays.ball).any(axis=1)
     known_idx = np.flatnonzero(known)
     assert known_idx.size > 0
-    limit = CFG["fill_long_gap_s"] * CFG["fps"]
+    limit = FILL_ON["fill_long_gap_s"] * FILL_ON["fps"]
     runs = list(_kinematic_runs(track))
     assert runs, "expected some fills"
     for a, b in runs:

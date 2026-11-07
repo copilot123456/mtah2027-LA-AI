@@ -29,11 +29,16 @@ CFG = dict(
     gate_switches=True,           # revert switches unsupported by nearby ATD frames (P5 ablates)
 
     # --- ball fill tiers ---
-    fill_long_gap_s=10.0,         # kinematic fill covers bracketed gaps <= this
-    fill_tau_s=1.0,               # boundary-velocity damping time
-    fill_vel_window=5,            # known frames used for boundary velocity
-    fill_pad=0.02,                # overshoot guard, normalized units
-    fill_pad_frac=0.15,           # overshoot guard, fraction of span
+    # fill_long_gap_s = 0 DISABLES the kinematic tier: the IDSSE layer ablation
+    # (kinematic - none = -0.0112 spellF1, CI [-0.017, -0.007], 7/7 matches negative;
+    # all-cell mean -0.0089, positive in only 211/1701 cells) failed the keep-rule.
+    # The other fill_* priors stay documented for re-enable/ablation; they are
+    # inactive while this is 0. The sweep's `none` scenario uses the identical value.
+    fill_long_gap_s=0.0,          # 0 = tier off; was 10.0 (prior) before the ablation
+    fill_tau_s=1.0,               # boundary-velocity damping time (inactive)
+    fill_vel_window=5,            # known frames used for boundary velocity (inactive)
+    fill_pad=0.02,                # overshoot guard, normalized units (inactive)
+    fill_pad_frac=0.15,           # overshoot guard, fraction of span (inactive)
 
     # --- confidence / tempering ---
     c0_atd=1.0,                   # confidence of raw tracking observations
@@ -73,7 +78,9 @@ PROVENANCE = {
     "min_dwell_s": ("prior", "sub-second possessions are tracker flicker, not football"),
     "switch_support_s": ("prior", "weak (filled) evidence must persist before a switch (Jose plan init)"),
     "gate_switches": ("prior", "tier-2/3 must not switch alone; P5 ablates +/- gating on IDSSE"),
-    "fill_long_gap_s": ("prior", "Hermite fill is trustworthy only over short bracketed gaps"),
+    "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "
+                         "IDSSE layer ablation kinematic-none = -0.0112 spellF1, "
+                         "CI [-0.017, -0.007], 7/7 matches negative, all-cell mean -0.0089"),
     "fill_tau_s": ("prior", "damp boundary velocity so short gaps follow momentum (Jose design)"),
     "fill_vel_window": ("prior", "5 known frames = 0.2 s of velocity estimate at 25 fps"),
     "fill_pad": ("prior", "2 m overshoot guard on filled paths"),

@@ -46,17 +46,33 @@ GRID = {
     "min_dwell_s": [0.5, 1.0, 2.0],
     "switch_support_s": [0.3, 0.6, 1.0],
 }
+# Stage 2 (pre-justified by stage-1 marginals: switch/sigma improved toward the low
+# edge, dwell/support toward the high edge, dead flat): one extra notch per direction.
+GRID_EXT = {
+    "switch_pen": [2.0, 4.0, 8.0, 12.0],
+    "dead_pen": [3.0, 5.0, 8.0],
+    "sigma_m": [2.0, 3.0, 4.5, 6.0],
+    "min_dwell_s": [0.5, 1.0, 2.0, 3.0],
+    "switch_support_s": [0.3, 0.6, 1.0, 1.5],
+}
 PARAMS = list(GRID)
 SCENARIOS = ["kinematic", "none"]
 MASK_SEED = 20261107
 RESULTS = ROOT / "tuning" / "results" / "sweep_results.csv"
+RESULTS_STG2 = ROOT / "tuning" / "results" / "sweep_results_stage2.csv"
 REPORT = ROOT / "tuning" / "results" / "report.md"
+REPORT_STG2 = ROOT / "tuning" / "results" / "report_stage2.md"
 
 _LETTERS = np.array(["X", "H", "A", "D"], dtype=object)  # index by internal code + 1
 
 
+def points_of(grid: dict) -> list[dict]:
+    return [dict(zip(PARAMS, combo))
+            for combo in itertools.product(*(grid[p] for p in PARAMS))]
+
+
 def grid_points() -> list[dict]:
-    return [dict(zip(PARAMS, combo)) for combo in itertools.product(*(GRID[p] for p in PARAMS))]
+    return points_of(GRID)
 
 
 def _score(gt_codes: np.ndarray, pred_codes: np.ndarray) -> dict:
@@ -90,11 +106,12 @@ def run_task(args) -> list[dict]:
     n_gt = len(pm.possession_spells(gt_codes, gt_runs))
 
     rows = []
-    for sigma in GRID["sigma_m"]:
+    sigmas = sorted({float(c["sigma_m"]) for c in grid})
+    for sigma in sigmas:
         em = build_emission(track, case.players, case.players_s, case.slot_team,
                             {**base, "sigma_m": sigma})
         for cell in grid:
-            if cell["sigma_m"] != sigma:
+            if float(cell["sigma_m"]) != sigma:
                 continue
             cfg = {**base, **cell}
             decoded = decode(em, track.source, case.half, cfg)
@@ -199,11 +216,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--smoke", action="store_true", help="1 match, 6 cells")
     parser.add_argument("--select-only", action="store_true")
+    parser.add_argument("--stage2", action="store_true",
+                        help="extended grid, none scenario only (fill tier dropped by ablation)")
     parser.add_argument("--workers", type=int, default=7)
     args = parser.parse_args()
 
+    grid_used = GRID_EXT if args.stage2 else GRID
+    select_scenario = "none" if args.stage2 else "kinematic"
+
     if args.select_only:
-        df = pd.read_csv(RESULTS)
+        df = pd.read_csv(RESULTS_STG2 if args.stage2 else RESULTS)
     else:
         from src import data as D
 
@@ -213,9 +235,12 @@ def main() -> int:
         print(f"empirical missing runs: n={len(run_lengths)} "
               f"median={int(np.median(run_lengths))} max={int(run_lengths.max())}", flush=True)
 
-        matches = [MATCH_IDS[0]] if args.smoke else MATCH_IDS
-        scenarios = ["kinematic"] if args.smoke else SCENARIOS
-        grid = smoke_grid() if args.smoke else grid_points()
+        if args.smoke:
+            matches, scenarios, grid = [MATCH_IDS[0]], ["kinematic"], smoke_grid()
+        elif args.stage2:
+            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_EXT)
+        else:
+            matches, scenarios, grid = MATCH_IDS, SCENARIOS, grid_points()
         for mid in matches:
             load_match(mid)   # ensure cache (parses if needed)
 
@@ -225,76 +250,94 @@ def main() -> int:
 
         from multiprocessing import Pool
 
+        import time as _time
+        t0 = _time.time()
         all_rows: list[dict] = []
         with Pool(processes=min(args.workers, len(tasks))) as pool:
             for i, rows in enumerate(pool.imap_unordered(run_task, tasks), 1):
                 all_rows.extend(rows)
                 print(f"[{i}/{len(tasks)}] {rows[0]['match_id']}/{rows[0]['scenario']} "
-                      f"done in {rows[0]['runtime_s']}s ({len(rows)} cells)", flush=True)
+                      f"({len(rows)} cells, elapsed {_time.time() - t0:.0f}s)", flush=True)
 
         df = pd.DataFrame(all_rows)
-        df.to_csv(RESULTS, index=False)
-        print(f"wrote {RESULTS} ({len(df)} rows)", flush=True)
+        out_path = (ROOT / "tuning" / "results" / "smoke.csv") if args.smoke else (
+            RESULTS_STG2 if args.stage2 else RESULTS)
+        df.to_csv(out_path, index=False)
+        print(f"wrote {out_path} ({len(df)} rows)", flush=True)
         if args.smoke:
             return 0
 
+    integrity = None
+    if args.stage2:
+        # overlapping cells must reproduce stage-1 numbers exactly (same config)
+        base = pd.read_csv(RESULTS)
+        base = base[base["scenario"] == "none"]
+        merged = df.merge(base, on=["match_id", "scenario", *PARAMS],
+                          suffixes=("_s2", "_s1"))
+        if len(merged):
+            diff = (merged["spell_f1_s2"] - merged["spell_f1_s1"]).abs().max()
+            integrity = f"{len(merged)} overlapping cells reproduce stage 1 (max |Δ| {diff:.2e})"
+            assert diff < 1e-9, integrity
+            print("integrity:", integrity, flush=True)
+
     # ---- selection + report ----
-    chosen, detail = flat_select(df)
-    means_kin = df[df["scenario"] == "kinematic"].groupby(PARAMS)["spell_f1"].mean()
-    chosen_mean = means_kin[
-        (means_kin.index.get_level_values("switch_pen") == chosen["switch_pen"])
-        & (means_kin.index.get_level_values("dead_pen") == chosen["dead_pen"])
-        & (means_kin.index.get_level_values("sigma_m") == chosen["sigma_m"])
-        & (means_kin.index.get_level_values("min_dwell_s") == chosen["min_dwell_s"])
-        & (means_kin.index.get_level_values("switch_support_s") == chosen["switch_support_s"])
-    ].iloc[0]
-    best_mean = means_kin.max()
-    ci = bootstrap_ci(means_kin.to_numpy())
+    chosen, detail = flat_select(df, scenario=select_scenario)
+    chosen_rows = df[df["scenario"] == select_scenario]
+    for p, v in chosen.items():
+        chosen_rows = chosen_rows[chosen_rows[p] == v]
+    chosen_scores = chosen_rows["spell_f1"].to_numpy()
+    chosen_mean = float(chosen_scores.mean())
+    best_mean = float(df[df["scenario"] == select_scenario]
+                      .groupby(PARAMS)["spell_f1"].mean().max())
+    ci = bootstrap_ci(chosen_scores)
 
     lomo_df = lomo(df, chosen)
     gap = float((lomo_df["fold_score"] - lomo_df["global_score"]).mean())
 
     robust = {}
-    for scenario in SCENARIOS:
-        sub = df[df["scenario"] == scenario]
-        cell = sub
+    for scenario in sorted(df["scenario"].unique()):
+        cell = df[df["scenario"] == scenario]
         for p, v in chosen.items():
             cell = cell[cell[p] == v]
-        robust[scenario] = float(cell["spell_f1"].mean())
-    best_none = float(df[df["scenario"] == "none"].groupby(PARAMS)["spell_f1"].mean().max())
+        robust[scenario] = float(cell["spell_f1"].mean()) if len(cell) else None
 
     lines = [
-        "# P5 sweep report (IDSSE, CC BY 4.0 — external only)",
+        f"# P5 {'stage-2 extension' if args.stage2 else 'sweep'} report "
+        "(IDSSE, CC BY 4.0 — external only)",
         "",
-        f"- grid: {len(grid_points())} cells x {len(SCENARIOS)} scenarios x {len(MATCH_IDS)} matches",
-        f"- metric: spellF1 (vendored official metric code) on algorithmically derived labels",
-        f"- selection scenario: kinematic; rule: within 0.01 of best, maximize worst neighbour",
+        f"- grid: {len(grid_used)} cells x {sorted(df['scenario'].unique())} x "
+        f"{df['match_id'].nunique()} matches",
+        "- metric: spellF1 (vendored official metric code) on algorithmically derived labels",
+        f"- selection scenario: {select_scenario}; rule: within 0.01 of best, "
+        "maximize worst neighbour",
+        *( [f"- integrity: {integrity}"] if integrity else [] ),
         "",
         f"**chosen**: {_cell_str(chosen)}",
-        f"- mean spellF1 (kinematic): {chosen_mean:.4f}  | best cell: {best_mean:.4f}  "
+        f"- mean spellF1 ({select_scenario}): {chosen_mean:.4f}  | best cell: {best_mean:.4f}  "
         f"| gap to best: {best_mean - chosen_mean:.4f}",
-        f"- match-level bootstrap 95% CI of chosen mean: [{ci[0]:.4f}, {ci[1]:.4f}]",
-        f"- LOMO: mean(fold pick - global pick) on held-out = {gap:+.4f} "
-        f"(optimism; positive means LOMO picks beat global on held-out)",
-        f"- no-harm on `none` scenario: chosen {robust['none']:.4f} vs best-none {best_none:.4f}",
+        f"- match-level bootstrap 95% CI of chosen mean (n={len(chosen_scores)} matches): "
+        f"[{ci[0]:.4f}, {ci[1]:.4f}]",
+        f"- LOMO: mean(fold pick - global pick) on held-out = {gap:+.4f}",
+        *[f"- scenario at chosen: {k} = {('%.4f' % v) if v is not None else 'n/a'}"
+          for k, v in robust.items()],
         "",
         "## LOMO detail",
         lomo_df.to_markdown(index=False),
         "",
-        "## Top 10 cells by mean (kinematic)",
+        f"## Top 10 cells by mean ({select_scenario})",
         detail.sort_values("mean", ascending=False).head(10).to_markdown(index=False),
         "",
         "## Documented deviations",
         "- cache format pickle instead of parquet (no pyarrow; same-env cache only)",
-        "- bootstrap resamples MATCHES only (no within-match blocks: spellF1 is not "
-        "block-decomposable without edge artifacts — plan R-U3 caveat)",
+        "- bootstrap resamples MATCHES only (spellF1 not block-decomposable — plan R-U3)",
         "- third fill scenario (simulated detector) dropped with the detector tier (stretch)",
         "- mask placement uniform (real missingness correlates with phases we may not quantify)",
     ]
-    REPORT.write_text("\n".join(lines) + "\n")
+    report_path = REPORT_STG2 if args.stage2 else REPORT
+    report_path.write_text("\n".join(lines) + "\n")
     print(f"chosen: {_cell_str(chosen)}")
     print(f"mean {chosen_mean:.4f} (best {best_mean:.4f}) CI {ci}")
-    print(f"wrote {REPORT}")
+    print(f"wrote {report_path}")
     return 0
 
 
