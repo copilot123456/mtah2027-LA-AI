@@ -1,0 +1,5 @@
+# Everything in requirements-pipeline.txt plus the test runner and the one extra package the
+# tuning reports use (pandas.DataFrame.to_markdown needs tabulate).
+-r requirements-pipeline.txt
+pytest==9.2.0
+tabulate==0.10.0

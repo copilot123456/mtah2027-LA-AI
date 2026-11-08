@@ -66,5 +66,9 @@ env/
 # our test tooling
 .pytest_cache/
 
+# tuning scratch: `python -m tuning.sweep --smoke` writes a plumbing-check matrix here; the real
+# matrices (sweep_results*.csv, post_checks*.csv, report*.md) are committed on purpose
+tuning/results/smoke.csv
+
 # local-only copies of the challenge docs for reference (upstream: metrica-sports/more-than-a-hack-2027)
 reference-docs/

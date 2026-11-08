@@ -1,0 +1,13 @@
+# The possession decoder's runtime, pinned to the exact versions that produced the committed
+# LA+AI.csv (md5 aeef0058a08860c9e2407423b1172684). Byte-identical regeneration is a hard rule of
+# this submission, and numpy/pandas minor versions can change float reductions and CSV
+# formatting, so these are == pins, not ranges.
+#
+# Tested interpreter: CPython 3.14.4 (Linux). numpy 2.5 wheels need Python >= 3.11.
+#
+# requirements.txt (two unpinned lines) is the organisers' file for the vendored evaluator and
+# is left as shipped; this file is what `python -m src.submit` and the tests actually need.
+numpy==2.5.4
+pandas==3.1.1
+kloppy==3.18.0
+lxml==6.1.3
