@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch report — framework/pipeline-spec (MTAH 2027 · LA+AI)</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1b2333; --muted:#5b6579; --line:#e3e7f0;
+  --accent:#4457d6; --accent2:#7c4ddb; --ok:#1a9e6b; --warn:#c77716; --bad:#c2453f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:74px}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--mono);font-size:.92em}
+pre{background:#141a2a;color:#dfe6f5;padding:14px 16px;border-radius:10px;overflow-x:auto}
+code{background:#eef1f8;padding:1px 6px;border-radius:6px}
+pre code{background:none;padding:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+h2{font-size:1.65rem;margin-top:0}
+h3{font-size:1.15rem}
+p{margin:.5em 0}
+small{color:var(--muted)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
+nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
+nav a:hover{background:#eef1f8;color:var(--ink)}
+nav a.active{background:var(--accent);color:#fff}
+nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
+
+/* ---------- hero ---------- */
+header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
+header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
+header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:99px;font-size:.83rem;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:26px}
+.kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
+.kpi .v{font-size:1.55rem;font-weight:800}
+.kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
+
+/* ---------- layout blocks ---------- */
+section{padding:44px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.b-done{background:#e2f6ed;color:var(--ok)} .b-run{background:#fff3df;color:var(--warn)}
+.b-next{background:#eef1f8;color:var(--muted)} .b-key{background:#eceefe;color:var(--accent)}
+.b-bad{background:#fdeceb;color:var(--bad)}
+.callout{border-left:4px solid var(--accent);background:#eef1f8;border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+.callout.warn{border-color:var(--warn);background:#fff7e8}
+.callout.ok{border-color:var(--ok);background:#eaf7f1}
+.callout.good{border-color:var(--accent2);background:#f3edfd}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
+tr:nth-child(even) td{background:#fbfcff}
+.bar{position:relative;height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);background:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+
+/* ---------- timeline ---------- */
+.timeline{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:3px solid var(--line)}
+.timeline li{position:relative;padding:0 0 22px 22px}
+.timeline li::before{content:"";position:absolute;left:-33px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.timeline li.todo::before{background:#c9cfdd}
+.timeline .t-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.timeline .t-title{font-weight:700}
+.timeline .t-body{color:var(--muted);font-size:.93rem}
+
+/* ---------- pipeline ---------- */
+.pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:18px 0}
+.pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;min-width:150px}
+.pipe .stage .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;align-items:center;justify-content:center;margin-bottom:6px}
+.pipe .stage .t{font-weight:700;font-size:.9rem}
+.pipe .stage .d{font-size:.76rem;color:var(--muted);margin-top:4px}
+.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;padding:0 6px}
+
+/* ---------- file docs ---------- */
+details.file{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+details.file summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
+details.file summary::-webkit-details-marker{display:none}
+details.file summary::before{content:"▸";color:var(--accent);transition:.15s}
+details.file[open] summary::before{transform:rotate(90deg)}
+details.file summary .role{font-weight:500;color:var(--muted);font-size:.85rem}
+details.file .body{padding:4px 18px 16px;border-top:1px solid var(--line);font-size:.93rem}
+.path{font-family:var(--mono);font-size:.85rem;background:#eef1f8;padding:2px 8px;border-radius:6px;color:#2b3557}
+.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin:26px 0 6px}
+
+/* ---------- commits ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font-weight:600;font-size:.83rem;cursor:pointer;color:var(--muted)}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.commit{display:grid;grid-template-columns:96px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:9px 0}
+.commit .hash{font-family:var(--mono);font-size:.82rem;color:var(--accent);font-weight:700}
+.commit .date{font-size:.74rem;color:var(--muted)}
+.commit .subj{font-weight:700;font-size:.95rem}
+.commit .why{font-size:.87rem;color:var(--muted);margin-top:3px}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.t-foundation{background:#eef1f8;color:#5b6579} .t-pipeline{background:#eceefe;color:#4457d6}
+.t-tuning{background:#f3edfd;color:#7c4ddb} .t-audit{background:#fff3df;color:#c77716}
+.t-docs{background:#e2f6ed;color:#1a9e6b} .t-vendor{background:#f0f1f4;color:#6b7280}
+
+footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;text-align:center}
+@media (max-width:640px){ header.hero h1{font-size:1.7rem} .commit{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">Branch report</span>
+  <a href="#summary">Summary</a>
+  <a href="#idea">The idea</a>
+  <a href="#changes">Changes</a>
+  <a href="#evidence">Evidence</a>
+  <a href="#compliance">Compliance</a>
+  <a href="#ask">Wednesday ask</a>
+  <a href="#reproduce">Reproduce</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <h1>Branch report — <span class="mono">framework/pipeline-spec</span></h1>
+  <p class="sub">Plug-and-play pipeline framework: one declaration file, swappable stages, zero
+  change to the frozen score. <b>Sample report</b> produced under <code>AI-SOP-SKILL.md</code>
+  using our current work as the subject.</p>
+  <div class="chips">
+    <span class="chip">baseline: main @ 25207bc (common ground)</span>
+    <span class="chip">head: 95e6eca · merged to main</span>
+    <span class="chip">operator + Copilot · LA+AI</span>
+    <span class="chip">2026-11-08</span>
+    <span class="chip">✅ ADOPTED</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">92</div><div class="l">tests (84 → 92)</div></div>
+    <div class="kpi"><div class="v">byte-identical</div><div class="l">md5 aeef0058… unchanged</div></div>
+    <div class="kpi"><div class="v">0</div><div class="l">config keys changed</div></div>
+    <div class="kpi"><div class="v">7</div><div class="l">files · +781 −25</div></div>
+  </div>
+</div></header>
+
+<section id="summary"><div class="wrap"><div class="card">
+  <h2>🖥️ One-screen summary</h2>
+  <p><b>The idea in one sentence:</b> turn the hard-wired five-stage pipeline into a declared list
+  of named stages in one file, so any member can swap a stage (YOLO → ViT) or add one without
+  touching the audited core.</p>
+  <table>
+    <tr><th>Metric</th><th>Common ground (main @ 25207bc)</th><th>This branch (95e6eca)</th></tr>
+    <tr><td>Tests</td><td>84 green</td><td><b>92 green</b> (+8 framework tests)</td></tr>
+    <tr><td>Submission md5</td><td><code>aeef0058a08860c9e2407423b1172684</code></td><td><b>same</b> — byte-identical</td></tr>
+    <tr><td>Pipeline wiring</td><td>hard-coded inside <code>run()</code></td><td>declared in <code>pipeline_spec.py</code></td></tr>
+    <tr><td>Config keys / provenance</td><td>frozen set</td><td><b>0 deltas</b> — <code>config.py</code> untouched</td></tr>
+    <tr><td>Standards docs</td><td>executive report only</td><td>+ pipeline standard (human + AI editions)</td></tr>
+  </table>
+  <div class="callout ok"><b>Verdict: ADOPTED</b> — a behaviour-preserving mechanism: zero risk
+  to the frozen score (proven byte-identical), and it unlocks the team's parallel branches. The
+  framework itself moves no points by design — points move when someone swaps a stage and proves
+  it externally (evidence rule).</div>
+</div></div></section>
+
+<section id="idea"><div class="wrap"><div class="card">
+  <h2>💡 The idea — what we tried to break</h2>
+  <p>Parallel work on one frozen pipeline usually means everyone edits the same decoder, fill and
+  config files — and Wednesday's merge becomes conflict resolution. The "break" here is
+  structural: make the pipeline a <b>LEGO instruction sheet</b>. Each stage becomes a brick with a
+  fixed shape (what it requires, what it provides); the declaration file is the sheet. Swapping a
+  brick never restructures the model, and the audited core stays untouched on <code>main</code>.</p>
+  <p><b>Why it could help us win:</b> it converts team throughput into score attempts instead of
+  merge conflicts — every member's idea reaches the Wednesday sync as a one-line diff plus
+  evidence, ready to compare under P6 as the shared KPI.</p>
+</div></div></section>
+
+<section id="changes"><div class="wrap"><div class="card">
+  <h2>🧱 What changed from common ground</h2>
+  <p>Everything below is measured from the baseline commit <code>25207bc</code> — the common
+  ground this branch started from.</p>
+  <table>
+    <tr><th>Area</th><th>Common ground (25207bc)</th><th>This branch (95e6eca)</th></tr>
+    <tr><td>Orchestration</td><td><code>run()</code> hard-codes the 5 stage calls</td><td><code>run()</code> executes the declared <code>SPEC</code> list</td></tr>
+    <tr><td>Contract</td><td>none (implicit)</td><td><code>Ctx</code> + <code>Step(name, fn, requires, provides)</code></td></tr>
+    <tr><td>Validation</td><td>none — errors surface mid-run</td><td><code>validate_spec()</code> before any step: data-flow, <b>docstrings enforced</b>, duplicate names</td></tr>
+    <tr><td>Stage code</td><td>pure functions called inline</td><td>same pure functions, untouched — wrapped by 6 thin adapters in <code>src/steps.py</code></td></tr>
+    <tr><td>Declaration</td><td>—</td><td><b><code>pipeline_spec.py</code></b> (root): swap / reorder / add = edit this file</td></tr>
+    <tr><td>Docs</td><td>exec report</td><td>+ <code>PIPELINE_STANDARD.html</code> (human) + <code>PIPELINE_STANDARD_AI.md</code> (AI), both with the share-with-the-team adoption step</td></tr>
+    <tr><td>Tests</td><td>84</td><td>92 — validation, ordering, swap mechanics, end-state guard</td></tr>
+  </table>
+<pre><code>$ git diff --stat 25207bc...95e6eca
+ PIPELINE_STANDARD.html      | 271 ++++++++++++++++++
+ PIPELINE_STANDARD_AI.md     | 202 +++++++++++++
+ README.md                   |  13 ++-
+ pipeline_spec.py            |  37 +++++
+ src/pipeline.py             | 114 +++++++++++-----
+ src/steps.py                |  62 +++++++
+ tests/test_pipeline_spec.py | 107 +++++++++++++
+ 7 files changed, 781 insertions(+), 25 deletions(-)</code></pre>
+  <p><b>Config deltas: none.</b> <code>config.py</code> does not appear in the diff — provenance
+  untouched, frozen parameters untouched.</p>
+</div></div></section>
+
+<section id="evidence"><div class="wrap"><div class="card">
+  <h2>📈 Improvements — the evidence</h2>
+  <table>
+    <tr><th>Claim</th><th>Evidence</th><th>Result</th></tr>
+    <tr><td>Output unchanged</td><td>fresh <code>src.submit</code> vs committed file</td><td><b>byte-identical</b> — md5 <code>aeef0058…</code> both ways</td></tr>
+    <tr><td>Spec valid by contract</td><td><code>validate_spec(SPEC)</code></td><td><code>[]</code> (clean)</td></tr>
+    <tr><td>Test suite</td><td><code>pytest -q</code></td><td><b>92 passed</b> (84 → 92)</td></tr>
+    <tr><td>Official format</td><td><code>evaluation/validate_submission.py</code></td><td><b>VALID</b></td></tr>
+    <tr><td>Score effect</td><td>none by construction (no emission/decoder/config change)</td><td>evidence rule <b>not triggered</b> — no IDSSE run needed or performed</td></tr>
+    <tr><td>P6 KPI</td><td>guarded evaluator run</td><td><b>PENDING</b> — band letter + flags arrive from the operator</td></tr>
+  </table>
+  <div class="grid c3">
+    <div class="card"><b>Lens 1 — is it safe?</b><p>Yes, with receipts: byte-identity proven,
+    92 tests green, diff touches only the 7 declared files — none of
+    <code>evaluation/</code>, <code>starter/</code>, <code>games.py</code>, no <code>data/*</code>,
+    no history rewrite.</p></div>
+    <div class="card"><b>Lens 2 — is it useful?</b><p>Unproven until first contact: no real
+    alternative handler exists yet. Wednesday 2026-11-11 is the first stress test — the
+    declaration file is a shared edit point (small, but real).</p></div>
+    <div class="card"><b>Lens 3 — what did NOT improve?</b><p>The score: 0.2759 external spellF1
+    is untouched, by design. The framework adds zero points by itself; it buys the <i>rate</i> at
+    which we can earn them.</p></div>
+  </div>
+</div></div></section>
+
+<section id="compliance"><div class="wrap"><div class="card">
+  <h2>✅ Rules &amp; compliance</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>No provided-match per-frame values in this report</td><td>✅ aggregates and counts only</td></tr>
+    <tr><td>No guarded-evaluator numbers</td><td>✅ band status is <code>PENDING</code>; no run performed</td></tr>
+    <tr><td>No GT/video-derived claims</td><td>✅ evidence = tests, md5, validator, git diff</td></tr>
+    <tr><td>Every CFG delta carries provenance</td><td>✅ n/a — zero CFG deltas</td></tr>
+    <tr><td>Behaviour changes need &gt;0.02 paired IDSSE, dossier §7</td><td>✅ n/a — byte-identical; explicitly not a tuning vehicle</td></tr>
+    <tr><td>Framework change → adoption step</td><td>✅ built on branch → verified → operator approved merge → merged + pushed → shared via PIPELINE_STANDARD + this report</td></tr>
+    <tr><td>Forbidden paths / data / gitignore / history</td><td>✅ untouched (diff = 7 declared files)</td></tr>
+    <tr><td>Tests green after every commit</td><td>✅ 92 passed post-merge on main</td></tr>
+    <tr><td>Human ↔ AI report agreement</td><td>✅ <code>reports/framework-pipeline-spec_AI.md</code> carries the same claims with pasted outputs</td></tr>
+  </table>
+</div></div></section>
+
+<section id="ask"><div class="wrap"><div class="card">
+  <h2>🙋 Verdict &amp; the ask for Wednesday</h2>
+  <div class="callout"><b>Status: ADOPTED</b> (merged to <code>main @ 95e6eca</code> with operator
+  approval on 2026-11-08). The verdict is not what Wednesday needs from you — the
+  <b>acknowledgement</b> is.</div>
+  <ol>
+    <li><b>Acknowledge the standard</b> — <code>PIPELINE_STANDARD.html</code> + the adoption
+    rule: framework changes are shared before merging; handler swaps inside your branch need no
+    process.</li>
+    <li><b>Branch from <code>95e6eca</code></b> — it is the new common ground; your "break" goes
+    in a one-line binding in <code>pipeline_spec.py</code>.</li>
+    <li><b>Report with the pair</b> — <code>reports/&lt;your-branch&gt;.html</code> +
+    <code>_AI.md</code> per <code>AI-SOP-SKILL.md</code>, so Wednesday compares like with like
+    under the P6 KPI.</li>
+  </ol>
+  <p><b>Risks we accept:</b> the declaration file is a shared edit point (kept tiny on purpose);
+  first real swap is untested until Wednesday; <code>run()</code> now fails fast on mis-declared
+  specs — a behaviour change only in error paths.</p>
+</div></div></section>
+
+<section id="reproduce"><div class="wrap"><div class="card">
+  <h2>🔁 Reproduce it yourself (3 commands)</h2>
+<pre><code>.venv/bin/python -m pytest -q                 # 92 passed
+.venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
+                                              # aeef0058a08860c9e2407423b1172684
+python -c "import pipeline_spec; from src.pipeline import validate_spec; print(validate_spec(pipeline_spec.SPEC))"
+                                              # []</code></pre>
+  <p>Full detail, diff inventory and compliance log →
+  <a href="./framework-pipeline-spec_AI.md"><code>reports/framework-pipeline-spec_AI.md</code></a>.</p>
+</div></div></section>
+
+<footer><div class="wrap">
+  <p><b>Sample report</b> — produced under <code>AI-SOP-SKILL.md</code> v1.0 with the pipeline
+  framework work as its subject; committed on <code>standard/report-skill</code> together with
+  the SOP (the branch it describes is already merged — normal flow commits reports on the branch
+  they describe). Verification: 92 tests · md5 <code>aeef0058…</code> byte-identical · official
+  validator PASS · baseline <code>25207bc</code> → head <code>95e6eca</code>.</p>
+  <p>MTAH 2027 · LA+AI · branch report — <span class="mono">framework/pipeline-spec</span> · 2026-11-08</p>
+</div></footer>
+
+</body>
+</html>
