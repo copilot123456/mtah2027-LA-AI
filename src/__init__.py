@@ -1,1 +1,1 @@
-"""Possession decoder for MTAH 2027 — core pipeline (branch mtah-core)."""
+"""Possession decoder for MTAH 2027 — core pipeline (team LA+AI)."""

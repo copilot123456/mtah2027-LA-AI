@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from config import CFG
 from src import data as D
 from src.ball_fill import build_ball_track, coverage

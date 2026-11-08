@@ -12,6 +12,7 @@ Format contract (SUBMISSION.md):
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 
@@ -19,18 +20,26 @@ import numpy as np
 import pandas as pd
 
 from config import CFG
+from src.data import N_FRAMES
 from src.decoder import CODE_A, CODE_D, CODE_H, CODE_X
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+VALIDATOR = os.path.join(ROOT, "evaluation", "validate_submission.py")
 
 DEFAULT_OUT = "LA+AI.csv"
 _LETTER = {CODE_H: "H", CODE_A: "A", CODE_D: "D", CODE_X: "X"}
 
 
 def labels_to_frame_table(labels: np.ndarray) -> pd.DataFrame:
-    if len(labels) != 199_319:
-        raise ValueError(f"expected 199319 labels, got {len(labels)}")
+    if len(labels) != N_FRAMES:
+        raise ValueError(f"expected {N_FRAMES} labels, got {len(labels)}")
+    codes = np.asarray(labels, dtype=np.int8)
+    unknown = set(np.unique(codes)) - set(_LETTER)
+    if unknown:
+        raise ValueError(f"unknown label codes {sorted(unknown)}; expected {sorted(_LETTER)}")
     letters = np.array(["X", "H", "A", "D"], dtype="<U1")  # index by code+1 (CODE_X = -1)
-    return pd.DataFrame({"frame": np.arange(len(labels), dtype=np.int64),
-                         "label": letters[np.asarray(labels, dtype=np.int8) + 1]})
+    return pd.DataFrame({"frame": np.arange(len(codes), dtype=np.int64),
+                         "label": letters[codes + 1]})
 
 
 def write_submission(labels: np.ndarray, path: str) -> None:
@@ -39,9 +48,13 @@ def write_submission(labels: np.ndarray, path: str) -> None:
 
 
 def validate(path: str) -> int:
-    """Run the official validator as a subprocess; returns its exit code."""
+    """Run the official validator as a subprocess; returns its exit code.
+
+    The validator is located relative to this file, not the current directory, so the
+    call works from any cwd (pytest invoked from elsewhere, or an absolute --out path).
+    """
     result = subprocess.run(
-        [sys.executable, "evaluation/validate_submission.py", path],
+        [sys.executable, VALIDATOR, os.path.abspath(path)],
         capture_output=True, text=True,
     )
     print(result.stdout, end="")

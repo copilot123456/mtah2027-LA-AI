@@ -82,14 +82,6 @@ def load_slot_teams() -> np.ndarray:
     return out
 
 
-def load_team_names() -> tuple[str, str]:
-    import xml.etree.ElementTree as ET
-
-    root = ET.parse(asset_paths()["atd_meta"]).getroot()
-    names = tuple(team.findtext("Name") for team in root.iter("Team"))
-    return names[0], names[1]  # type: ignore[return-value]
-
-
 def load_homography(force: bool = False) -> pd.DataFrame:
     if not force:
         cached = _read_cache("homography.pkl")
