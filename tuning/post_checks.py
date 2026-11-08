@@ -1,9 +1,10 @@
 """Post-selection checks (P5): re-derive d_bias externally; ablate the X-policy.
 
-Run AFTER the main sweep:  python -m tuning.post_checks
+    python -m tuning.post_checks            # stage-1 cell, kinematic scenario (as recorded)
+    python -m tuning.post_checks --final    # shipped config.py cell, fill tier as shipped
 
-Both checks run on the CHOSEN grid cell across all 7 IDSSE matches (kinematic
-scenario, same seeds as the sweep), and both carry a pre-declared adoption rule:
+Both checks run across all 7 IDSSE matches (same seeds as the sweep) and carry a
+pre-declared adoption rule:
 
     adopt the variant only if mean spellF1 gain > 0.02 over the shipped value
     (external differences of 0.01-0.02 are ties — plan R-U4)
@@ -11,6 +12,11 @@ scenario, same seeds as the sweep), and both carry a pre-declared adoption rule:
 d_bias:    shipped -0.70 (prior, logit of ~1/3 dead) vs logit of the pooled
            IDSSE provider-label dead share (external_fit candidate).
 x_use:     shipped False (emit-dominates analysis) vs True (docs rule active).
+
+The default mode reproduces the committed `tuning/results/post_checks.csv`: the
+stage-1 chosen cell under the `kinematic` scenario (fill tier on, as config.py stood
+when the checks were first run on 2026-11-07). `--final` re-runs the same two checks
+at the frozen cell with the shipped fill setting and writes `post_checks_final.csv`.
 """
 
 from __future__ import annotations
@@ -34,12 +40,31 @@ from tuning.sweep import PARAMS, RESULTS, _LETTERS, _score, flat_select  # noqa:
 
 ADOPT_GAIN = 0.02
 OUT = ROOT / "tuning" / "results" / "post_checks.csv"
+OUT_FINAL = ROOT / "tuning" / "results" / "post_checks_final.csv"
+STAGE1_FILL_LONG_GAP_S = 10.0   # the prior value in force when the stage-1 checks ran
 
 
 def main() -> int:
-    df = pd.read_csv(RESULTS)
-    chosen, _ = flat_select(df)
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--final", action="store_true",
+                        help="evaluate at the shipped config.py cell with the shipped fill "
+                             "setting (default: stage-1 chosen cell, kinematic scenario)")
+    parser.add_argument("--out", default=None, help="output CSV (default per mode)")
+    args = parser.parse_args()
+
+    if args.final:
+        chosen = {p: float(CFG[p]) for p in PARAMS}
+        base = dict(CFG)
+        out_path = Path(args.out) if args.out else OUT_FINAL
+    else:
+        df = pd.read_csv(RESULTS)
+        chosen, _ = flat_select(df)
+        base = {**CFG, "fill_long_gap_s": STAGE1_FILL_LONG_GAP_S}
+        out_path = Path(args.out) if args.out else OUT
     print("chosen cell:", chosen, flush=True)
+    print(f"fill_long_gap_s = {base['fill_long_gap_s']}", flush=True)
 
     from src import data as D
 
@@ -75,11 +100,11 @@ def main() -> int:
         case = load_match(mid)
         rng = np.random.default_rng(20261107 + sum(ord(c) for c in mid))
         masked, _ = mask_ball(case.ball, run_lengths, rng)
-        track = build_ball_track(masked, case.half, CFG)
+        track = build_ball_track(masked, case.half, base)
         gt = pm.label_codes(case.letters)
         runs = pm.valid_runs(gt)
         for tag, bias, x_on in variants:
-            cfg = {**CFG, **chosen, "d_bias": bias, "x_use": x_on}
+            cfg = {**base, **chosen, "d_bias": bias, "x_use": x_on}
             em = build_emission(track, case.players, case.players_s, case.slot_team, cfg)
             decoded = decode(em, track.source, case.half, cfg)
             labels = apply_x_policy(decoded.labels, em.conf, case.half, cfg)
@@ -92,7 +117,7 @@ def main() -> int:
             print(f"  {mid} {tag:5s} x_use={x_on}: spell {spell:.4f}", flush=True)
 
     out = pd.DataFrame(rows)
-    out.to_csv(OUT, index=False)
+    out.to_csv(out_path, index=False)
 
     base = out[(out.d_bias_tag == "prior") & (~out.x_use)]["spell_f1"]
     print(f"\nbaseline (prior, x off): mean {base.mean():.4f}")
@@ -105,7 +130,7 @@ def main() -> int:
         verdicts[name] = (delta, adopt)
         print(f"{name:10s}: mean {sub.mean():.4f}  delta {delta:+.4f}  "
               f"{'ADOPT' if adopt else 'keep shipped (<= 0.02 tie rule)'}")
-    print(f"wrote {OUT}")
+    print(f"wrote {out_path}")
     return 0
 
 

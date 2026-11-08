@@ -5,14 +5,17 @@
     python -m tuning.sweep --select-only   # re-run selection on the existing results
 
 Matrix design: per (match, scenario) the fill/emission depend only on sigma_m, so
-emission is computed 3x and the decoder 81x per emission => 243 cells per match-scenario.
-All 7 matches x 2 scenarios = 3,402 rows, computed in parallel, then BOTH selection and
-LOMO are derived from the same matrix (no extra compute).
+emission is computed once per sigma and the decoder once per cell. Stage 1 is
+7 matches x 2 scenarios x 243 cells = 3,402 rows; stages 2 and 3 extend the grid on the
+`none` scenario only (768 and 324 cells) and the final selection runs on their union
+(930 unique cells). Selection and LOMO are derived from the same matrix (no extra compute).
 
 Selection rule (documented, pre-declared): among configs within 0.01 mean spellF1 of
 the best, pick the one with the highest WORST grid-neighbour score (plateau centre),
-ties broken by mean. Scenario for selection: `kinematic` (the shipped pipeline);
-`none` is the no-harm robustness check.
+ties broken by mean. A grid-neighbour is any swept cell that differs in exactly one
+parameter (every other swept value of that parameter, not only the adjacent ones).
+Selection scenario: `kinematic` in stage 1 (the pipeline as first built); `none` in
+stages 2-3, after the layer ablation dropped the fill tier.
 
 Scoring uses the vendored official metric code (evaluation/possession_metrics.py) on
 IDSSE-derived labels: GREEN external output.
@@ -147,15 +150,25 @@ def _mean_table(df: pd.DataFrame, metric: str = "spell_f1") -> pd.DataFrame:
 
 
 def _neighbour_means(means: pd.Series) -> pd.Series:
-    """For each config index: min mean over grid-neighbours (differ in exactly one param)."""
+    """For each config index: min mean over grid-neighbours (differ in exactly one param).
+
+    The candidate values of each parameter are the ones actually present in `means`
+    (the swept grid), so the rule is the same whichever stage's matrix is passed in.
+    Stage 1 used the literal GRID; for the extended stages that would have ignored the
+    new notches and still looked at stage-1 notches that were never swept at the new
+    values. Audit 2026-11-07: on the committed stage-2+3 union both definitions pick
+    the same cell with the same worst-neighbour score (0.2081), see AUDIT.md.
+    """
     keys = list(means.index)
+    values = {param: sorted(means.index.get_level_values(param).unique())
+              for param in PARAMS}
     out = {}
     for key in keys:
         scores = []
         for param in PARAMS:
             k = list(key) if isinstance(key, tuple) else [key]
             idx = PARAMS.index(param)
-            for value in GRID[param]:
+            for value in values[param]:
                 if value == k[idx]:
                     continue
                 other = list(k)
@@ -220,6 +233,14 @@ def bootstrap_ci(values: np.ndarray, n: int = 1000, seed: int = 7) -> tuple[floa
     return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
 
 
+def load_union() -> pd.DataFrame:
+    """The stage-2 + stage-3 matrix the final selection ran on (stage 3 wins overlaps)."""
+    prior = pd.read_csv(RESULTS_STG2)
+    final = pd.read_csv(RESULTS_STG3)
+    return (pd.concat([prior, final], ignore_index=True)
+            .drop_duplicates(subset=["match_id", "scenario", *PARAMS], keep="last"))
+
+
 def smoke_grid() -> list[dict]:
     full = grid_points()
     return [full[0], full[40], full[80], full[120], full[160], full[-1]]
@@ -238,7 +259,6 @@ def main() -> int:
     if args.stage2 and args.stage3:
         parser.error("--stage2 and --stage3 are mutually exclusive")
 
-    grid_used = GRID_S3 if args.stage3 else (GRID_EXT if args.stage2 else GRID)
     select_scenario = "none" if (args.stage2 or args.stage3) else "kinematic"
 
     if args.select_only:
@@ -303,9 +323,7 @@ def main() -> int:
             print("integrity:", integrity, flush=True)
     if args.stage3:
         # final selection runs on the stage2+stage3 union (stage3 wins overlaps)
-        prior = pd.read_csv(RESULTS_STG2)
-        df = (pd.concat([prior, df], ignore_index=True)
-              .drop_duplicates(subset=["match_id", "scenario", *PARAMS], keep="last"))
+        df = load_union()
 
     # ---- selection + report ----
     chosen, detail = flat_select(df, scenario=select_scenario)

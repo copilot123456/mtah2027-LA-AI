@@ -1,7 +1,9 @@
 """IDSSE external test bed: load, cache, adapt to the pipeline's arrays, derive labels.
 
-License: CC BY 4.0 (DFL via Bassek et al., Scientific Data 2025). Files live OUTSIDE the
-repo (set IDSSE_DIR; default is the operator's local store) and are never committed.
+License: CC BY 4.0 (DFL via Bassek et al., Scientific Data 2025). Files are never
+committed: set IDSSE_DIR to wherever they live, or leave the default `data/idsse/`
+(gitignored with the rest of data/; a symlink there works). Missing files are fetched
+from the HF mirror on first use.
 Parsed results are cached under the repo's gitignored data/.cache/ (pickle, local only —
 the plan said parquet; pickle is the same-env cache actually available and keeps the
 dependency list at numpy+pandas).
@@ -30,8 +32,7 @@ if str(_SRC) not in sys.path:
 MATCH_IDS = ["J03WPY", "J03WN1", "J03WMX", "J03WOH", "J03WQQ", "J03WOY", "J03WR9"]
 _COM = {"J03WN1": "DFL-COM-000001", "J03WMX": "DFL-COM-000001"}  # rest are DFL-COM-000002
 _HF = "https://huggingface.co/datasets/pysport/idsse-data/resolve/main/"
-IDSSE_DIR = Path(os.environ.get(
-    "IDSSE_DIR", "/home/ruiz-lenovo/Documents/Hackaton2027/external_data/idsse"))
+IDSSE_DIR = Path(os.environ.get("IDSSE_DIR") or (_SRC / "data" / "idsse"))
 CACHE_DIR = _SRC / "data" / ".cache"
 
 
