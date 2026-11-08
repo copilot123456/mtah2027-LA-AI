@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LA+AI · Possession Decoder — Executive Report (MTAH 2027)</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1b2333; --muted:#5b6579; --line:#e3e7f0;
+  --accent:#4457d6; --accent2:#7c4ddb; --ok:#1a9e6b; --warn:#c77716; --bad:#c2453f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:74px}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--mono);font-size:.92em}
+pre{background:#141a2a;color:#dfe6f5;padding:14px 16px;border-radius:10px;overflow-x:auto}
+code{background:#eef1f8;padding:1px 6px;border-radius:6px}
+pre code{background:none;padding:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+h2{font-size:1.65rem;margin-top:0}
+h3{font-size:1.15rem}
+p{margin:.5em 0}
+small{color:var(--muted)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
+nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
+nav a:hover{background:#eef1f8;color:var(--ink)}
+nav a.active{background:var(--accent);color:#fff}
+nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
+
+/* ---------- hero ---------- */
+header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
+header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
+header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:99px;font-size:.83rem;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:26px}
+.kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
+.kpi .v{font-size:1.55rem;font-weight:800}
+.kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
+
+/* ---------- layout blocks ---------- */
+section{padding:44px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.b-done{background:#e2f6ed;color:var(--ok)} .b-run{background:#fff3df;color:var(--warn)}
+.b-next{background:#eef1f8;color:var(--muted)} .b-key{background:#eceefe;color:var(--accent)}
+.b-bad{background:#fdeceb;color:var(--bad)}
+.callout{border-left:4px solid var(--accent);background:#eef1f8;border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+.callout.warn{border-color:var(--warn);background:#fff7e8}
+.callout.ok{border-color:var(--ok);background:#eaf7f1}
+.callout.good{border-color:var(--accent2);background:#f3edfd}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
+tr:nth-child(even) td{background:#fbfcff}
+.bar{position:relative;height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);background:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+
+/* ---------- timeline ---------- */
+.timeline{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:3px solid var(--line)}
+.timeline li{position:relative;padding:0 0 22px 22px}
+.timeline li::before{content:"";position:absolute;left:-33px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.timeline li.todo::before{background:#c9cfdd}
+.timeline .t-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.timeline .t-title{font-weight:700}
+.timeline .t-body{color:var(--muted);font-size:.93rem}
+
+/* ---------- pipeline ---------- */
+.pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:18px 0}
+.pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;min-width:150px}
+.pipe .stage .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;align-items:center;justify-content:center;margin-bottom:6px}
+.pipe .stage .t{font-weight:700;font-size:.9rem}
+.pipe .stage .d{font-size:.76rem;color:var(--muted);margin-top:4px}
+.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;padding:0 6px}
+
+/* ---------- file docs ---------- */
+details.file{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+details.file summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
+details.file summary::-webkit-details-marker{display:none}
+details.file summary::before{content:"▸";color:var(--accent);transition:.15s}
+details.file[open] summary::before{transform:rotate(90deg)}
+details.file summary .role{font-weight:500;color:var(--muted);font-size:.85rem}
+details.file .body{padding:4px 18px 16px;border-top:1px solid var(--line);font-size:.93rem}
+.path{font-family:var(--mono);font-size:.85rem;background:#eef1f8;padding:2px 8px;border-radius:6px;color:#2b3557}
+.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin:26px 0 6px}
+
+/* ---------- commits ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font-weight:600;font-size:.83rem;cursor:pointer;color:var(--muted)}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.commit{display:grid;grid-template-columns:96px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:9px 0}
+.commit .hash{font-family:var(--mono);font-size:.82rem;color:var(--accent);font-weight:700}
+.commit .date{font-size:.74rem;color:var(--muted)}
+.commit .subj{font-weight:700;font-size:.95rem}
+.commit .why{font-size:.87rem;color:var(--muted);margin-top:3px}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.t-foundation{background:#eef1f8;color:#5b6579} .t-pipeline{background:#eceefe;color:#4457d6}
+.t-tuning{background:#f3edfd;color:#7c4ddb} .t-audit{background:#fff3df;color:#c77716}
+.t-docs{background:#e2f6ed;color:#1a9e6b} .t-vendor{background:#f0f1f4;color:#6b7280}
+
+footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;text-align:center}
+@media (max-width:640px){ header.hero h1{font-size:1.7rem} .commit{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">LA+AI</span>
+  <a href="#tldr">Summary</a>
+  <a href="#challenge">The challenge</a>
+  <a href="#plan">Plan &amp; status</a>
+  <a href="#sota">State of the art</a>
+  <a href="#how">How it works</a>
+  <a href="#code">The code</a>
+  <a href="#results">Results</a>
+  <a href="#git">Git history</a>
+  <a href="#next">What's next</a>
+  <a href="#reproduce">Reproduce</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div style="font-size:.85rem;letter-spacing:2px;text-transform:uppercase;opacity:.85">More Than A Hack 2027 · Talent Arena · Mobile World Capital</div>
+  <h1>Who has the ball? A machine answers 199,319 times.</h1>
+  <p class="sub">The executive report of <b>team LA+AI</b>'s submission for the Initial Challenge —
+  what the hackathon is, how our solution works (explained from zero), every file in the repository,
+  the results we have so far, and where we are going before the November 14 freeze.</p>
+  <div class="chips">
+    <span class="chip">✅ 84/84 tests</span>
+    <span class="chip">✅ official validator PASS</span>
+    <span class="chip">✅ byte-identical regeneration</span>
+    <span class="chip">✅ independent audit: 0 blockers</span>
+    <span class="chip">🔒 tuned only on external matches</span>
+    <span class="chip">📅 freeze Nov 14 · deadline Nov 17</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">0.2759</div><div class="l">External score (spellF1) ± CI</div></div>
+    <div class="kpi"><div class="v">930 × 7</div><div class="l">Configs tested on 7 external matches</div></div>
+    <div class="kpi"><div class="v">337</div><div class="l">Possessions found in our match</div></div>
+    <div class="kpi"><div class="v">18 → 19</div><div class="l">Commits (this report is #19)</div></div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+<!-- ============================== TL;DR ============================== -->
+<section id="tldr">
+  <div class="card">
+    <h2>🖥️ One-screen summary</h2>
+    <div class="grid c2">
+      <div>
+        <h3>The challenge</h3>
+        <p>Label every frame of a full football match with <b>which team has the ball</b>
+        (or "dead ball" / "no answer"). The ranking score does <b>not</b> care about single frames —
+        it counts <b>possessions</b> (stretches where one team keeps the ball) and matches them
+        against the truth. Mess up the stretches, lose the score.</p>
+      </div>
+      <div>
+        <h3>Our answer</h3>
+        <p>A 4-stage "referee with memory": read the ball's position → weigh <i>how close each team is</i>
+        with confidence → walk the whole half with a <b>decoder that hates flickering</b> → write the file.
+        Every knob was tuned on <b>7 other matches</b> (never on this one — the rules forbid it).</p>
+      </div>
+      <div>
+        <h3>Where we are</h3>
+        <p>✅ Pipeline complete and <b>frozen</b> · ✅ independently audited (bugs found &amp; fixed,
+        nothing changes the output) · ✅ 84 tests · ⏳ one "guarded look" at the official scorer
+        and two experiments left, then <b>freeze Nov 14</b>.</p>
+      </div>
+      <div>
+        <h3>Is it good?</h3>
+        <p>Externally we score <b>0.2759</b> (95% CI 0.258–0.293) on labels that are <i>harder</i>
+        than the real task, with a wide stable plateau and no over-fitting (audit-verified).
+        The honest verdict on the official scale arrives with one guarded measurement —
+        our band expectation is <b>B</b> (see <a href="#results">Results</a>).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CHALLENGE ============================== -->
+<section id="challenge">
+  <div class="card">
+    <h2>⚽ The challenge, explained with zero prior knowledge</h2>
+
+    <h3>What is being asked</h3>
+    <p>Imagine a football match recorded by a computer that tracks <b>22 players and the ball</b>,
+    25 times every second. For this match that is <b>199,319 little snapshots</b> (frames).
+    For <i>each</i> one, our program must say:</p>
+    <table>
+      <tr><th>Label</th><th>Meaning</th><th>In plain words</th></tr>
+      <tr><td><code>H</code></td><td>Home in possession</td><td>Barcelona keeps the ball (alive)</td></tr>
+      <tr><td><code>A</code></td><td>Away in possession</td><td>Athletic keeps the ball (alive)</td></tr>
+      <tr><td><code>D</code></td><td>Dead ball</td><td>Out of play: throw-in, foul, halftime…</td></tr>
+      <tr><td><code>X</code></td><td>No answer</td><td>"I don't know" — allowed, with a cost</td></tr>
+    </table>
+
+    <h3>Why it is genuinely hard</h3>
+    <div class="grid c3">
+      <div class="callout"><b>41% invisible ball</b><br><small>On the most important frames the ball
+      is missing from the tracking (crowds, camera angles). Our program must cope with the ball
+      disappearing for 10+ seconds at a time.</small></div>
+      <div class="callout"><b>Ghost players</b><br><small>The tracker gives <i>46 slots</i> for 22 players.
+      Slots appear, vanish and swap people. We can only reason about <i>teams</i>, never individuals.</small></div>
+      <div class="callout"><b>No peeking</b><br><small>The rules ban hand-labeling, training on this
+      match, and checking our output against the video. Every parameter must come from
+      <i>other</i> matches or from physics.</small></div>
+    </div>
+
+    <h3>How it is scored — the part that shapes everything</h3>
+    <p>The ranking metric is called <b>spellF1</b>. It does <b>not</b> count correct frames.
+    It counts <b>possessions</b> — a possession is a maximal stretch where one team has the ball —
+    and matches our stretches against the truth, stretch by stretch:</p>
+    <ul>
+      <li>Stretches that overlap enough (30–70% depending on the threshold) = <b>hit</b>;</li>
+      <li>A <b>missed</b> possession (truth has it, we don't) or an <b>invented</b> one costs points;</li>
+      <li>Being <b>1 frame late is free</b>; being 1 second late costs a third of the point;</li>
+      <li><b>Flickering is the killer</b>: if one true possession gets chopped into pieces by
+      our guesses, several pieces may fail to match anything;</li>
+      <li><code>X</code> (abstain) is filled with <i>your previous answer</i> — so going quiet
+      inside a possession is harmless, but going quiet <i>across a hand-over</i> bleeds the old
+      team into the new one.</li>
+    </ul>
+    <div class="callout good">
+      <b>Visual example.</b> Truth: <span style="color:var(--ok)">▓▓▓▓▓▓▓▓</span> home for 8 s, then
+      <span style="color:var(--bad)">▓▓▓</span> away for 3 s.<br>
+      A prediction that stays home 1 frame too long: still a near-perfect match.
+      A prediction that flickers <code>H A H A</code> in the middle: both possessions may be lost.
+      A constant "always home": score exactly <b>zero</b>.
+    </div>
+    <p><b>macroF1</b> (per-frame correctness across the three classes) is reported as the tie-break
+    — that is where "no answer" hurts you. Differences below ~0.04 on the full match are noise.</p>
+
+    <div class="callout warn">
+      <b>⚠️ The rules we operate under</b> (organizers' clarification, Nov 3):
+      no training/tuning on this match's ground truth or its video, no checking our output against
+      the video, no uploading match data to AI services, labels must come from an algorithm.
+      <u>Allowed:</u> any method, any external dataset we have rights to use, automatic checks.
+      This is why everything below is tuned on <b>IDSSE</b> — 7 licensed Bundesliga matches (CC BY 4.0)
+      — and never on the provided one.
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PLAN ============================== -->
+<section id="plan">
+  <div class="card">
+    <h2>🗺️ Our plan — done, now, next</h2>
+    <p>We broke the work into phases with a "done means proven" rule: every phase lands with tests,
+    a commit, and (from the tuning on) external evidence.</p>
+    <ul class="timeline">
+      <li>
+        <div class="t-head"><span class="t-title">P0 · Foundation</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">Repo of our own (<span class="path">copilot123456/mtah2027-LA-AI</span>), official scorer
+        vendored, data loaders + the frame-alignment contract, provenance-tracked config, first 14 tests.</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">P1 · Ball reconstruction</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">Every frame tagged: raw observation / estimate / nothing — with "how old is this info".
+        (A fancy interpolator was built here… then later <i>measured and switched off</i> — see Results.)</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">P2 · Evidence model</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">Turn positions into "how strongly does this frame say home / away / dead ball",
+        with confidence weighting and a dead-ball detector from physics (ball at rest, out of bounds, long absence…).</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">P3 · The decoder</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">The heart: a Viterbi decoder that labels each half in one coherent pass,
+        hates switching teams without evidence, and merges flickers. Proven correct against brute force.</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">P4 · Submission path</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">X-policy, file writer, official validator — first valid <span class="path">LA+AI.csv</span> (day 1 of a 3-day plan).</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">P5 · External tuning</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">930 configurations × 7 IDSSE matches, three sweep stages, three layer decisions
+        (all evidence-gated), frozen configuration with CI + over-fit check.</div>
+      </li>
+      <li>
+        <div class="t-head"><span class="t-title">Audit &amp; hardening</span><span class="badge b-done">done</span><small>Nov 7</small></div>
+        <div class="t-body">An independent AI audited everything: 20+ findings, 8 fix commits, tests 64 → 84,
+        pinned dependencies, clean-clone reproduction. Nothing changed the output file.</div>
+      </li>
+      <li class="todo">
+        <div class="t-head"><span class="t-title">P6 · Improvement window</span><span class="badge b-run">in progress</span><small>Nov 8 – 14</small></div>
+        <div class="t-body">One guarded measurement of our file against the public window (band A–D),
+        up to two externally-gated experiments (aligned labels, realistic ball-loss simulation),
+        then <b>Gate 2 (no new ideas) Nov 12</b> and <b>freeze Nov 14</b> — repository public, final package rehearsed.</div>
+      </li>
+      <li class="todo">
+        <div class="t-head"><span class="t-title">Submit</span><span class="badge b-next">by Nov 17</span></div>
+        <div class="t-body">One form: <span class="path">LA+AI.csv</span> + public repository URL + technical document.</div>
+      </li>
+    </ul>
+    <div class="callout"><b>Team, briefly:</b> the operator owns compliance (the one guarded scorer run,
+    organizer contact, final approval); the assistant implements, tests and measures; Jose's execution
+    plan is the architecture we built on, and he reviews the emission/decoder choices before freeze.</div>
+  </div>
+</section>
+
+<!-- ============================== SOTA ============================== -->
+<section id="sota">
+  <div class="card">
+    <h2>🧠 State of the art — what exists, what we picked, and why</h2>
+    <p>Before writing a line of code we researched the scientific literature and open-source
+    practice for "who has the ball" problems. Here is the honest scorecard.
+    <b>Selected</b> = in our solution; <b>rejected</b> = studied, tried, or deferred — with the reason.</p>
+
+    <h3>✅ Methodologies we selected (and why)</h3>
+    <table>
+      <tr><th>Method</th><th>Where it comes from</th><th>Why it fits <i>our</i> scoring rule</th></tr>
+      <tr>
+        <td><b>Segment-level decoding</b><br><small>HMM / Viterbi family</small></td>
+        <td>Hidden-Markov models of football match states are established research
+        (e.g. copula-HMM for match dynamics, <span class="mono">arXiv:2002.01193</span>); Viterbi is
+        the classic algorithm for "best sequence of states".</td>
+        <td><b>The single biggest lever.</b> spellF1 scores <i>possessions</i>, not frames — so we
+        optimize the whole sequence at once with a penalty for switching. The naive baseline loses
+        to flicker (137 fragments vs 21 real possessions); this fixes exactly that.</td>
+      </tr>
+      <tr>
+        <td><b>Soft nearest-neighbour evidence</b><br><small>kernel over distances</small></td>
+        <td>Rule-based possession systems (open implementations like Tryolabs'
+        <i>soccer-video-analytics</i>) use "who is closest to the ball".</td>
+        <td>Take that idea but make it <i>probabilistic</i>: a decaying kernel instead of a hard
+        winner, summed per team over the few nearest players — robust to the ghost-slot tracker
+        (46 slots, identities swapping).</td>
+      </tr>
+      <tr>
+        <td><b>Confidence tempering</b><br><small>evidence fusion by trust tier</small></td>
+        <td>Multi-sensor fusion practice: observations carry known error, so weight them by trust.</td>
+        <td>The ball is missing 41% of the time. When we <i>see</i> it: full weight. When we don't:
+        zero team weight — the frame then says nothing about sides, and the decoder carries the
+        previous team. This implements the official rule "loose ball stays with the last team".</td>
+      </tr>
+      <tr>
+        <td><b>Learned-style dead-ball features</b><br><small>5 physics features + logistic</small></td>
+        <td>Dead-ball ("alive/dead") classification is shown learnable in the literature —
+        Borghesi et al., <i>Expert Systems with Applications</i> 2023 (TCN): 89.2% dead-alive accuracy,
+        +33% over rule-based.</td>
+        <td>We can't train a network without labels on <i>this</i> game, so we encode the same
+        signals by hand from physics: ball out of bounds, ball at rest, near a line, long absence,
+        players walking. Weights are a-priori; one naive re-fit was tried and rejected on evidence.</td>
+      </tr>
+      <tr>
+        <td><b>Switch gating + minimum dwell</b><br><small>temporal guards</small></td>
+        <td>Smoothing/hysteresis is standard in activity recognition; we derived the exact
+        thresholds from the metric's own math.</td>
+        <td>A team change must be supported by <i>raw</i> tracking evidence within ±1.5 s, and no
+        segment shorter than 2 s survives. Directly attacks the metric's "flicker kills you" rule
+        while staying late-switch-friendly (late is cheap, early is expensive).</td>
+      </tr>
+      <tr>
+        <td><b>External-only tuning</b><br><small>7 matches · LOMO · plateau rule</small></td>
+        <td>Standard sports-analytics methodology: cross-validation <i>by match</i> so a model never
+        tests on what it trained on. Dataset: IDSSE (7 Bundesliga matches, CC BY 4.0,
+        Scientific Data 2025).</td>
+        <td>The rules demand it (no tuning on this match), and it is also just good science:
+        pick the configuration that wins <i>on average across matches</i>, prefer a wide plateau
+        over a lucky peak, verify nobody match drives the choice (over-fit check ≈ 0).</td>
+      </tr>
+      <tr>
+        <td><b>Missingness simulation</b><br><small>replay the ball-loss problem elsewhere</small></td>
+        <td>Robustness testing = recreate your deployment conditions on test data.</td>
+        <td>We measured <i>how</i> our ball disappears (150 gaps, median ~11 s) and replay that
+        pattern onto the external matches — so tuning sees the same 41% blindness we'll face on match day.</td>
+      </tr>
+    </table>
+
+    <h3>❌ What we rejected (studied — and why not)</h3>
+    <div class="grid c2">
+      <div class="callout"><b>Deep temporal model (TCN / joint neural net)</b><br>
+      <small>Borghesi et al. 2023 is the closest published "who has the ball" system (86.2% frame
+      accuracy) — but it needs supervised possession labels to train. With no labelled training data
+      allowed on this game and a week of window, a net would either train on mismatched external
+      labels or not at all. <u>Kept as future work;</u> our hand-built dead-ball term borrows its features.</small></div>
+      <div class="callout"><b>Global min-cost-flow decoder</b><br>
+      <small>Sarkar et al., CVPRW 2019 — a beautiful way to assign possessions over a whole match.
+      It solves the same job as our Viterbi with more machinery and no proven edge for a 3-state
+      problem. <u>Rejected:</u> complexity without measurable gain.</small></div>
+      <div class="callout"><b>Ball detector on video (YOLO)</b><br>
+      <small>Direct video possession estimation (Sensors 2026) is legitimate and could recover
+      missing-ball frames — but it needs days of GPU work <i>plus</i> solving the broadcast camera's
+      unsynchronized timeline, with no way to evaluate it externally before the freeze.
+      <u>Deferred:</u> the one stretch item that never fit the schedule.</small></div>
+      <div class="callout"><b>The broadcast feed</b><br>
+      <small>Our match was recorded twice; the TV feed has cuts, replays and no mapping back to the
+      submission timeline. Using it means solving a synchronization problem first —
+      <u>dropped</u> as a risk with no external way to validate.</small></div>
+      <div class="callout"><b>Smart Tagging prior</b><br>
+      <small>The provided auto-tags (set pieces, phases) are allowed input, but weights for them
+      can't be calibrated without external labels of the same kind. <u>Default off</u>,
+      with an experiment ready if time allows.</small></div>
+      <div class="callout"><b>The "fancy interpolator" (kinematic fill)</b><br>
+      <small>We <i>built</i> the state-of-the-art practice of interpolating missing ball positions
+      (damped spline between anchors), then <b>measured it on external data: −0.011 spellF1,
+      worse on 7/7 matches</b>. It is switched off. <u>Evidence beat fashion.</u></small></div>
+      <div class="callout"><b>Abstaining inside possessions (X)</b><br>
+      <small>The docs suggest going quiet when unsure. We proved — analytically and then on
+      external data — that for a decoder already smoothed by penalties, X reproduces the same
+      answer after scoring's forward-fill: <u>zero gain, pure tie-break loss</u>. Off by default.</small></div>
+      <div class="callout"><b>Home/abstention asymmetries, per-frame tricks</b><br>
+      <small>Any prior derived from this match's public window would be tuning on the answer key
+      (banned), and league-specific asymmetries don't transfer. <u>Rejected on rules, not taste.</u></small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== HOW ============================== -->
+<section id="how">
+  <div class="card">
+    <h2>⚙️ How our solution works — the "referee with memory"</h2>
+    <p>The whole system is one pipeline. Each stage takes the previous stage's output and adds
+    one piece of judgement. Nothing ever looks at the answer key.</p>
+
+    <div class="pipe">
+      <div class="stage"><div class="n">1</div><div class="t">Ball provenance</div>
+        <div class="d">Where is the ball, how fresh is it, is it out of bounds?</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">2</div><div class="t">Evidence &amp; dead-ball</div>
+        <div class="d">How strongly does this frame say home / away / dead?</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">3</div><div class="t">Decoder</div>
+        <div class="d">Walk the half, switching only when it pays — Viterbi + guards.</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">4</div><div class="t">Output policy</div>
+        <div class="d">Outside play? "X". Inside? The decoded label. Write the CSV.</div></div>
+    </div>
+
+    <div class="grid c2">
+      <div class="callout">
+        <b>Stage 1 — Ball provenance.</b> For every frame we record <i>where the ball is</i> (from the
+        raw tracker, never modified), <i>how many seconds old</i> that observation is, and a flag for
+        "outside the pitch" (a ball beyond the lines usually means a restart is coming). When the ball
+        is simply absent, the frame is honestly marked <code>none</code> — no pretending.
+      </div>
+      <div class="callout">
+        <b>Stage 2 — Evidence.</b> Like a referee glancing at the scene: for each team, take its
+        few <i>closest</i> players to the ball and add up a soft "closeness" score (exponential decay
+        per metre — σ = 1.5 m after tuning). Separately, five physics signals vote on
+        <b>dead ball</b>: out of bounds, standing still, on a line, long absence, players walking.
+        The two outputs are a per-frame "opinion" over <code>H / A / D</code>, scaled by confidence.
+      </div>
+      <div class="callout">
+        <b>Stage 3 — Decoder (the heart).</b> Instead of deciding frame-by-frame (which flickers),
+        the decoder walks each half keeping the best-scoring <i>story</i>. Switching home↔away costs
+        points (penalty = 2), entering dead-ball costs 5, staying is free — so a switch must be
+        <i>earned</i> by enough frames of contrary evidence. Two guards follow: a switch with no raw
+        tracking support nearby is reverted (estimated/absent ball can't switch a possession alone),
+        and any segment shorter than 2 s is merged into its neighbour. Result: coherent possessions,
+        0% sub-second fragments.
+      </div>
+      <div class="callout">
+        <b>Stage 4 — Output.</b> Frames outside the two halves (pre-match, halftime, after the
+        whistle) get <code>X</code> — free, they're never scored. Inside play we always emit our
+        decoded label (the analysis above showed abstaining can't help there). The file is written
+        in the exact 199,319-row format and checked by the organizers' own validator.
+      </div>
+    </div>
+
+    <div class="callout good">
+      <b>Why this design wins (the three "whys"):</b>
+      <ol style="margin:6px 0">
+        <li><b>It optimizes the actual score.</b> Penalties + guards are a direct response to
+        spellF1's math (flicker destroys possessions; late is cheap, early is expensive).</li>
+        <li><b>It degrades gracefully.</b> 41% missing ball doesn't produce guesses — confidence
+        drops to zero and the story carries forward, which is literally the official rule for
+        loose balls.</li>
+        <li><b>Every knob is honest.</b> Each of the ~15 parameters carries a provenance tag
+        (<i>a-priori / fixed / externally fitted</i>, enforced by a test), and the externally fitted
+        ones were picked on 7 other matches with a rule we wrote down <i>before</i> seeing results.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CODE ============================== -->
+<section id="code">
+  <div class="card">
+    <h2>📁 The code — every file, explained</h2>
+    <p>66 tracked files, ~1,900 lines of our own Python. Below, in <b>execution order</b>:
+    what each file is, in plain words. Click any file to expand.
+    (Paths are clickable-in-context; run everything from the repository root.)</p>
+
+    <div class="stage-label">⚙️ Configuration — the single source of truth</div>
+    <details class="file" open><summary><span class="path">config.py</span><span class="role">every knob, with a paper trail</span></summary>
+      <div class="body">
+        <p>One dictionary (<code>CFG</code>) holds <b>every tunable number</b> the pipeline uses —
+        penalties, kernel width, dwell time, dead-ball thresholds… — and a matching
+        <code>PROVENANCE</code> table saying where each value came from:
+        <code>prior</code> (an educated starting guess, justified in one line),
+        <code>fixed_default</code> (a physical fact, e.g. 25 fps), or
+        <code>external_fit</code> (measured on the 7 IDSSE matches — the note carries the numbers).</p>
+        <p><b>Why it matters:</b> a test (<code>tests/test_config.py</code>) fails the build if any
+        parameter is undocumented or marked <code>provided_*</code> (a value from this match — always
+        forbidden). This file is our proof to the judges that nothing was tuned on the answer key.</p>
+        <p>Current shipped values: <code>switch_pen=2, dead_pen=5, sigma_m=1.5, min_dwell_s=2.0,
+        switch_support_s=1.5</code> (externally fitted), fill tier <code>0 = off</code> (externally
+        rejected), <code>x_use=False</code> (proved useless).</p>
+      </div>
+    </details>
+
+    <div class="stage-label">🧭 Stage 0 — loading the match (src/)</div>
+    <details class="file"><summary><span class="path">src/__init__.py</span><span class="role">package marker</span></summary>
+      <div class="body"><p>One docstring: which package this is. Exists so <code>src</code> imports cleanly.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">src/data.py</span><span class="role">loaders + the frame-alignment contract (166 lines)</span></summary>
+      <div class="body">
+        <p>The only file that touches the provided match files. It loads the tracking
+        (via the <code>kloppy</code> library), the homography, the Smart Tagging, and converts
+        everything into plain numpy arrays: ball positions, player positions &amp; speeds,
+        slot→team mapping, and two masks — <b>which frames are graded</b> (the two halves:
+        158,857 frames) and which half each frame belongs to.</p>
+        <p><b>The one rule it enforces:</b> <code>video_frame = frame_id − 1</code>. The tracker
+        counts from 1, the submission from 0 — getting this wrong shifts every label by one frame
+        and quietly ruins the score. It's tested against the organizers' published numbers.</p>
+        <p>Performance detail: first load parses the 195 MB tracking file (~100 s) and caches it
+        (gitignored <code>data/.cache/</code>); later loads take ~4 s so the pipeline reproduces fast.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">① Stage 1 — where is the ball, can we trust it</div>
+    <details class="file"><summary><span class="path">src/ball_fill.py</span><span class="role">ball provenance tiers (164 lines)</span></summary>
+      <div class="body">
+        <p>Tags every frame with <b>where the ball info comes from</b>: <code>atd</code> (raw tracker
+        observation), <code>none</code> (absent), or <code>kinematic</code> (an estimate). Each frame
+        also gets <code>age_s</code> — how many seconds old the nearest real observation is — and an
+        <code>out_of_pitch</code> flag (ball beyond the lines → a restart is likely).</p>
+        <p><b>Two promises, both tested:</b> raw observations are copied <i>bit-for-bit</i> (we never
+        "fix" the tracker by hand — that would be illegal annotation), and the flag is computed
+        <i>before</i> anything is nulled so the dead-ball signal survives.</p>
+        <p>The star of this file — a damped-spline interpolator for short gaps — was built to
+        state-of-the-art practice, then <b>measured externally and switched off</b>
+        (<code>fill_long_gap_s = 0</code>): it hurt on 7/7 matches. The code stays (tested,
+        re-enableable); the config says why it's off.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">② Stage 2 — the frame's opinion</div>
+    <details class="file"><summary><span class="path">src/emission.py</span><span class="role">H / A / D evidence model (171 lines)</span></summary>
+      <div class="body">
+        <p>Turns geometry into a per-frame "opinion" over the three states:</p>
+        <ul>
+          <li><b>Team evidence:</b> for each team, take its <code>topk=3</code> visible players
+          closest to the ball and sum <code>exp(−(distance/σ)²)</code> — distances in <i>metres</i>
+          (normalized coordinates × pitch size), σ = 1.5 m (fitted). A soft version of
+          "who is nearest", robust to the ghost-slot tracker.</li>
+          <li><b>Confidence:</b> raw sighting = 1.0; absent ball = 0.0 → the H and A columns then
+          become <i>exactly equal</i> (tested). Physics of the rules: without the ball, a frame must
+          not flip anyone's possession.</li>
+          <li><b>Dead-ball term:</b> <code>sigmoid(bias + Σ weights × features)</code> over five
+          signals — out of pitch, at rest (&lt;1 m/s), near a boundary, long absence, players
+          walking. The bias is an a-priori logit(⅓); fitting it to external dead-share
+          <i>collapsed</i> results (−0.085) and was rejected.</li>
+        </ul>
+        <p>Output: an <code>N×3</code> table of log-scores. Tests prove swap-symmetry
+        (flip the teams → columns flip), duel-neutrality (equidistant → tie), and finiteness
+        everywhere (no NaN/Inf, ever).</p>
+      </div>
+    </details>
+
+    <div class="stage-label">③ Stage 3 — the decoder</div>
+    <details class="file"><summary><span class="path">src/decoder.py</span><span class="role">Viterbi + gating + dwell — the heart (172 lines)</span></summary>
+      <div class="body">
+        <p>Labels each half as <b>one coherent story</b> instead of frame-by-frame votes:</p>
+        <ul>
+          <li><b>Viterbi</b> (classic best-sequence algorithm): walks all frames keeping, for each
+          possible state, the best-scoring path so far. Staying is free; home↔away costs −2 log-units;
+          entering/leaving dead-ball costs −5. A switch must be <i>earned</i> by sustained evidence.</li>
+          <li><b>Switch gating:</b> after decoding, any team change that has no <i>raw</i> tracking
+          frame supporting the new team within ±1.5 s is reverted — estimates and ball-absent
+          stretches can never switch a possession alone.</li>
+          <li><b>Min-dwell:</b> segments shorter than 2 s merge into the longer neighbour
+          (shortest first, until stable) — flicker cannot survive.</li>
+          <li>Halves are decoded independently (state never crosses halftime), and frames outside
+          them are left as <code>X</code>.</li>
+        </ul>
+        <p><b>Proof of correctness (tests):</b> zero penalties → identical to frame-by-frame argmax;
+        huge penalties → exactly one segment; for short inputs the result is
+        <b>verified against brute-force enumeration of every possible path</b>; and a flat
+        (evidence-free) block carries the earlier team through it. 18 tests.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">④ Stage 4 — policy, pipeline, output</div>
+    <details class="file"><summary><span class="path">src/x_policy.py</span><span class="role">the abstention rule (76 lines)</span></summary>
+      <div class="body">
+        <p>Decides where <code>X</code> may appear. Shipped logic: <b>outside</b> the two halves →
+        always X (never scored). <b>Inside</b> play → never X, because we proved that for a
+        penalty-smoothed decoder, abstaining is forward-filled back to the exact same label
+        (no spellF1 gain) while costing tie-break points. The alternative rule
+        (X only in stable, low-confidence interiors) is implemented behind a flag and was measured
+        externally: −0.011 → kept off.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">src/pipeline.py</span><span class="role">the glue — one function, end to end</span></summary>
+      <div class="body">
+        <p><code>run()</code> wires the stages in order — load → ball provenance → evidence →
+        decode → X-policy — and returns the labels plus a summary (segment counts, coverage).
+        Everything downstream (submission, experiments) calls this one function, so there is
+        exactly <i>one</i> definition of "our pipeline".</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">src/submit.py</span><span class="role">CSV writer + official validator (87 lines)</span></summary>
+      <div class="body">
+        <p>Writes <code>frame,label</code> for all 199,319 rows in the exact format required
+        (validates label codes explicitly — an impossible value raises instead of silently
+        becoming <code>D</code>), then runs <b>the organizers' own validator</b>
+        (<code>evaluation/validate_submission.py</code>) as a subprocess — path anchored to the
+        file's location so it works from any directory. <code>python -m src.submit</code> is the
+        single command that produces the shippable file.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">src/diagnostics.py</span><span class="role">honest health report (91 lines)</span></summary>
+      <div class="body">
+        <p>Prints <b>aggregate-only</b> statistics of the provided data and our output: ball
+        missingness, run-length distribution, coverage shares, confidence by tier, decoded segment
+        counts. This is the "GREEN" output class — no ground truth, no per-frame values leaving
+        the machine (a compliance rule we enforce on ourselves).</p>
+      </div>
+    </details>
+
+    <div class="stage-label">🧪 The external laboratory (tuning/) — where decisions get evidence</div>
+    <details class="file"><summary><span class="path">tuning/idsse.py</span><span class="role">the 7 external matches (195 lines)</span></summary>
+      <div class="body">
+        <p>Loads IDSSE (7 full Bundesliga matches, CC BY 4.0) from disk (auto-download from
+        HuggingFace if missing), adapts it to our pipeline's arrays, and — crucially —
+        <b>derives the "truth" labels algorithmically</b> from the provider's own fields:
+        <code>ball_state</code> → dead ball, <code>ball_owning_team_id</code> → which side.
+        No human ever labels anything. Parses are cached like the match data.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">tuning/simulate.py</span><span class="role">replay our missing-ball problem elsewhere</span></summary>
+      <div class="body">
+        <p>Takes the <i>shape</i> of our match's ball-loss (150 gaps, median ~11 s — a coarse,
+        rule-compliant statistic) and stamps that pattern onto the external matches, seeded and
+        reproducible. This way the tuner faces the same 41% blindness we will. (An upgrade to
+        phase-correlated placement — losses concentrated at duels — is the E2 experiment in progress.)</p>
+      </div>
+    </details>
+    <details class="file" open><summary><span class="path">tuning/sweep.py</span><span class="role">the experiment engine (400 lines — our biggest file)</span></summary>
+      <div class="body">
+        <p>Runs grid searches of configuration cells across the 7 matches <b>in parallel</b> and
+        scores each with the official metric code. Three stages were run (243 → 768 → 324 cells;
+        <b>930 unique</b> in the final union), each stage justified by the previous stage's
+        marginal trends, with an <b>integrity assertion</b>: overlapping cells must reproduce the
+        earlier matrix <i>to the last digit</i> (they did — max diff 0.00e+00).</p>
+        <p>Selection uses our <b>pre-declared plateau rule</b>: among cells within 0.01 of the best
+        mean, pick the one whose <i>worst grid-neighbour</i> is strongest (prefer a wide plateau to
+        a lucky spike), then verify with leave-one-match-out (LOMO) that no single match drove the
+        choice — our over-fit gap: <b>−0.0026</b> (essentially zero). Also here: the scoring helper
+        that was later found to miss the official's X-forward-fill and fixed (audit finding B8).</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">tuning/post_checks.py</span><span class="role">adoption checks with a written-down rule</span></summary>
+      <div class="body">
+        <p>Tests "should we change a frozen decision?" questions the same way every time:
+        run the variant on all 7 matches against the frozen baseline, and
+        <b>adopt only if the mean gain exceeds +0.02</b> (below that = noise). It rejected the
+        dead-bias re-fit (−0.085) and the X-policy (tie + macroF1 loss) — both now carry evidence
+        in the dossier, not opinions.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">tuning/__init__.py</span><span class="role">package marker</span></summary>
+      <div class="body"><p>One docstring: "external data only (IDSSE, CC BY 4.0)".</p></div>
+    </details>
+    <details class="file"><summary><span class="path">tuning/results/</span><span class="role">the evidence locker (7 committed files)</span></summary>
+      <div class="body">
+        <table>
+          <tr><th>File</th><th>What it holds</th></tr>
+          <tr><td><span class="path">sweep_results.csv</span></td><td>Stage 1 matrix — 3,402 scored rows (243 cells × 2 scenarios × 7 matches)</td></tr>
+          <tr><td><span class="path">sweep_results_stage2.csv</span></td><td>Stage 2 — extended grid, 5,376 rows</td></tr>
+          <tr><td><span class="path">sweep_results_stage3.csv</span></td><td>Stage 3 — σ-floor probe, 2,268 rows</td></tr>
+          <tr><td><span class="path">report.md / report_stage2.md / report_final.md</span></td><td>Per-stage reports: chosen cell, CI, LOMO table, top-10, documented deviations</td></tr>
+          <tr><td><span class="path">post_checks.csv / post_checks_final.csv</span></td><td>The adoption-check matrices (stage-1 cell and shipped cell, official scorer)</td></tr>
+        </table>
+        <p>Together these are the "show your work" for every number in the dossier.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">✅ Tests — 84 of them, protecting every layer</div>
+    <details class="file"><summary><span class="path">tests/</span><span class="role">84 tests across 9 files + fixture</span></summary>
+      <div class="body">
+        <table>
+          <tr><th>File</th><th>#</th><th>What it protects</th></tr>
+          <tr><td><span class="path">test_decoder.py</span></td><td>18</td><td>Viterbi vs brute-force paths, penalty edge cases, gating keep/revert, dwell merges, half isolation</td></tr>
+          <tr><td><span class="path">test_tuning.py</span></td><td>14</td><td>Grid integrity, label derivation, mask determinism, <b>plateau-over-spike selection</b>, LOMO, harness == official scorer, frozen-config reproduction</td></tr>
+          <tr><td><span class="path">test_emission.py</span></td><td>12</td><td>Team-swap symmetry, duel neutrality, confidence semantics, dead-ball monotonicity, NaN-free on the full match</td></tr>
+          <tr><td><span class="path">test_ball_fill.py</span></td><td>11</td><td>Raw data bit-exact &amp; never mutated, single-source invariant, half containment, overshoot guard, tier-off default</td></tr>
+          <tr><td><span class="path">test_alignment.py</span></td><td>11</td><td>199,319 rows, frame indexing, graded spans, homography validity, tagging time base, published rates</td></tr>
+          <tr><td><span class="path">test_submission.py</span></td><td>9</td><td>File format contract, official-reader round-trip, X-policy rules, <b>the official validator on the real file</b>, committed file == fresh run</td></tr>
+          <tr><td><span class="path">test_x_policy.py</span></td><td>5</td><td>Boundary-distance rule incl. switch-free halves, input purity</td></tr>
+          <tr><td><span class="path">test_config.py</span></td><td>4</td><td>Provenance completeness, origin allow-list, no <code>provided_*</code></td></tr>
+          <tr><td><span class="path">conftest.py</span></td><td>—</td><td>Shared fixtures (the loaded match, built once per run)</td></tr>
+        </table>
+        <p>Run: <code>.venv/bin/python -m pytest -q</code> → <b>84 passed</b> in ~19 s.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">🏛️ Vendored organizers' code — read-only, never edited</div>
+    <details class="file"><summary><span class="path">evaluation/</span><span class="role">the official scorer (MIT © Metrica Sports)</span></summary>
+      <div class="body">
+        <p><b>possession_metrics.py</b> — the scoring <i>specification</i> (~720 lines): both metrics,
+        the X-forward-fill, possession matching by temporal IoU. If docs and code disagree, this file
+        wins. <b>run_evaluation.py</b> — the board (run <i>only</i> by the operator, once, guarded).
+        <b>validate_submission.py</b> — the format gate our pipeline calls automatically.
+        <b>gt/</b> — the 5-minute public ground truth (pipeline-correctness checks only —
+        never a tuning set, per the rules). <b>results/</b> — the four published baselines
+        (the floor to beat: <code>smooth50</code> = 0.2433 full-match spellF1).</p>
+        <p class="mono" style="color:var(--bad)">Untouched by us — verified by audit: 0 lines changed.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">starter/</span><span class="role">the organizers' tutorial code</span></summary>
+      <div class="body">
+        <p><b>baseline.py</b> — the "nearest player + majority vote" system we must beat (4
+        variants; the source of the 137-fragment problem our decoder fixes). <b>load_*.py</b> —
+        reference loaders for tracking / homography / tagging (our <code>src/data.py</code> follows
+        their alignment contract). <b>utils.py</b>, <b>make_dummy_submission.py</b>,
+        <b>3 notebooks</b> — tutorials. Also vendored read-only.</p>
+      </div>
+    </details>
+    <details class="file"><summary><span class="path">games.py · LICENSE · requirements.txt · requirements-starter.txt · data/README.md</span><span class="role">organizers' scaffolding</span></summary>
+      <div class="body">
+        <p><b>games.py</b> — path builder for the data bundle and the half-boundary table
+        (we import its helpers; it is never edited). <b>LICENSE</b> — MIT for code/docs, match data
+        separately licensed (hence: never committed). <b>requirements.txt / -starter.txt</b> — the
+        organizers' files, left exactly as shipped. <b>data/README.md</b> — unpack instructions.</p>
+      </div>
+    </details>
+
+    <div class="stage-label">📜 Documentation, compliance &amp; our own pins</div>
+    <details class="file"><summary><span class="path">README.md</span><span class="role">the front door — how to reproduce</span></summary>
+      <div class="body"><p>Layout table of every module, exact reproduction commands
+      (virtualenv + pinned requirements, because <code>python -m venv</code> fails on this host),
+      data wiring, cache behaviour, the expected md5, and external-tuning commands.
+      Made "true for a clean clone" during the audit — every line tested from a fresh copy.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">AUDIT.md</span><span class="role">the independent audit report (181 lines)</span></summary>
+      <div class="body"><p>An external AI audited the frozen state without touching it first:
+      20+ findings with severity, evidence and status (A1–C3, B1–B8), the six fix commits,
+      verification outputs (working repo + clean clone), a deferred-suggestions list, and a
+      compliance statement. Two findings were <b>real bugs in our own selection/scoring code</b>
+      — both fixed, neither changed the shipped output.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">dossier.md</span><span class="role">the compliance dossier — our legal defense</span></summary>
+      <div class="body"><p>Six sections the judges can check: data lineage (what we used, licenses),
+      parameter provenance, the GT-look log (every scorer run, who, why — so far: none on our file),
+      the AI-service statement, the video statement, the three open organizer questions, and §7 —
+      the full external tuning record (matrices, rule, decisions, evidence).</p></div>
+    </details>
+    <details class="file"><summary><span class="path">TECHNICAL_REPORT.md</span><span class="role">the submission document</span></summary>
+      <div class="body"><p>The short technical write-up required by the form: approach and why,
+      assets used <i>and dropped</i>, training data (IDSSE only), possession rules we implemented,
+      layer-decision table with numbers, limitations, reproduction steps, and the frozen-configuration
+      table. Exported to PDF at freeze.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">requirements-pipeline.txt · requirements-dev.txt</span><span class="role">exact pins that produced the file</span></summary>
+      <div class="body"><p>Byte-identical regeneration is a hard rule, so the runtime is pinned to
+      the exact versions that produced the committed CSV (numpy 2.5.4, pandas 3.1.1, kloppy 3.18.0,
+      lxml 6.1.3; dev adds pytest 9.2.0, tabulate 0.10.0). Added by the audit; the organizers'
+      requirement files stay untouched.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">.gitignore</span><span class="role">keep the data out of a public repo</span></summary>
+      <div class="body"><p>Blocks <code>data/*</code> (the match bundle is non-redistributable),
+      caches, virtualenvs, generated submission matrices and smoke output. One ignore added during
+      the audit; <u>never weakened</u> — checked by review and by habit.</p></div>
+    </details>
+
+    <div class="stage-label">📦 Artifacts &amp; local-only wiring (not all committed)</div>
+    <details class="file"><summary><span class="path">LA+AI.csv</span><span class="role">THE submission (199,319 rows)</span></summary>
+      <div class="body"><p>The product of the whole pipeline: <code>frame,label</code>, labels
+      <code>H 69,460 · A 47,189 · D 42,208 · X 40,462</code> (the X's are exactly the ungraded
+      frames). Committed deliberately: it is our own algorithm's output, reviewers can diff it,
+      and a test asserts it equals a fresh run — md5
+      <span class="mono">aeef0058a08860c9e2407423b1172684</span>.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">data/ (local only)</span><span class="role">symlinks + caches — never committed</span></summary>
+      <div class="body"><p><code>data/tactical</code> → the organizer's match bundle;
+      <code>data/broadcast</code> → the second camera; <code>data/idsse</code> → the external
+      matches; <code>data/.cache/</code> → parsed pickles (delete to rebuild, ~1m40s).
+      All gitignored — a fresh clone rebuilds them from the documented commands.</p></div>
+    </details>
+    <details class="file"><summary><span class="path">reference-docs/ (local only)</span><span class="role">the rules, kept close</span></summary>
+      <div class="body"><p>Our copy of the challenge documentation (CHALLENGE, RULES, EVALUATION…)
+      for fast grepping during development; gitignored — the originals live in the organizers'
+      repository.</p></div>
+    </details>
+  </div>
+</section>
+
+<!-- ============================== RESULTS ============================== -->
+<section id="results">
+  <div class="card">
+    <h2>📊 Results so far — and an honest reading</h2>
+
+    <h3>The number we have</h3>
+    <div class="grid c3">
+      <div class="kpi" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div class="v" style="font-size:1.7rem;font-weight:800;color:var(--accent)">0.2759</div>
+        <div class="l" style="font-size:.75rem;text-transform:uppercase;color:var(--muted)">spellF1 · 7 external matches</div>
+        <small>95% CI [0.2578, 0.2932] · best cell 0.2854 · we ship within 0.0095 of the best</small>
+      </div>
+      <div class="kpi" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div class="v" style="font-size:1.7rem;font-weight:800;color:var(--ok)">−0.0026</div>
+        <div class="l" style="font-size:.75rem;text-transform:uppercase;color:var(--muted)">over-fit gap (LOMO)</div>
+        <small>re-selecting while holding out each match lands on the same configuration — the score isn't lucky</small>
+      </div>
+      <div class="kpi" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div class="v" style="font-size:1.7rem;font-weight:800;color:var(--accent2)">52</div>
+        <div class="l" style="font-size:.75rem;text-transform:uppercase;color:var(--muted)">near-tied configurations</div>
+        <small>cells within 0.01 of the best — a wide plateau, not a knife-edge we fell off</small>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <b>Read this before comparing anything.</b> The 0.2759 is measured on <i>other people's
+      matches</i> (IDSSE, 7 Bundesliga games) with deliberately hardened conditions:
+      the labels there are <b>finer than the real task</b> (they flip on every touch — harder to
+      match stretch-for-stretch) and we <b>replay our missing-ball pattern</b> onto them
+      (41% blindness). It is therefore a <b>conservative, lower-bound-ish</b> estimate — and it is
+      <b>not numerically comparable</b> to scores on the provided match. The comparable number
+      comes from the one guarded run against the public window (below).
+    </div>
+
+    <h3>The official scoreboard — where our number will land</h3>
+    <p>The organizers' four baselines, scored on the <b>public 5-minute window</b> (and full-match,
+    which shows how the window flatters heavy smoothing):</p>
+    <table>
+      <tr><th>System</th><th>Window spellF1</th><th>Full match</th><th>Note</th></tr>
+      <tr><td>baseline_smooth125</td><td>0.424</td><td>0.224</td><td>looks great on the window, is worse on the match</td></tr>
+      <tr><td><b>baseline_smooth50</b></td><td>0.326</td><td><b>0.243</b></td><td><b>the published floor to beat</b></td></tr>
+      <tr><td>baseline_smooth25</td><td>0.287</td><td>0.200</td><td></td></tr>
+      <tr><td>baseline_raw</td><td>0.038</td><td>0.049</td><td>the "flicker" failure our decoder fixes</td></tr>
+      <tr style="background:#eceefe"><td><b>LA+AI (ours)</b></td><td><b>⏳ band pending</b></td><td>—</td>
+      <td>one guarded measurement, operator-only; expected band <b>B</b></td></tr>
+    </table>
+    <div class="callout">
+      <b>What "band" means</b> — a single logged run of the official scorer on our file against the
+      5-minute public window returns only a letter to us (never the raw numbers, so nothing can
+      leak into tuning):
+      <div class="bar" style="margin-top:8px">
+        <div style="flex:15;background:#c2453f">D &lt;0.15 · broken</div>
+        <div style="flex:15;background:#c77716">C 0.15–0.30 · weakness</div>
+        <div style="flex:13;background:#1a9e6b">B 0.30–0.43 · expected ✓</div>
+        <div style="flex:7;background:#4457d6">A ≥0.43</div>
+      </div>
+      <div class="legend"><span>⚑ our marker: pending the run</span><span>bands defined by the baselines above (A ≥ smooth125, B ≥ smooth50, C ≥ near-random)</span></div>
+      <small>The window has only 17 possessions — one miss ≈ 6 points of score — so the letter and
+      its flags (possession count bucket, dead-ball F1, latency) order our remaining work; they never
+      set a parameter.</small>
+    </div>
+
+    <h3>Is it good? Three honest lenses</h3>
+    <div class="grid c2">
+      <div class="callout ok"><b>1 · Structural quality — strong.</b><br>
+      Our file describes the match in football terms a coach would recognize:
+      <b>337 possessions, mean 13.8 s</b> (the published reference for this match: 17 in 5 minutes
+      ≈ 14.2 s mean — observed, never used to tune), <b>zero sub-second fragments</b>
+      (the naive baseline invents hundreds), dead-ball share 26.6% of play frames (reference 19.6%),
+      both teams plausible. The <i>shape</i> of the answer is right.</div>
+      <div class="callout"><b>2 · Scientific standing — research-grade.</b><br>
+      The methodology is the same family as the published state of the art (temporal sequence
+      decoding, soft sensor fusion, cross-validated external tuning) — with things most published
+      systems don't bother with: pre-declared selection rules, bootstrap CIs, leave-one-out
+      honesty checks, an independent audit and per-parameter provenance. <b>No published system
+      optimizes <i>this</i> metric on <i>this</i> data</b>, so there is no SOTA number to quote —
+      only a process to trust.</div>
+      <div class="callout"><b>3 · Against the bar — on track, not proven.</b><br>
+      Externally we sit mid-plateau with room above (best swept cell +0.0095, CI not tight).
+      Whether we clear the 0.243 floor <i>on the official window</i> is exactly what the guarded
+      run decides; the plan's expected band is B, with a defined playbook for C and A.
+      <b>Verdict today: defensible and reproducible; final rank pending measurement.</b></div>
+      <div class="callout warn"><b>Room to improve — the known gaps.</b><br>
+      • <b>Under-segmentation</b>: we find ~42% of the external possessions (best cell: 64%) —
+      the decoder merges too eagerly on fine labels; E1 (labels aligned to the challenge's
+      definition) tests whether that's the task or our dwell.<br>
+      • <b>Ball-loss realism</b>: uniform simulated gaps vs real losses concentrated at duels —
+      E2 may move the gating thresholds (plausible ±0.03).<br>
+      • No video tier (stretch, GPU), broadcast unused, set-piece prior untried (E7) —
+      all inside the gated backlog.</div>
+    </div>
+
+    <h3>The improvement backlog (all externally gated)</h3>
+    <table>
+      <tr><th>ID</th><th>Experiment</th><th>Why it could matter</th><th>Status</th></tr>
+      <tr><td><b>E1</b></td><td>Relabel external data with the challenge's possession definition
+      (hold-rule, T=3 s fixed in advance)</td><td>The external labels are 30% sub-2-second flickers;
+      aligned labels protect the dwell decision from a −0.01…−0.03 mistake</td><td>next · needs rule pre-declaration</td></tr>
+      <tr><td><b>E2</b></td><td>Phase-correlated ball-loss simulator (losses at duels/hand-overs)</td>
+      <td>Real missingness hits exactly where our switch-gate needs evidence — the one plausible &gt;+0.02</td><td>Mon 11-09, overnight compute</td></tr>
+      <tr><td><b>E3</b></td><td>Grid closure (switch 1.0, dead 12, dwell 1.5)</td><td>Closes the last swept edges — folded into E2's grid</td><td>folded in</td></tr>
+      <tr><td><b>E7</b></td><td>Set-piece timing prior for dead-ball boundaries</td><td>Restarts are ~25% of boundaries; tags give timing for free</td><td>only if Gate 1 lands early</td></tr>
+      <tr><td><b>E10</b></td><td>Generic "kick-off pending" rule (37% D where docs imply ~100%)</td><td>Small macroF1 hygiene fix; must stay generic + IDSSE-checked</td><td>operator decision</td></tr>
+    </table>
+    <p><small>Adoption rule for all: <b>+0.02 or nothing</b> — paired over 7 matches, no-harm on
+    every other test table, pre-declared before the run. 0.01–0.02 = tie = keep the frozen cell.</small></p>
+  </div>
+</section>
+
+<!-- ============================== GIT ============================== -->
+<section id="git">
+  <div class="card">
+    <h2>📜 Git history — what happened, commit by commit</h2>
+    <p>18 commits in 2 days (this report is #19), all pushed to the private repo
+    <span class="path">copilot123456/mtah2027-LA-AI</span>. Filter by phase:</p>
+    <div class="filters">
+      <button class="on" data-f="all">All (18)</button>
+      <button data-f="vendor">Vendoring</button>
+      <button data-f="pipeline">Build phases</button>
+      <button data-f="tuning">Tuning</button>
+      <button data-f="audit">Audit &amp; fixes</button>
+      <button data-f="docs">Docs</button>
+    </div>
+
+    <div class="commit" data-c="vendor"><div><div class="hash">55d5208</div><div class="date">Nov 7 · 15:29</div></div>
+      <div><div class="subj">Vendor challenge starter and evaluator (MIT) <span class="tag t-vendor">vendor</span></div>
+      <div class="why">First commit of <i>our</i> repo: the organizers' official scorer, baselines and loaders copied in with their MIT license (attribution kept), match data excluded from day one.</div></div></div>
+
+    <div class="commit" data-c="pipeline"><div><div class="hash">192fa3f</div><div class="date">Nov 7 · 15:30</div></div>
+      <div><div class="subj">P0 scaffold: config provenance, data layer, alignment tests, diagnostics <span class="tag t-pipeline">pipeline</span></div>
+      <div class="why">The foundation: loaders, the <code>video_frame = frame_id−1</code> contract, every parameter tagged with its origin, 14 tests, honest aggregate diagnostics.</div></div></div>
+
+    <div class="commit" data-c="vendor"><div><div class="hash">6eda955</div><div class="date">Nov 7 · 15:30</div></div>
+      <div><div class="subj">Vendor evaluation/results/README.md (missed in the initial vendor commit) <span class="tag t-vendor">vendor</span></div>
+      <div class="why">Housekeeping: one forgotten vendored file swept into the repo.</div></div></div>
+
+    <div class="commit" data-c="pipeline"><div><div class="hash">5514272</div><div class="date">Nov 7 · 15:46</div></div>
+      <div><div class="subj">P1 ball reconstruction: tiered fill with provenance <span class="tag t-pipeline">pipeline</span></div>
+      <div class="why">"Where is the ball, how old, is it out?" — provenance tiers with the promise that raw data is never modified (bit-exact), plus the spline interpolator that later failed its external test.</div></div></div>
+
+    <div class="commit" data-c="pipeline"><div><div class="hash">851ab10</div><div class="date">Nov 7 · 15:57</div></div>
+      <div><div class="subj">P2 emissions: team evidence + dead-ball term + confidence tempering <span class="tag t-pipeline">pipeline</span></div>
+      <div class="why">Each frame gets an opinion over H/A/D: soft nearest-team kernel in metres, confidence that goes to zero when the ball is absent, five physics signals for dead-ball.</div></div></div>
+
+    <div class="commit" data-c="pipeline"><div><div class="hash">d735def</div><div class="date">Nov 7 · 16:07</div></div>
+      <div><div class="subj">P3 Viterbi decoder: per-half decoding, switch gating, min-dwell <span class="tag t-pipeline">pipeline</span></div>
+      <div class="why">The heart: sequence decoding with penalties, a gate that stops weak evidence from switching teams, and a 2 s floor against flicker — proven against exhaustive brute force.</div></div></div>
+
+    <div class="commit" data-c="pipeline"><div><div class="hash">d7c4260</div><div class="date">Nov 7 · 16:16</div></div>
+      <div><div class="subj">P4 X-policy + submission path: full file passes the official validator <span class="tag t-pipeline">pipeline</span></div>
+      <div class="why">First shippable artifact: the CSV writer and the organizers' validator agree — 199,319 rows, format clean, three days ahead of plan.</div></div></div>
+
+    <div class="commit" data-c="tuning"><div><div class="hash">711444c</div><div class="date">Nov 7 · 16:52</div></div>
+      <div><div class="subj">P5 tuning package: IDSSE loader, missingness simulator, sweep with plateau selection <span class="tag t-tuning">tuning</span></div>
+      <div class="why">The external laboratory: 7 licensed Bundesliga matches with algorithmically derived truth, a ball-loss replay machine, and the grid-search engine with our pre-declared selection rule.</div></div></div>
+
+    <div class="commit" data-c="tuning"><div><div class="hash">8f25fd2</div><div class="date">Nov 7 · 18:11</div></div>
+      <div><div class="subj">P5 stage-1: sweep results, layer ablations, fill tier disabled by evidence <span class="tag t-tuning">tuning</span></div>
+      <div class="why">First 3,402 scored cells — and three evidence-gated rejections: the interpolator (−0.011, 7/7 matches), the dead-bias re-fit (−0.085), the X-policy. Evidence beat intuition three times.</div></div></div>
+
+    <div class="commit" data-c="tuning"><div><div class="hash">a6bb75a</div><div class="date">Nov 7 · 19:33</div></div>
+      <div><div class="subj">P5 closed: frozen config (930-cell external selection) + dossier + report <span class="tag t-tuning">tuning</span></div>
+      <div class="why">The freeze: 930 cells × 7 matches over three sweep stages (each overlap reproduced bit-exact), final configuration with CI and over-fit check, byte-identical regeneration verified.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">5c94af9</div><div class="date">Nov 7 · 20:26</div></div>
+      <div><div class="subj">Anchor the validator call to the repo and harden the submission writer <span class="tag t-audit">audit</span></div>
+      <div class="why">Audit fix A1/A3/A4: the validator was called with a relative path (broke when run from elsewhere), invalid label codes could silently mis-map — both hardened, plus dead code removed.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">d96b830</div><div class="date">Nov 7 · 20:27</div></div>
+      <div><div class="subj">Tidy the tuning package: data-driven neighbours, no operator paths <span class="tag t-audit">audit</span></div>
+      <div class="why">Audit fix B4/B2: the plateau rule's neighbours were read from the <i>stage-1</i> grid literal (wrong on extended grids) — re-running with actually-swept values picked the same cell; a developer-machine path became a portable default.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">7d8d6ab</div><div class="date">Nov 7 · 20:32</div></div>
+      <div><div class="subj">Make the X-policy edge rule hold on a switch-free half <span class="tag t-audit">audit</span></div>
+      <div class="why">Audit fix A2: a dormant edge-case bug (a half with no switches skipped its edge protection). Shipped config unaffected — output md5 unchanged.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">694d95f</div><div class="date">Nov 7 · 20:32</div></div>
+      <div><div class="subj">Add targeted tests for untested paths (64 → 83) <span class="tag t-audit">audit</span></div>
+      <div class="why">19 new tests aimed exactly where coverage was thin: X-policy boundaries, label-derivation edges, gating windows, wrong-CWD runs, and a guard that our own committed CSV matches a fresh run.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">33b2f2e</div><div class="date">Nov 7 · 20:32</div></div>
+      <div><div class="subj">Pin the pipeline runtime; ignore the tuning smoke matrix <span class="tag t-audit">audit</span></div>
+      <div class="why">Reproducibility: "byte-identical output" demands exact versions — numpy/pandas/kloppy/lxml pinned in new files (organizers' files untouched); scratch output gitignored.</div></div></div>
+
+    <div class="commit" data-c="docs"><div><div class="hash">d60b66d</div><div class="date">Nov 7 · 20:35</div></div>
+      <div><div class="subj">Docs: make the README true for a clean clone; record the audit evidence <span class="tag t-docs">docs</span></div>
+      <div class="why">Every README command re-tested from a fresh copy (including the venv quirk on this machine); dossier and technical report updated with the shipped-cell re-checks.</div></div></div>
+
+    <div class="commit" data-c="docs"><div><div class="hash">39b4ed6</div><div class="date">Nov 7 · 20:41</div></div>
+      <div><div class="subj">Add AUDIT.md: independent audit of the frozen P5 state <span class="tag t-docs">docs</span></div>
+      <div class="why">The full audit lands in the repo: 20+ findings with evidence and status, verification transcripts (repo + clean clone), compliance statement. Transparency as a feature.</div></div></div>
+
+    <div class="commit" data-c="audit"><div><div class="hash">e073bfe</div><div class="date">Nov 7 · 21:23</div></div>
+      <div><div class="subj">Score abstentions like the official evaluator; restate the X-policy evidence <span class="tag t-audit">audit</span></div>
+      <div class="why">The deepest finding (B8): our harness scored <code>X</code> without the official forward-fill, exaggerating its cost. Fixed and re-scored: X = exact spellF1 tie, −0.11 macroF1 — decision stands, <i>numbers</i> corrected everywhere. 84 tests now.</div></div></div>
+  </div>
+</section>
+
+<!-- ============================== NEXT ============================== -->
+<section id="next">
+  <div class="card">
+    <h2>🚀 What's next — 6 days to freeze</h2>
+    <table>
+      <tr><th>When</th><th>What</th><th>Gate</th></tr>
+      <tr><td><b>Sun 11-08</b> (today)</td><td>The one <b>guarded scorer run</b> (operator-only) → band letter; E1 label-alignment implementation after its rule is pre-approved</td><td>Gate 0: band A/B/C proceed · band D → fix a generic bug first</td></tr>
+      <tr><td><b>Mon 11-09</b></td><td>E2 realistic ball-loss simulator + pre-declare the 144-cell grid &amp; rule → overnight compute</td><td>matrices written</td></tr>
+      <tr><td><b>Tue 11-10</b></td><td>Read the four result tables, apply the adoption rule, docs + regeneration if adopted</td><td><b>Gate 1:</b> adopt only &gt;+0.02 with no-harm</td></tr>
+      <tr><td><b>Wed–Thu 11-11/12</b></td><td>E7 set-piece prior if time allows; Jose reviews emission/decoder choices</td><td><b>Gate 2 (Thu 18:00): no new ideas</b></td></tr>
+      <tr><td><b>Fri 11-13</b></td><td>Freeze candidate: full suite, clean-clone regeneration, PDF of the report, dossier complete</td><td>second guarded run <i>only if code changed</i></td></tr>
+      <tr><td><b>Sat 11-14</b></td><td><b>FREEZE</b>: repository made public, final md5 in docs, form rehearsal</td><td><b>Gate 3:</b> tests green, md5 reproduced, validator PASS</td></tr>
+      <tr><td>by <b>Mon 11-17</b></td><td>Submit the form: <span class="path">LA+AI.csv</span> + repo URL + <span class="path">LA+AI.pdf</span></td><td>—</td></tr>
+    </table>
+    <div class="callout good"><b>What the team can do now:</b>
+      <ol style="margin:6px 0">
+        <li>Read this report and poke holes — especially in the <a href="#sota">methodology choices</a> and the <a href="#results">results reading</a>;</li>
+        <li>Open an issue or comment in the repo on anything that looks wrong (we review before Gate 2);</li>
+        <li>Help chase the <b>three organizer questions</b> (dossier §6) — they affect how aggressively we can use aggregates;</li>
+        <li>Thursday: team review of the technical document with Jose.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== REPRODUCE ============================== -->
+<section id="reproduce">
+  <div class="card">
+    <h2>🔁 Reproduce it yourself (3 commands)</h2>
+<pre><code>git clone &lt;repo-url&gt; &amp;&amp; cd mtah2027-LA-AI
+python3 -m virtualenv .venv &amp;&amp; .venv/bin/pip install -r requirements-dev.txt
+# wire the data: symlink the organizer bundle to data/tactical (see README)
+
+.venv/bin/python -m pytest -q          # 84 passed
+.venv/bin/python -m src.submit         # writes LA+AI.csv + official validator → OK
+md5sum LA+AI.csv                       # aeef0058a08860c9e2407423b1172684</code></pre>
+    <div class="callout warn"><b>The rules we didn't break (and you can verify):</b>
+    no ground truth used for any decision (every <code>evaluation/gt</code> read is outside our
+    code — audit B1) · no video inspection · no provided data in any AI channel (coarse aggregates
+    only) · no hand labels anywhere · match data never committed · vendored scorer never edited
+    (0-line diff, verified). The dossier keeps the paper trail.</div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <b>LA+AI</b> · More Than A Hack 2027 — Initial Challenge · executive report, 2026-11-08<br>
+    Repository <span class="path">copilot123456/mtah2027-LA-AI</span> (private until freeze) ·
+    freeze Nov 14 · deadline Nov 17 · built from the repo's own commit history and audit record
+  </div>
+</footer>
+
+<script>
+// scrollspy
+const links = [...document.querySelectorAll('nav a')];
+const secs = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+  }});
+}, {rootMargin:'-40% 0px -55% 0px'});
+secs.forEach(s => io.observe(s));
+
+// commit filter
+document.querySelectorAll('.filters button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filters button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    const f = btn.dataset.f;
+    document.querySelectorAll('.commit').forEach(c => {
+      c.style.display = (f === 'all' || c.dataset.c === f) ? '' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>
