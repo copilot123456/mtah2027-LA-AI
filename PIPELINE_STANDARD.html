@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LA+AI · Pipeline Framework — Team Standard (MTAH 2027)</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1b2333; --muted:#5b6579; --line:#e3e7f0;
+  --accent:#4457d6; --accent2:#7c4ddb; --ok:#1a9e6b; --warn:#c77716; --bad:#c2453f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:74px}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--mono);font-size:.92em}
+pre{background:#141a2a;color:#dfe6f5;padding:14px 16px;border-radius:10px;overflow-x:auto}
+code{background:#eef1f8;padding:1px 6px;border-radius:6px}
+pre code{background:none;padding:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+h2{font-size:1.65rem;margin-top:0}
+h3{font-size:1.15rem}
+p{margin:.5em 0}
+small{color:var(--muted)}
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
+nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
+nav a:hover{background:#eef1f8;color:var(--ink)}
+nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
+header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
+header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
+header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:99px;font-size:.83rem;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:26px}
+.kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
+.kpi .v{font-size:1.55rem;font-weight:800}
+.kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
+section{padding:44px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.c4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.b-key{background:#eceefe;color:var(--accent)} .b-ok{background:#e2f6ed;color:var(--ok)}
+.b-warn{background:#fff3df;color:var(--warn)} .b-next{background:#eef1f8;color:var(--muted)}
+.callout{border-left:4px solid var(--accent);background:#eef1f8;border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+.callout.warn{border-color:var(--warn);background:#fff7e8}
+.callout.ok{border-color:var(--ok);background:#eaf7f1}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
+tr:nth-child(even) td{background:#fbfcff}
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0}
+.pipe .st{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:700;font-size:.9rem;position:relative}
+.pipe .st small{display:block;font-weight:500;font-size:.72rem;color:var(--muted)}
+.pipe .st.hot{border-color:var(--accent2);background:#f3edfd}
+.pipe .st.hot::after{content:"swap here";position:absolute;top:-10px;right:-6px;background:var(--accent2);color:#fff;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.3px}
+.pipe .arw{color:var(--muted);font-weight:800}
+ol.steps{counter-reset:st;list-style:none;padding:0;margin:14px 0}
+ol.steps li{counter-increment:st;position:relative;padding:0 0 16px 44px}
+ol.steps li::before{content:counter(st);position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+ol.steps li b{display:block}
+footer{margin-top:40px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">LA+AI · Pipeline Standard</span>
+  <a href="#what">What &amp; why</a>
+  <a href="#file">The one file</a>
+  <a href="#how">How it works</a>
+  <a href="#rules">Rules</a>
+  <a href="#adopt">Adoption step</a>
+  <a href="#files">Where things live</a>
+  <a href="#docs">Docs</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <h1>Pipeline Framework — Team Standard</h1>
+  <p class="sub">One file declares the whole pipeline. Swap a stage (YOLO → ViT, decoder A → decoder B),
+  insert a new one, or just diff your branch against main — in a single place, without touching the
+  audited core.</p>
+  <div class="chips">
+    <span class="chip">v1.0 · 2026-11-08</span>
+    <span class="chip">base: main @ 25207bc (frozen)</span>
+    <span class="chip">branch: framework/pipeline-spec</span>
+    <span class="chip">status: ready for team review</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">1</div><div class="l">file to edit</div></div>
+    <div class="kpi"><div class="v">6</div><div class="l">default stages</div></div>
+    <div class="kpi"><div class="v">92</div><div class="l">tests green</div></div>
+    <div class="kpi"><div class="v">byte-identical</div><div class="l">default output (md5 aeef…)</div></div>
+  </div>
+</div></header>
+
+<section id="what"><div class="wrap">
+  <div class="card">
+    <h2>What it is, and why we built it</h2>
+    <p>Each of us is working on our own branch, trying the idea that might break our score open in a
+    good way. The risk of that setup is obvious: everyone edits the same decoder, the same fill, the
+    same config — and Wednesday's merge becomes a conflict resolution session.</p>
+    <p><b>The framework removes that risk.</b> The pipeline is now a <b>list of named stages</b> declared
+    in one file. Your experiment replaces one entry in that list with your handler. The audited core
+    (<code>src/</code> stage functions, <code>config.py</code>, the submission path) stays untouched,
+    your diff is one line, and comparing approaches becomes mechanical — which is exactly what we
+    need for Wednesday and for using P6 as the yardstick between our approaches.</p>
+    <div class="callout ok"><b>Think LEGO, not spaghetti:</b> each stage is a brick with a fixed
+    shape (inputs it needs, outputs it produces). The declaration file is the instruction sheet —
+    swapping a brick never restructures the model.</div>
+  </div>
+</div></section>
+
+<section id="file"><div class="wrap">
+  <div class="card">
+    <h2>The one file you edit: <code>pipeline_spec.py</code></h2>
+    <p>Every stage of the pipeline, in order, with what each one needs and produces:</p>
+<pre><code># pipeline_spec.py — the whole pipeline, top to bottom
+SPEC = [
+    Step("load",      S.load,        provides=("arrays",)),
+    Step("ball_fill", S.ball_track,  requires=("arrays",), provides=("track",)),
+    Step("emission",  S.emission,    requires=("arrays", "track"), provides=("emission",)),
+    Step("decode",    S.decode_step, requires=("arrays", "track", "emission"), provides=("decoded",)),
+    Step("x_policy",  S.x_policy,    requires=("arrays", "emission", "decoded"), provides=("labels",)),
+    Step("summary",   S.summarize,   requires=("arrays", "track", "decoded", "labels"), provides=("summary",)),
+]</code></pre>
+    <h3>Swapping a stage — your ViT example, literally</h3>
+    <p>Gap filling with ViT instead of the current handler is <b>one binding</b>:</p>
+<pre><code># your branch — pipeline_spec.py
+from src.vit_fill import ball_track        # your fn(ctx, cfg) -> None, with a docstring
+
+SPEC = [
+    Step("load",      S.load,       provides=("arrays",)),
+    Step("ball_fill", ball_track,   requires=("arrays",), provides=("track",)),  # ← was S.ball_track
+    # … everything else unchanged …
+]</code></pre>
+    <p>Adding a stage works the same way: write any <code>fn(ctx, cfg) -> None</code> with a docstring,
+    then append a <code>Step(...)</code> line. Reordering is moving lines. That's the whole API.</p>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <div class="card">
+    <h2>How it works</h2>
+    <div class="pipe">
+      <div class="st">load<small>match arrays</small></div><span class="arw">→</span>
+      <div class="st hot">ball_fill<small>ball track</small></div><span class="arw">→</span>
+      <div class="st">emission<small>H/A/D evidence</small></div><span class="arw">→</span>
+      <div class="st">decode<small>Viterbi + gating</small></div><span class="arw">→</span>
+      <div class="st">x_policy<small>abstention</small></div><span class="arw">→</span>
+      <div class="st">summary<small>report</small></div>
+    </div>
+    <div class="grid c2">
+      <div>
+        <h3>Three moving parts</h3>
+        <p><b>1. <code>Step</code></b> — a stage's name, its function, and the data it
+        <code>requires</code>/<code>provides</code>.</p>
+        <p><b>2. <code>Ctx</code></b> — the tray that carries data (<code>arrays</code>,
+        <code>track</code>, <code>emission</code>, <code>decoded</code>, <code>labels</code>,
+        <code>summary</code>, plus a free-form <code>extra</code> bag) from one stage to the next.</p>
+        <p><b>3. The runner</b> — validates the whole list <i>before</i> running anything, then
+        executes it in order and returns the labels + summary that
+        <code>python -m src.submit</code> writes out.</p>
+      </div>
+      <div>
+        <h3>Guard rails built in</h3>
+        <p>⚠ <b>Fail fast, before a run:</b> a stage that needs data nobody produced is reported by
+        name immediately — not as a cryptic error 20 seconds in.</p>
+        <p>📝 <b>Comments are enforced:</b> a handler without a docstring is <b>rejected</b>. Every
+        brick must say what it is.</p>
+        <p>🔒 <b>The default never drifts:</b> the shipped declaration must keep reproducing
+        <code>LA+AI.csv</code> byte-for-byte — a test fails the build if it doesn't.</p>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<section id="rules"><div class="wrap">
+  <div class="card">
+    <h2>Rules that do <i>not</i> change</h2>
+    <p>The framework makes experiments easy. It does <b>not</b> make adoption easy — that stays
+    evidence-gated, same as before.</p>
+    <div class="grid c4">
+      <div class="card"><span class="badge b-key">Frozen default</span>
+        <p>The default <code>pipeline_spec.py</code> must always regenerate <code>LA+AI.csv</code>
+        byte-identically (md5 <code>aeef0058a08860c9e2407423b1172684</code>).</p></div>
+      <div class="card"><span class="badge b-warn">Evidence rule</span>
+        <p>Config / decoder / emission changes need <b>&gt;0.02 paired on IDSSE, pre-declared in
+        dossier §7</b> — never adopted on taste. No tuning on eval, GT, the video or the public
+        window. Ever.</p></div>
+      <div class="card"><span class="badge b-next">Never touch</span>
+        <p><code>evaluation/</code>, <code>starter/</code>, <code>games.py</code>. Never commit
+        <code>data/*</code>, weaken <code>.gitignore</code>, or rewrite history.</p></div>
+      <div class="card"><span class="badge b-ok">Every commit</span>
+        <p>Tests green, and if a kept change alters output, the CSV is regenerated in the same
+        commit.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="adopt"><div class="wrap">
+  <div class="card" style="border:2px solid var(--warn)">
+    <h2>⚠ REQUIRED: share every framework change with the team</h2>
+    <p>This standard only works if everyone is running the same standard. <b>Any change to the
+    common framework — a new step type, a contract change, a validation rule, a doc update —
+    must be shared with the rest of the team before it merges.</b> Silent changes break adoption;
+    a framework nobody knows about is a framework nobody uses.</p>
+    <ol class="steps">
+      <li><b>Build on your branch.</b> Don't edit the contract on <code>main</code> directly.</li>
+      <li><b>Verify.</b> Tests green + default output byte-identical (if behaviour changed, the
+      external-evidence rule applies instead — see Rules).</li>
+      <li><b>Share the proposal with the team.</b> Post what changed, why, and your verification
+      results — in the team chat and/or at the Wednesday 11-11 sync. Include the diff.</li>
+      <li><b>Team agrees → merge.</b> Only then does it enter the final branch. The Wednesday
+      meeting is the adoption checkpoint.</li>
+    </ol>
+    <div class="callout warn"><b>Rule of thumb:</b> swapping a handler <i>inside</i> your own branch
+    needs no permission — that's what the framework is for. Changing <i>the framework itself</i>
+    (the contract, the runner, the validation, the defaults) always goes through the four steps
+    above.</div>
+  </div>
+</div></section>
+
+<section id="files"><div class="wrap">
+  <div class="card">
+    <h2>Where things live</h2>
+    <table>
+      <tr><th>File</th><th>What it is</th></tr>
+      <tr><td><code>pipeline_spec.py</code></td><td><b>The declaration.</b> The one file you edit to swap, reorder or add stages.</td></tr>
+      <tr><td><code>src/pipeline.py</code></td><td>The contract (<code>Ctx</code>, <code>Step</code>, <code>validate_spec</code>) and the runner.</td></tr>
+      <tr><td><code>src/steps.py</code></td><td>The six default handlers — thin adapters over the existing, tested stage functions.</td></tr>
+      <tr><td><code>tests/test_pipeline_spec.py</code></td><td>Framework tests: validation, ordering, swap mechanics.</td></tr>
+      <tr><td><code>PIPELINE_STANDARD.html</code></td><td>This document — the human-facing summary.</td></tr>
+      <tr><td><code>PIPELINE_STANDARD_AI.md</code></td><td>The full standard for AI agents working in this repo: contract, invariants, recipes, change process.</td></tr>
+    </table>
+  </div>
+</div></section>
+
+<section id="docs"><div class="wrap">
+  <div class="card">
+    <h2>Two versions of the standard</h2>
+    <div class="grid c2">
+      <div class="card"><span class="badge b-key">You are here — human</span>
+        <p><code>PIPELINE_STANDARD.html</code>: the plain-language tour — what it is, the one file,
+        the rules, the adoption step. Open in a browser, same as the executive report.</p></div>
+      <div class="card"><span class="badge b-next">AI agents</span>
+        <p><code>PIPELINE_STANDARD_AI.md</code>: every detail an AI needs to work inside the
+        standard — the contract field-by-field, invariants, copy-paste recipes, validation error
+        reference, and the exact process for proposing changes to the standard.</p></div>
+    </div>
+    <div class="callout"><b>Coming next (after this framework is adopted):</b> a common
+    <b>results-sharing &amp; improvement-proposal framework</b>, so Wednesday's sync runs on shared
+    result cards and written proposals instead of ad-hoc screenshots. Not part of v1 — noted here so
+    nobody builds it twice.</div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <p><b>Verification for this version:</b> 92 tests green · fresh <code>python -m src.submit</code>
+  reproduces <code>LA+AI.csv</code> byte-identically (md5 <code>aeef0058a08860c9e2407423b1172684</code>)
+  · official validator PASS · default pipeline behaviour unchanged from the audited main @ 25207bc.</p>
+  <p>MTAH 2027 · LA+AI · possession decoder — pipeline standard v1.0 · 2026-11-08</p>
+</div></footer>
+
+</body>
+</html>
