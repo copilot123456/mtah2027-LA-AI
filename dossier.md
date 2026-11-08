@@ -28,6 +28,8 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
+Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no video inspection — checked by grep over the code and by the local `evaluation/scoreboard.csv`, which still lists the four baselines only.
+
 ## 4. AI-service statement
 
 - No provided-match per-frame values, coordinates, labels or video frames are sent to any AI service.
@@ -76,18 +78,53 @@ at noise level.
 | Decision | Evidence | Outcome |
 |---|---|---|
 | Kinematic fill tier | paired −0.0112 spellF1, CI [−0.017, −0.007], 7/7 negative; all-cell −0.0089 | **dropped** (`fill_long_gap_s=0`, external_fit) |
-| d_bias re-fit to IDSSE D share (45%) | −0.177 spellF1 | **rejected**, prior −0.70 retained with evidence |
-| X-policy on graded frames | −0.0113, 6/7 negative | **off** |
+| d_bias re-fit to IDSSE D share (45%) | −0.177 spellF1 at the stage-1 cell; −0.0847 at the shipped cell, 7/7 negative | **rejected**, prior −0.70 retained with evidence |
+| X-policy on graded frames | −0.0113 at the stage-1 cell, 6/7 negative; −0.0338 at the shipped cell, 6/7 negative | **off** |
+
+**Post-selection checks — where they ran.** `tuning/results/post_checks.csv` (2026-11-07, before
+stage 2) evaluated both candidates at the **stage-1** chosen cell (`switch_pen=4, dead_pen=8,
+sigma_m=3.0, min_dwell_s=2.0, switch_support_s=1.0`) under the `kinematic` scenario, i.e. with
+the fill tier still on. The audit re-ran the same checks at the **shipped** cell with the shipped
+fill setting (`python -m tuning.post_checks --final` → `post_checks_final.csv`): baseline 0.2759
+(identical to the sweep's cell mean), d_bias re-fit −0.0847, X-policy −0.0338, both −0.1269 — all
+three decisions stand under the pre-declared > 0.02 adoption rule. The default mode of
+`post_checks.py` reproduces the committed file to the last digit.
+
+**Selection rule — implementation note.** The plateau rule's "worst grid-neighbour" took its
+candidate values from the stage-1 grid literal; on the stage-2/3 extension this ignored the new
+notches. Fixed in the audit to use the values actually swept; re-running the final selection on
+the committed stage-2+3 union gives the same cell, mean, CI, LOMO gap and worst-neighbour score
+(0.2081), so the frozen configuration is unchanged (test-enforced in `tests/test_tuning.py`).
 
 **Shipped config provenance:** `sigma_m`, `switch_pen`, `min_dwell_s`, `switch_support_s` →
 `external_fit` (evidence above); `dead_pen` stays `prior` (surface flat — value immaterial);
 everything else `prior`/`fixed_default`. No `provided_*` entries (test-enforced).
 
-**Reproduction checks:** full suite 64/64 green on the frozen config; `python -m src.submit`
-passes the official `validate_submission.py`; two consecutive runs produce **byte-identical**
-`LA+AI.csv` (md5 verified). Own-output counts: 467 segments / 337 possessions / median 7.0 s /
-0% sub-second / D share 26.6% of graded — inspected for sanity only, never used to select.
+**Reproduction checks:** full suite green on the frozen config (64 tests at the freeze, 83
+after the audit); `python -m src.submit` passes the official `validate_submission.py`; two
+consecutive runs produce **byte-identical** `LA+AI.csv` (md5 `aeef0058a08860c9e2407423b1172684`),
+and so does a clean clone with a cold cache and the pinned requirements. Own-output counts:
+467 segments / 337 possessions / median 7.0 s / 0% sub-second / D share 26.6% of graded —
+inspected for sanity only, never used to select.
 
-**Evaluator status:** no run of the official evaluator on the provided match during P5.
-The single frozen `submission_eval` run (section 10 of the plan) remains pending the
-operator, per the guard protocol.
+**Evaluator status:** no run of the official evaluator on the provided match during P5 or
+the audit. The single frozen `submission_eval` run (section 10 of the plan) remains pending
+the operator, per the guard protocol.
+
+## 8. Independent audit (2026-11-07)
+
+Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
+(`a6bb75a`). Full record in `AUDIT.md`. Summary of what it established:
+
+- **Compliance:** no code path outside the vendored evaluator reads `evaluation/gt/`; the
+  scorer was never run on `LA+AI.csv`; no match data, no secrets and no operator paths are
+  tracked (the one hard-coded IDSSE path was removed). Vendored `evaluation/`, `starter/`
+  and `games.py` untouched.
+- **Label outputs:** unchanged by every audit commit — `LA+AI.csv` regenerates to the same
+  md5 after each one; the committed file is now covered by a byte-identity test.
+- **Frozen decisions:** re-confirmed at the shipped cell with new external evidence
+  (section 7); nothing re-opened.
+- **Fixes without output impact:** validator path independent of the cwd; data-driven
+  neighbour rule in the selection code (same outcome); X-policy edge clause on a
+  switch-free half (dormant, x_use=False); pinned requirements; README made true for a
+  clean clone.

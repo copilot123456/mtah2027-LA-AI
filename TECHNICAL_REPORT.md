@@ -66,9 +66,10 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 - Labels for tuning were derived **algorithmically** from provider fields
   (`ball_state` → D, `ball_owning_team_id` → side) — no human annotation anywhere.
 - Used for: parameter selection (grid search, 930 unique cells × 7 matches), layer
-  ablations, and two adoption checks (X-policy, dead-bias re-fit). Never for the provided
-  game. All of it external; the provided game's ground truth was never used to choose,
-  tune or calibrate anything.
+  ablations, and two adoption checks (X-policy, dead-bias re-fit) — run at the stage-1
+  cell and re-confirmed at the shipped cell. Never for the provided game. All of it
+  external; the provided game's ground truth was never used to choose, tune or calibrate
+  anything.
 
 ## Possession rules implemented
 
@@ -87,8 +88,10 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 | Decision | Evidence | Outcome |
 |---|---|---|
 | Kinematic fill tier | paired `kinematic − none` = **−0.0112** spellF1, 95 % CI [−0.017, −0.007], 7/7 matches negative; all-cell mean −0.0089 | **dropped** |
-| Dead-bias re-fit to the external D share | **−0.177** spellF1 | rejected; prior kept |
-| X-policy on graded frames | −0.0113, negative on 6/7 matches | kept off |
+| Dead-bias re-fit to the external D share | **−0.177** spellF1 at the stage-1 cell; **−0.085** at the shipped cell, 7/7 matches negative | rejected; prior kept |
+| X-policy on graded frames | **−0.011** at the stage-1 cell; **−0.034** at the shipped cell, negative on 6/7 matches | kept off |
+
+(`tuning/results/post_checks.csv` and `post_checks_final.csv`; adoption rule: gain > 0.02.)
 
 ## Limitations
 
@@ -99,21 +102,28 @@ external data (IDSSE), with every parameter carrying an explicit provenance
   scoped as stretch and is not in the shipped pipeline.
 - The provider's dead-ball share on external matches (41–52 %) differs from what the
   prior encodes; the feature-driven D term compensates but was not re-tuned per league.
-- Parameter selection sits on plateau edges for σ and switch penalty; further grid
-  extension had diminishing returns within the time budget.
+- The switch penalty sits at the low edge of the swept range (2 vs 4 within noise, both
+  above 8); σ has an interior optimum after the stage-3 extension (1.0: 0.2627,
+  1.5: 0.2644, 2.0: 0.2417) and the dead penalty surface is flat. Further grid extension
+  had diminishing returns within the time budget.
 
 ## Reproduction
 
+From the repository root (CPython 3.14.4; `requirements-pipeline.txt` pins the versions that
+produced the committed file):
+
 ```bash
-pip install -r requirements-starter.txt pytest tabulate
-# match data in data/tactical (organizer bundle; gitignored)
-python -m pytest tests/ -q              # alignment, invariants, official format check
-python -m src.submit                    # writes LA+AI.csv and runs the official validator
-python evaluation/run_evaluation.py     # official scorer (optional; runs are logged)
+python3 -m virtualenv .venv && .venv/bin/pip install -r requirements-dev.txt
+# match data in data/tactical + data/broadcast (organiser bundle; gitignored) or MTAH_DATA_DIR
+.venv/bin/python -m pytest -q           # 83 tests: alignment, invariants, format, byte-identity
+.venv/bin/python -m src.submit          # writes LA+AI.csv and runs the official validator
+md5sum LA+AI.csv                        # aeef0058a08860c9e2407423b1172684
 ```
 
-External tuning evidence ships in `tuning/results/` (matrices + reports);
-`tuning/sweep.py` and `tuning/post_checks.py` regenerate it given `IDSSE_DIR`.
+The first run builds a local cache from the raw ATD (about 1m40s); a clean clone with a cold
+cache reproduces the committed file byte for byte (see `AUDIT.md`). External tuning evidence
+ships in `tuning/results/` (matrices + reports); `tuning/sweep.py` and
+`tuning/post_checks.py` regenerate it given `IDSSE_DIR` (see README).
 
 ## Final configuration (frozen 2026-11-07)
 
