@@ -95,6 +95,37 @@ def test_near_ball_team_wins():
     assert (em.log_e[:, CLASS_H] > em.log_e[:, CLASS_A]).all()
 
 
+def test_invisible_team_hits_the_log_floor_not_minus_inf():
+    """Only H players visible: p_team_A is exactly 0 and the A column is clipped at EPS."""
+    ball = np.full((N, 2), np.nan)
+    ball[:, 0], ball[:, 1] = 0.3, 0.4
+    track = _track(ball)
+    players = np.full((N, 46, 2), np.nan)
+    players[:, 0] = [0.3, 0.4]                 # one H player on the ball, no A visible
+    teams = np.zeros(46, dtype=np.int8)
+    teams[1:] = 1
+    em = build_emission(track, players, np.full((N, 46), 5.0), teams)
+    assert np.isfinite(em.log_e).all()
+    assert (em.ev[:, 1] == 0).all()
+    assert (em.log_e[:, CLASS_H] > em.log_e[:, CLASS_A]).all()
+    assert em.log_e[0, CLASS_A] == pytest.approx(np.log(1e-12) + np.log(1 - em.p_d[0]))
+
+
+def test_ball_speed_nan_edges_do_not_count_as_stationary():
+    """Frame 0 and frames next to a missing ball have no speed; they must not look at rest."""
+    from src.emission import _ball_speed_ms, _dead_features
+
+    ball = np.full((N, 2), 0.5)
+    ball[5] = np.nan                           # one missing frame in a still ball
+    track = _track(ball)
+    speed = _ball_speed_ms(track, CFG)
+    assert np.isnan(speed[0]) and np.isnan(speed[5]) and np.isnan(speed[6])
+    assert speed[1] == 0.0 and speed[10] == 0.0
+    feats = _dead_features(track, np.full((N, 46), 3.0), CFG)
+    assert feats["stationary"][0] == 0.0 and feats["stationary"][5] == 0.0 and feats["stationary"][6] == 0.0
+    assert feats["stationary"][1] == 1.0
+
+
 def test_confidence_semantics():
     """atd conf = c0_atd; kinematic decays with age; none conf = 0."""
     ball = np.full((N, 2), np.nan)

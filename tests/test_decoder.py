@@ -139,6 +139,57 @@ def test_gating_disabled_passthrough():
     np.testing.assert_array_equal(out, labels)
 
 
+def test_gating_support_window_is_half_open():
+    """Support exactly `window` frames after the boundary is outside [lo, hi)."""
+    window = int(round(CFG["switch_support_s"] * CFG["fps"]))
+    t_len = 2 * window + 10
+    boundary = window
+    labels = np.array([CODE_H] * boundary + [CODE_A] * (t_len - boundary), dtype=np.int8)
+    log_e = _emission_from_labels([CODE_H] * t_len)       # nobody favours A ...
+    source = np.full(t_len, SOURCE_NONE, dtype=np.int8)
+
+    inside = log_e.copy(); inside[boundary + window - 1] = _emission_from_labels([CODE_A])[0]
+    src_in = source.copy(); src_in[boundary + window - 1] = SOURCE_ATD
+    out, reverted = apply_gating(labels, src_in, inside, CFG)
+    assert reverted == 0 and (out == labels).all(), "support on the last frame inside the window"
+
+    outside = log_e.copy(); outside[boundary + window] = _emission_from_labels([CODE_A])[0]
+    src_out = source.copy(); src_out[boundary + window] = SOURCE_ATD
+    out, reverted = apply_gating(labels, src_out, outside, CFG)
+    assert reverted == 1 and (out == CODE_H).all(), "one frame further is outside the window"
+
+
+def test_gating_first_segment_is_never_reverted():
+    labels = np.array([CODE_A] * 5 + [CODE_H] * 30, dtype=np.int8)
+    source = np.full(35, SOURCE_NONE, dtype=np.int8)
+    log_e = _emission_from_labels([CODE_H] * 35)
+    out, reverted = apply_gating(labels, source, log_e, CFG)
+    assert reverted == 1
+    assert (out == CODE_A).all(), "the unsupported H switch folds into the opening A segment"
+
+
+def test_min_dwell_all_short_collapses_to_one_segment():
+    labels = np.array([CODE_H] * 3 + [CODE_A] * 4 + [CODE_D] * 2 + [CODE_H] * 3, dtype=np.int8)
+    out = enforce_min_dwell(labels, min_len=25)
+    assert len(np.unique(out)) == 1
+
+
+def test_min_dwell_one_is_a_noop():
+    labels = np.array([CODE_H, CODE_A, CODE_D, CODE_H], dtype=np.int8)
+    np.testing.assert_array_equal(enforce_min_dwell(labels, min_len=1), labels)
+
+
+def test_decode_rejects_non_contiguous_half():
+    t_len = 40
+    log_e = _emission_from_labels([CODE_H] * t_len)
+    em = Emission(log_e=log_e, conf=np.ones(t_len), p_d=np.full(t_len, 0.2), ev=np.ones((t_len, 2)))
+    half = np.zeros(t_len, dtype=np.int8)
+    half[:10] = 1
+    half[20:30] = 1                                       # half 1 split by a hole
+    with pytest.raises(ValueError, match="not a contiguous span"):
+        decode(em, np.full(t_len, SOURCE_ATD, dtype=np.int8), half, CFG)
+
+
 def test_min_dwell_merges_short_into_longer_neighbour():
     # H(60) A(10) D(30) -> A (10 < 25) merges into the longer neighbour H(60)
     labels = np.array([CODE_H] * 60 + [CODE_A] * 10 + [CODE_D] * 30, dtype=np.int8)

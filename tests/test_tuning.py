@@ -1,16 +1,20 @@
-"""P5 unit tests: grid integrity, label derivation, masking, plateau selection, LOMO, CI."""
+"""P5 unit tests: grid integrity, label derivation, masking, plateau selection, LOMO, CI,
+and the reproduction of the frozen selection from the committed matrices."""
 
 import numpy as np
 import pandas as pd
 import pytest
 
+from config import CFG
 from tuning.simulate import empirical_run_lengths, mask_ball
 from tuning.sweep import (
     GRID,
     PARAMS,
+    _neighbour_means,
     bootstrap_ci,
     flat_select,
     grid_points,
+    load_union,
     lomo,
     smoke_grid,
 )
@@ -53,6 +57,28 @@ def test_derive_letters_dead_priority_and_counts():
     letters, counts = derive_letters(period, state, owner, "HOM", "AWY")
     assert set(letters) == {"D"}
     assert counts["D"] == 6
+
+
+def test_derive_letters_edge_cases():
+    """NaN owners, a period with no owner information, labels outside periods."""
+    from tuning.idsse import derive_letters
+
+    period = np.array([0, 1, 1, 1, 1, 1, 2, 2, 2, 0], dtype=np.int8)
+    state = np.array(["alive", "alive", "alive", "dead", "alive", "alive",
+                      "alive", "alive", "dead", "alive"], dtype=object)
+    owner = pd.Series(["HOM", np.nan, "AWY", "AWY", "AWY", np.nan,
+                       np.nan, np.nan, np.nan, "HOM"])
+    letters, counts = derive_letters(period, state, owner, "HOM", "AWY")
+    assert letters[0] == "X" and letters[9] == "X", "outside the periods is X whatever the owner"
+    assert letters[1] == "A", "NaN owner at the period head is back-filled from the next frame"
+    assert letters[2] == "A"
+    assert letters[3] == "D", "dead beats the owner field"
+    assert letters[4] == "A" and letters[5] == "A", "forward fill inside the period"
+    assert letters[6] == "D" and letters[7] == "D", \
+        "fills copy the nearest labelled frame in the period, dead included; no owner at all => D"
+    assert letters[8] == "D"
+    assert sum(counts[k] for k in ("H", "A", "D", "X")) == len(period)
+    assert counts["owner_filled"] == 4
 
 
 def test_empirical_runs_extraction():
@@ -116,6 +142,35 @@ def test_lomo_returns_all_folds():
     assert len(table) == 7
     assert table["fold_score"].notna().all()
     assert table["global_score"].notna().all()
+
+
+def test_neighbour_means_use_the_swept_values():
+    """Two cells that differ only in a notch outside the stage-1 GRID are neighbours."""
+    base = {p: GRID[p][0] for p in PARAMS}
+    cells = [{**base, "sigma_m": 1.0}, {**base, "sigma_m": 1.5}]   # neither value is in GRID
+    means = pd.DataFrame([{**c, "mean": m} for c, m in zip(cells, (0.30, 0.20))])
+    means = means.set_index(PARAMS)["mean"]
+    worst = _neighbour_means(means)
+    assert worst.loc[tuple(cells[0][p] for p in PARAMS)] == pytest.approx(0.20)
+    assert worst.loc[tuple(cells[1][p] for p in PARAMS)] == pytest.approx(0.30)
+
+
+def test_final_selection_reproduces_frozen_config():
+    """The committed stage-2+3 matrices + the pre-declared rule give exactly config.py's
+    cell and the numbers quoted in dossier.md / report_final.md."""
+    union = load_union()
+    assert union[PARAMS].drop_duplicates().shape[0] == 930
+    chosen, detail = flat_select(union, scenario="none")
+    assert chosen == {p: float(CFG[p]) for p in PARAMS}
+    rows = union[union["scenario"] == "none"]
+    for p, v in chosen.items():
+        rows = rows[rows[p] == v]
+    assert len(rows) == 7
+    assert rows["spell_f1"].mean() == pytest.approx(0.2759, abs=5e-4)
+    lo, hi = bootstrap_ci(rows["spell_f1"].to_numpy())
+    assert (lo, hi) == pytest.approx((0.2578, 0.2932), abs=5e-4)
+    gap = lomo(union, chosen, scenario="none")
+    assert (gap["fold_score"] - gap["global_score"]).mean() == pytest.approx(-0.0026, abs=5e-4)
 
 
 def test_bootstrap_ci_brackets_the_mean():
