@@ -32,9 +32,14 @@ from src.decoder import CODE_X
 
 
 def _distance_to_nearest_boundary(t_len: int, switches: np.ndarray) -> np.ndarray:
-    """Frames to the nearest switch (or span edge if there is none)."""
-    if not len(switches):
-        return np.full(t_len, np.inf)
+    """Frames to the nearest switch or span edge, whichever is closer.
+
+    A span without switches is handled by the same code path: the switch terms stay
+    infinite and the edge terms take over (an early `return inf` here used to skip the
+    edges, so a switch-free half abstained right up to its first and last frame —
+    dormant under the shipped x_use=False, fixed in the 2026-11-07 audit).
+    """
+    switches = np.asarray(switches, dtype=np.int64)
     pos = np.arange(t_len)
     left_idx = np.searchsorted(switches, pos, side="right") - 1
     right_idx = np.searchsorted(switches, pos, side="left")
