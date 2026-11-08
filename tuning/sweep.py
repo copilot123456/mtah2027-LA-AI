@@ -55,13 +55,25 @@ GRID_EXT = {
     "min_dwell_s": [0.5, 1.0, 2.0, 3.0],
     "switch_support_s": [0.3, 0.6, 1.0, 1.5],
 }
+# Stage 3 (final, pre-justified by stage-2 marginals: only sigma still climbed at its
+# edge (+0.017/notch, extend to the physical floor of ~1 m); switch/dwell/support shown
+# flat or interior; dead kept flat for neighbour continuity).
+GRID_S3 = {
+    "switch_pen": [2.0, 4.0, 8.0],
+    "dead_pen": [3.0, 5.0, 8.0],
+    "sigma_m": [1.0, 1.5, 2.0, 3.0],
+    "min_dwell_s": [1.0, 2.0, 3.0],
+    "switch_support_s": [0.6, 1.0, 1.5],
+}
 PARAMS = list(GRID)
 SCENARIOS = ["kinematic", "none"]
 MASK_SEED = 20261107
 RESULTS = ROOT / "tuning" / "results" / "sweep_results.csv"
 RESULTS_STG2 = ROOT / "tuning" / "results" / "sweep_results_stage2.csv"
+RESULTS_STG3 = ROOT / "tuning" / "results" / "sweep_results_stage3.csv"
 REPORT = ROOT / "tuning" / "results" / "report.md"
 REPORT_STG2 = ROOT / "tuning" / "results" / "report_stage2.md"
+REPORT_FINAL = ROOT / "tuning" / "results" / "report_final.md"
 
 _LETTERS = np.array(["X", "H", "A", "D"], dtype=object)  # index by internal code + 1
 
@@ -173,13 +185,14 @@ def flat_select(df: pd.DataFrame, scenario: str = "kinematic",
     return chosen, detail.reset_index()
 
 
-def lomo(df: pd.DataFrame, chosen: dict, metric: str = "spell_f1") -> pd.DataFrame:
+def lomo(df: pd.DataFrame, chosen: dict, metric: str = "spell_f1",
+         scenario: str = "kinematic") -> pd.DataFrame:
     """Pick on 6 matches (plateau rule), report on the held-out one; vs global chosen."""
     rows = []
     matches = sorted(df["match_id"].unique())
     for held in matches:
         train = df[df["match_id"] != held]
-        fold_chosen, _ = flat_select(train, metric=metric)
+        fold_chosen, _ = flat_select(train, metric=metric, scenario=scenario)
         test = df[df["match_id"] == held]
         fold_pick = _cell_score(test, fold_chosen)
         global_pick = _cell_score(test, chosen)
@@ -218,14 +231,19 @@ def main() -> int:
     parser.add_argument("--select-only", action="store_true")
     parser.add_argument("--stage2", action="store_true",
                         help="extended grid, none scenario only (fill tier dropped by ablation)")
+    parser.add_argument("--stage3", action="store_true",
+                        help="final focused grid (sigma floor); selection runs on stage2+3 union")
     parser.add_argument("--workers", type=int, default=7)
     args = parser.parse_args()
+    if args.stage2 and args.stage3:
+        parser.error("--stage2 and --stage3 are mutually exclusive")
 
-    grid_used = GRID_EXT if args.stage2 else GRID
-    select_scenario = "none" if args.stage2 else "kinematic"
+    grid_used = GRID_S3 if args.stage3 else (GRID_EXT if args.stage2 else GRID)
+    select_scenario = "none" if (args.stage2 or args.stage3) else "kinematic"
 
     if args.select_only:
-        df = pd.read_csv(RESULTS_STG2 if args.stage2 else RESULTS)
+        df = pd.read_csv(RESULTS_STG3 if args.stage3 else
+                         (RESULTS_STG2 if args.stage2 else RESULTS))
     else:
         from src import data as D
 
@@ -237,6 +255,8 @@ def main() -> int:
 
         if args.smoke:
             matches, scenarios, grid = [MATCH_IDS[0]], ["kinematic"], smoke_grid()
+        elif args.stage3:
+            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_S3)
         elif args.stage2:
             matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_EXT)
         else:
@@ -261,24 +281,31 @@ def main() -> int:
 
         df = pd.DataFrame(all_rows)
         out_path = (ROOT / "tuning" / "results" / "smoke.csv") if args.smoke else (
-            RESULTS_STG2 if args.stage2 else RESULTS)
+            RESULTS_STG3 if args.stage3 else
+            (RESULTS_STG2 if args.stage2 else RESULTS))
         df.to_csv(out_path, index=False)
         print(f"wrote {out_path} ({len(df)} rows)", flush=True)
         if args.smoke:
             return 0
 
     integrity = None
-    if args.stage2:
-        # overlapping cells must reproduce stage-1 numbers exactly (same config)
-        base = pd.read_csv(RESULTS)
-        base = base[base["scenario"] == "none"]
-        merged = df.merge(base, on=["match_id", "scenario", *PARAMS],
-                          suffixes=("_s2", "_s1"))
+    if args.stage2 or args.stage3:
+        # overlapping cells must reproduce the prior stage's numbers exactly
+        prior = pd.read_csv(RESULTS if args.stage2 else RESULTS_STG2)
+        prior = prior[prior["scenario"] == "none"]
+        merged = df.merge(prior, on=["match_id", "scenario", *PARAMS],
+                          suffixes=("_new", "_old"))
         if len(merged):
-            diff = (merged["spell_f1_s2"] - merged["spell_f1_s1"]).abs().max()
-            integrity = f"{len(merged)} overlapping cells reproduce stage 1 (max |Δ| {diff:.2e})"
+            diff = (merged["spell_f1_new"] - merged["spell_f1_old"]).abs().max()
+            integrity = (f"{len(merged)} overlapping cells reproduce the prior stage "
+                         f"(max |Δ| {diff:.2e})")
             assert diff < 1e-9, integrity
             print("integrity:", integrity, flush=True)
+    if args.stage3:
+        # final selection runs on the stage2+stage3 union (stage3 wins overlaps)
+        prior = pd.read_csv(RESULTS_STG2)
+        df = (pd.concat([prior, df], ignore_index=True)
+              .drop_duplicates(subset=["match_id", "scenario", *PARAMS], keep="last"))
 
     # ---- selection + report ----
     chosen, detail = flat_select(df, scenario=select_scenario)
@@ -291,7 +318,7 @@ def main() -> int:
                       .groupby(PARAMS)["spell_f1"].mean().max())
     ci = bootstrap_ci(chosen_scores)
 
-    lomo_df = lomo(df, chosen)
+    lomo_df = lomo(df, chosen, scenario=select_scenario)
     gap = float((lomo_df["fold_score"] - lomo_df["global_score"]).mean())
 
     robust = {}
@@ -301,11 +328,12 @@ def main() -> int:
             cell = cell[cell[p] == v]
         robust[scenario] = float(cell["spell_f1"].mean()) if len(cell) else None
 
+    n_cells = int(df[PARAMS].drop_duplicates().shape[0])
     lines = [
-        f"# P5 {'stage-2 extension' if args.stage2 else 'sweep'} report "
-        "(IDSSE, CC BY 4.0 — external only)",
+        f"# P5 {'stage-3 final' if args.stage3 else ('stage-2 extension' if args.stage2 else 'sweep')} "
+        "report (IDSSE, CC BY 4.0 — external only)",
         "",
-        f"- grid: {len(grid_used)} cells x {sorted(df['scenario'].unique())} x "
+        f"- grid: {n_cells} unique cells x {sorted(df['scenario'].unique())} x "
         f"{df['match_id'].nunique()} matches",
         "- metric: spellF1 (vendored official metric code) on algorithmically derived labels",
         f"- selection scenario: {select_scenario}; rule: within 0.01 of best, "
@@ -333,7 +361,7 @@ def main() -> int:
         "- third fill scenario (simulated detector) dropped with the detector tier (stretch)",
         "- mask placement uniform (real missingness correlates with phases we may not quantify)",
     ]
-    report_path = REPORT_STG2 if args.stage2 else REPORT
+    report_path = REPORT_FINAL if args.stage3 else (REPORT_STG2 if args.stage2 else REPORT)
     report_path.write_text("\n".join(lines) + "\n")
     print(f"chosen: {_cell_str(chosen)}")
     print(f"mean {chosen_mean:.4f} (best {best_mean:.4f}) CI {ci}")

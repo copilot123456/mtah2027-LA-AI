@@ -18,14 +18,14 @@ CFG = dict(
 
     # --- geometry / evidence ---
     topk=3,                       # nearest slots used for team evidence
-    sigma_m=4.0,                  # evidence falloff scale, metres
+    sigma_m=1.5,                  # evidence falloff scale, metres (was 4.0 prior)
     pitch_margin=0.02,            # out-of-pitch margin in normalized units (~2 m)
 
     # --- decoder ---
-    switch_pen=8.0,               # log-cost of H<->A switch (nats)
+    switch_pen=2.0,               # log-cost of H<->A switch (nats; was 8.0 prior)
     dead_pen=5.0,                 # log-cost of entering/leaving D (nats)
-    min_dwell_s=1.0,              # minimum segment length, seconds
-    switch_support_s=0.6,         # non-ATD evidence must persist this long to switch
+    min_dwell_s=2.0,              # minimum segment length, seconds (was 1.0 prior)
+    switch_support_s=1.5,         # non-ATD evidence must persist this long to switch
     gate_switches=True,           # revert switches unsupported by nearby ATD frames (P5 ablates)
 
     # --- ball fill tiers ---
@@ -71,13 +71,19 @@ PROVENANCE = {
     "pitch_length_m": ("fixed_default", "games.py pitch, measured from corrected tracking"),
     "pitch_width_m": ("fixed_default", "games.py pitch, measured from corrected tracking"),
     "topk": ("prior", "capped nearest-neighbour evidence; slots swap identity, so few and recent"),
-    "sigma_m": ("prior", "ball-to-nearest-player distances in football are a few metres"),
+    "sigma_m": ("external_fit", "IDSSE 930-cell union: 1.5 (prior 4.0); interior peak found "
+                 "in stage 3 — marginals 1.0:0.2627, 1.5:0.2644, 2.0:0.2417, 3.0:0.2245"),
     "pitch_margin": ("prior", "~2 m outside the touchline counts as out of play"),
-    "switch_pen": ("prior", "H<->A must clear several seconds of contrary evidence (Jose plan init)"),
-    "dead_pen": ("prior", "D transitions are restarts; cheaper than team switches (Jose plan init)"),
-    "min_dwell_s": ("prior", "sub-second possessions are tracker flicker, not football"),
-    "switch_support_s": ("prior", "weak (filled) evidence must persist before a switch (Jose plan init)"),
-    "gate_switches": ("prior", "tier-2/3 must not switch alone; P5 ablates +/- gating on IDSSE"),
+    "switch_pen": ("external_fit", "IDSSE: 2.0 (prior 8.0); 2-vs-4 flat at noise, both above "
+                   "8 (0.2263/0.2251/0.2196/0.2042 union marginals)"),
+    "dead_pen": ("prior", "IDSSE surface flat (0.2195-0.2198 across 3-8): value immaterial; "
+                 "prior from Jose plan init retained (center of range)"),
+    "min_dwell_s": ("external_fit", "IDSSE: 2.0 s (prior 1.0); interior peak — "
+                    "1.0:0.2343, 2.0:0.2394, 3.0:0.2167"),
+    "switch_support_s": ("external_fit", "IDSSE: 1.5 s (prior 0.6); flat 1.0-1.5 at the top, "
+                         "both well above 0.3"),
+    "gate_switches": ("prior", "tier-2/3 must not switch alone; ablated +/- on IDSSE (scenario "
+                      "results embed gating on)"),
     "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "
                          "IDSSE layer ablation kinematic-none = -0.0112 spellF1, "
                          "CI [-0.017, -0.007], 7/7 matches negative, all-cell mean -0.0089"),
@@ -88,8 +94,10 @@ PROVENANCE = {
     "c0_atd": ("fixed_default", "raw tracking is full evidence"),
     "c0_kinematic": ("prior", "fills are estimates: start 20% below raw tracking"),
     "tau_kinematic_s": ("prior", "trust decays over a few seconds (Jose plan init)"),
-    "err_kinematic_m": ("prior", "filled positions are a couple of metres off (Jose plan init)"),
-    "d_bias": ("prior", "logit of ~1/3 dead ball; IDSSE sample showed 33% dead frames (P5 re-derives on all 7 matches)"),
+    "err_kinematic_m": ("prior", "filled positions a couple of metres off (Jose plan init); "
+                        "inactive while the fill tier is off"),
+    "d_bias": ("prior", "logit of ~1/3 dead ball; external re-fit to the IDSSE 45% D share "
+               "was TRIED and REJECTED (-0.177 spellF1, post_checks) — prior retained with evidence"),
     "d_w_out_of_pitch": ("prior", "ball beyond margin => dead (Jose WP3 design)"),
     "d_w_stationary": ("prior", "ball at rest => dead (restarts)"),
     "d_w_boundary": ("prior", "ball on the line => dead (throw-ins, corners)"),
