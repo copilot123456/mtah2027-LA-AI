@@ -102,33 +102,34 @@ def main() -> int:
         masked, _ = mask_ball(case.ball, run_lengths, rng)
         track = build_ball_track(masked, case.half, base)
         gt = pm.label_codes(case.letters)
-        runs = pm.valid_runs(gt)
         for tag, bias, x_on in variants:
             cfg = {**base, **chosen, "d_bias": bias, "x_use": x_on}
             em = build_emission(track, case.players, case.players_s, case.slot_team, cfg)
             decoded = decode(em, track.source, case.half, cfg)
             labels = apply_x_policy(decoded.labels, em.conf, case.half, cfg)
             pred = pm.label_codes(_LETTERS[np.asarray(labels, dtype=np.int8) + 1])
-            spell = pm.spell_scores(gt, pred, runs)["mean_f1"]
-            cm3 = pm.scored_confusion(pm.confusion(gt, pred))
+            scores = _score(gt, pred)          # official semantics (X forward-filled)
             rows.append({"match_id": mid, "d_bias_tag": tag, "d_bias": bias,
-                         "x_use": x_on, "spell_f1": float(spell),
-                         "macro_f1": float(pm.macro_f1(cm3))})
-            print(f"  {mid} {tag:5s} x_use={x_on}: spell {spell:.4f}", flush=True)
+                         "x_use": x_on, **scores})
+            print(f"  {mid} {tag:5s} x_use={x_on}: spell {scores['spell_f1']:.4f}  "
+                  f"macro {scores['macro_f1']:.4f}", flush=True)
 
     out = pd.DataFrame(rows)
     out.to_csv(out_path, index=False)
 
     base = out[(out.d_bias_tag == "prior") & (~out.x_use)]["spell_f1"]
     print(f"\nbaseline (prior, x off): mean {base.mean():.4f}")
+    base_macro = out[(out.d_bias_tag == "prior") & (~out.x_use)]["macro_f1"]
     verdicts = {}
     for tag, x_on, name in [("fit", False, "d_bias fit"), ("prior", True, "x_use on"),
                             ("fit", True, "both")]:
-        sub = out[(out.d_bias_tag == tag) & (out.x_use == x_on)]["spell_f1"]
-        delta = float(sub.mean() - base.mean())
+        sel = out[(out.d_bias_tag == tag) & (out.x_use == x_on)]
+        delta = float(sel["spell_f1"].mean() - base.mean())
+        delta_macro = float(sel["macro_f1"].mean() - base_macro.mean())
         adopt = delta > ADOPT_GAIN
         verdicts[name] = (delta, adopt)
-        print(f"{name:10s}: mean {sub.mean():.4f}  delta {delta:+.4f}  "
+        print(f"{name:10s}: mean {sel['spell_f1'].mean():.4f}  delta {delta:+.4f}  "
+              f"(macroF1 delta {delta_macro:+.4f})  "
               f"{'ADOPT' if adopt else 'keep shipped (<= 0.02 tie rule)'}")
     print(f"wrote {out_path}")
     return 0

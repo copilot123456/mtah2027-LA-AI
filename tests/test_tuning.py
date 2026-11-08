@@ -11,6 +11,7 @@ from tuning.sweep import (
     GRID,
     PARAMS,
     _neighbour_means,
+    _score,
     bootstrap_ci,
     flat_select,
     grid_points,
@@ -142,6 +143,38 @@ def test_lomo_returns_all_folds():
     assert len(table) == 7
     assert table["fold_score"].notna().all()
     assert table["global_score"].notna().all()
+
+
+def test_harness_scorer_matches_the_official_evaluate():
+    """The sweep/post_checks scorer must agree with evaluate(): X inside a graded run is
+    forward-filled for spellF1 (H X X H is one possession) and charged only in macroF1."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "evaluation"))
+    import possession_metrics as pm
+
+    n = 3_000
+    gt_letters = np.full(n, "X", dtype=object)
+    blocks = [(100, 700, "H"), (700, 1200, "A"), (1200, 1300, "D"), (1300, 2000, "H"),
+              (2100, 2600, "A"), (2600, 2900, "D")]
+    for start, stop, lab in blocks:
+        gt_letters[start:stop] = lab
+    pred_letters = gt_letters.copy()
+    pred_letters[400:450] = "X"                       # abstention inside a possession
+    pred_letters[1250:1280] = "X"                     # abstention inside a dead-ball run
+    pred_letters[2100:2130] = "X"                     # abstention at a run head (back-filled)
+    pred_letters[1500:1560] = "A"                     # one wrong stretch: macroF1 < 1, extra spell
+    gt, pred = pm.label_codes(gt_letters), pm.label_codes(pred_letters)
+
+    ours = _score(gt, pred)
+    official = pm.evaluate(gt, pred, bootstrap_n=0)
+    assert ours["spell_f1"] == pytest.approx(official["spell_f1_mean"], abs=1e-12)
+    assert ours["macro_f1"] == pytest.approx(official["macro_f1"], abs=1e-12)
+    # and the fill really matters here: scoring the raw X would differ
+    runs = pm.valid_runs(gt)
+    raw = pm.spell_scores(gt, pred, runs)["mean_f1"]
+    assert raw != pytest.approx(ours["spell_f1"], abs=1e-6)
 
 
 def test_neighbour_means_use_the_swept_values():

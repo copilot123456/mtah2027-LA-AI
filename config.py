@@ -106,7 +106,8 @@ PROVENANCE = {
     "ball_stationary_thr_ms": ("prior", "~1 m/s is a still ball; measured p50 pass speed is ~7 m/s (deep-dive 2)"),
     "d_missing_run_s": ("prior", "10 s without a ball: matches the median missing run (~10.7 s)"),
     "d_activity_thr_ms": ("prior", "players walking (<~2 m/s) is the stoppage signature"),
-    "x_use": ("prior", "off by default: emit>=X for a dwell/gated path; P5 ablates on IDSSE"),
+    "x_use": ("prior", "off by default: emit>=X for a dwell/gated path; IDSSE ablation under the "
+              "official scoring: spellF1 identical (the fill restores the label), macroF1 -0.11"),
     "x_stable_s": ("prior", "EVALUATION.md: abstain inside a stable possession, guess at changes"),
     "x_conf_max": ("prior", "abstain only when the decoder is genuinely unsure"),
 }

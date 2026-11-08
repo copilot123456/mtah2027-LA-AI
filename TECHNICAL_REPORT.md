@@ -44,7 +44,8 @@ external data (IDSSE), with every parameter carrying an explicit provenance
    decoded label produces the same forward-filled array as abstaining (so `spellF1` cannot
    improve) while `macroF1` can only lose a true positive. The alternative policy
    (abstain in stable low-confidence interiors, per the docs' guidance for per-frame
-   systems) was implemented and evaluated on external data: −0.011 spellF1 — kept off.
+   systems) was implemented and evaluated on external data under the official scoring:
+   spellF1 identical to the shipped path on every match, macroF1 −0.11 — kept off.
 
 ## Assets used — and which were tried and dropped
 
@@ -89,9 +90,10 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 |---|---|---|
 | Kinematic fill tier | paired `kinematic − none` = **−0.0112** spellF1, 95 % CI [−0.017, −0.007], 7/7 matches negative; all-cell mean −0.0089 | **dropped** |
 | Dead-bias re-fit to the external D share | **−0.177** spellF1 at the stage-1 cell; **−0.085** at the shipped cell, 7/7 matches negative | rejected; prior kept |
-| X-policy on graded frames | **−0.011** at the stage-1 cell; **−0.034** at the shipped cell, negative on 6/7 matches | kept off |
+| X-policy on graded frames | spellF1 **identical** at both cells (the scorer forward-fills `X` inside a possession); macroF1 **−0.079** / **−0.110**, 7/7 matches negative | kept off |
 
-(`tuning/results/post_checks.csv` and `post_checks_final.csv`; adoption rule: gain > 0.02.)
+(`tuning/results/post_checks.csv` and `post_checks_final.csv`, scored with the official
+forward-fill semantics; adoption rule: gain > 0.02.)
 
 ## Limitations
 

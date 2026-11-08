@@ -29,7 +29,8 @@ auditor does not redo it). Line numbers refer to `a6bb75a`.
 | A5 | info | correctness | `src/submit.py`, `src/decoder.py`, `src/data.py`, `games.py` | scorer interface verified: internal `X=-1` → letter → scorer `X=3` round-trips (`test_official_reader_roundtrip`); per-half decode enforces contiguity (now tested); alignment `video_frame = frame_id - 1` and graded spans tested against the organisers' numbers; Viterbi ties resolve to the first argmax (deterministic); log floors at `EPS=1e-12` keep every emission finite (now tested for an invisible team); NaN ball-speed edges never count as stationary (now tested) | verified |
 | B1 | info | compliance | repo-wide | `grep` for `_gt`, `possession_gt`, `run_evaluation`, `scoreboard` outside `evaluation/`: hits only in `tuning/*` on IDSSE-derived labels (`pm.label_codes(case.letters)`); no test reads `evaluation/gt/`; local `evaluation/scoreboard.csv` lists the four baselines only; `evaluation/results/` holds only the shipped baselines | verified |
 | B2 | medium | compliance / portability | `tuning/idsse.py:33-34` | default `IDSSE_DIR` was a hard-coded path in the operator's home directory, in a public repo | fixed `d96b830` — default `data/idsse/` (gitignored), env override kept; a local symlink `data/idsse → <operator store>` preserves the operator's workflow |
-| B3 | medium | compliance / dossier accuracy | `tuning/post_checks.py:1-14,40-41`, `dossier.md:75-80` | the d_bias and X-policy adoption checks ran at the **stage-1** chosen cell (`4/8/3.0/2.0/1.0`) with the fill tier **on**, before stages 2-3 and the fill ablation; the dossier said "on the CHOSEN grid cell" without saying which. Re-run at the shipped cell (`--final`, external IDSSE only): baseline 0.2759 (= the sweep's cell mean), d_bias fit −0.0847 (7/7 negative), X-policy −0.0338 (6/7 negative), both −0.1269 — all three decisions stand under the > 0.02 rule. Default mode re-run reproduces the committed `post_checks.csv` with max diff 0.00e+00 | fixed `d96b830` (`--final` mode, default pins the fill tier on so it stays reproducible) + `d60b66d` (dossier §7, report table, `post_checks_final.csv`) |
+| B3 | medium | compliance / dossier accuracy | `tuning/post_checks.py:1-14,40-41`, `dossier.md:75-80` | the d_bias and X-policy adoption checks ran at the **stage-1** chosen cell (`4/8/3.0/2.0/1.0`) with the fill tier **on**, before stages 2-3 and the fill ablation; the dossier said "on the CHOSEN grid cell" without saying which. Re-run at the shipped cell (`--final`, external IDSSE only): baseline 0.2759 (= the sweep's cell mean), d_bias fit −0.0847 (7/7 negative); X-policy: see B8 — the −0.0338 first recorded here was a scoring artifact. Default mode re-run reproduced the committed `post_checks.csv` with max diff 0.00e+00 | fixed `d96b830` (`--final` mode, default pins the fill tier on so it stays reproducible) + `d60b66d` (dossier §7, report table, `post_checks_final.csv`); numbers restated in the addendum (§6) |
+| B8 | medium | correctness of the external evidence | `tuning/sweep.py:90-94`, `tuning/post_checks.py:112` | **found after the audit by the P6 planning pass, verified here:** the harness scored predicted `X` with `spell_scores` on the raw codes, while the official `evaluate()` forward-fills `X` inside graded runs first (`fill_abstentions`). The P5 sweep is unaffected (the decoder never writes `X` on graded frames), but the X-policy ablation counted `H X X H` as two possessions. Re-scored with `evaluate()` on the 7 matches at the shipped cell: X on = 0.2759 spellF1 on every match (delta 0.0000 ×7), macroF1 0.7167 → 0.6069 | fixed (addendum commit): `_score` applies the fill; `post_checks.py` shares it; both matrices regenerated; equality test added |
 | B4 | medium | compliance / selection rule | `tuning/sweep.py:149-167` | `_neighbour_means` drew the "other values" of each parameter from the stage-1 `GRID` literal, so on the stage-2/3 extension it ignored the new notches (σ 1.0/1.5/2.0, dwell 3.0, support 1.5, switch 2.0) and probed stage-1 notches never swept at the new values. Re-running the pre-declared rule on the committed stage-2+3 union with the values actually swept: same cell, mean 0.2759, CI [0.2578, 0.2932], LOMO −0.0026, worst neighbour 0.2081 — unchanged | fixed `d96b830`; `test_final_selection_reproduces_frozen_config` + `test_neighbour_means_use_the_swept_values` added |
 | B5 | low | compliance / hygiene | `.gitignore` | `tuning/results/smoke.csv` (output of `--smoke`) was neither tracked nor ignored; the real matrices are tracked as intended | fixed `33b2f2e` |
 | B6 | info | compliance | `config.py`, `tests/test_config.py` | provenance table complete, no `provided_*` origins; the checker itself was untested — a negative test now proves it reports each failure mode | verified + test added `694d95f` |
@@ -144,6 +145,28 @@ git status: clean
 External re-checks (IDSSE only): `post_checks.py` default mode vs committed `post_checks.csv`:
 28 rows, max |Δ spellF1| 0.00e+00; `--final` run before vs after the X-policy fix: 28 rows,
 max |Δ| 0.00e+00.
+
+## 6. Addendum (2026-11-07, after the audit was pushed)
+
+The P6 planning session read this audit and the harness and found B8: the external X-policy
+numbers quoted in dossier §7, the technical report, the vault note and finding B3 above were
+artifacts of scoring abstentions without the official forward-fill. Verified by re-scoring the
+shipped cell on IDSSE with the vendored `evaluate()`:
+
+| variant | harness spellF1 (old) | official spellF1 | official macroF1 |
+|---|---|---|---|
+| X off (shipped) | 0.2759 | 0.2759 | 0.7167 |
+| X on | 0.2421 | 0.2759 | 0.6069 |
+
+The decision (X off) stands — for the reason `src/x_policy.py` already gives: under the fill a
+stable-interior `X` reproduces the decoded label, so spellF1 cannot move and the macroF1 tiebreak
+can only lose. What changed in the addendum commit: `tuning/sweep.py::_score` now fills before
+`spell_scores` (exactly as `evaluate()`), `tuning/post_checks.py` uses the same scorer and also
+prints the macroF1 delta, both post-check matrices were regenerated (d_bias rows identical to the
+last digit; X rows: spellF1 tie at both cells, macroF1 −0.079 stage-1 / −0.110 shipped), the
+`x_use` provenance note, dossier §7, the report's layer table and this file were restated, and
+`test_harness_scorer_matches_the_official_evaluate` pins the equality. Label outputs unchanged
+(md5 `aeef0058a08860c9e2407423b1172684`).
 
 ## 5. Compliance statement
 

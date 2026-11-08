@@ -91,8 +91,17 @@ def grid_points() -> list[dict]:
 
 
 def _score(gt_codes: np.ndarray, pred_codes: np.ndarray) -> dict:
+    """spellF1 / macroF1 exactly as the official evaluate() computes them.
+
+    The scorer forward-fills predicted X inside each graded run (fill_abstentions) before
+    the temporal metric and charges the raw X only in the frame-level confusion. Until
+    2026-11-07 this helper skipped the fill, so a variant that writes X on graded frames
+    (the P5 X-policy ablation) scored `H X X H` as two possessions; the sweep itself never
+    writes X on graded frames and was unaffected. tests/test_tuning.py pins the equality.
+    """
     runs = pm.valid_runs(gt_codes)
-    spell = pm.spell_scores(gt_codes, pred_codes, runs)["mean_f1"]
+    filled = pm.fill_abstentions(pred_codes, runs)
+    spell = pm.spell_scores(gt_codes, filled, runs)["mean_f1"]
     cm3 = pm.scored_confusion(pm.confusion(gt_codes, pred_codes))
     return {"spell_f1": float(spell), "macro_f1": float(pm.macro_f1(cm3))}
 

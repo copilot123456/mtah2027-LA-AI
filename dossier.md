@@ -79,16 +79,26 @@ at noise level.
 |---|---|---|
 | Kinematic fill tier | paired −0.0112 spellF1, CI [−0.017, −0.007], 7/7 negative; all-cell −0.0089 | **dropped** (`fill_long_gap_s=0`, external_fit) |
 | d_bias re-fit to IDSSE D share (45%) | −0.177 spellF1 at the stage-1 cell; −0.0847 at the shipped cell, 7/7 negative | **rejected**, prior −0.70 retained with evidence |
-| X-policy on graded frames | −0.0113 at the stage-1 cell, 6/7 negative; −0.0338 at the shipped cell, 6/7 negative | **off** |
+| X-policy on graded frames | spellF1 **identical** to the shipped path at both cells (the scorer forward-fills `X` inside a possession, so a stable-interior `X` reproduces the decoded label); macroF1 −0.079 at the stage-1 cell, −0.110 at the shipped cell, 7/7 negative | **off** (tiebreak loses, nothing to gain) |
 
 **Post-selection checks — where they ran.** `tuning/results/post_checks.csv` (2026-11-07, before
 stage 2) evaluated both candidates at the **stage-1** chosen cell (`switch_pen=4, dead_pen=8,
 sigma_m=3.0, min_dwell_s=2.0, switch_support_s=1.0`) under the `kinematic` scenario, i.e. with
 the fill tier still on. The audit re-ran the same checks at the **shipped** cell with the shipped
 fill setting (`python -m tuning.post_checks --final` → `post_checks_final.csv`): baseline 0.2759
-(identical to the sweep's cell mean), d_bias re-fit −0.0847, X-policy −0.0338, both −0.1269 — all
-three decisions stand under the pre-declared > 0.02 adoption rule. The default mode of
-`post_checks.py` reproduces the committed file to the last digit.
+(identical to the sweep's cell mean), d_bias re-fit −0.0847, X-policy ±0.0000 spellF1 /
+−0.110 macroF1, both −0.0847 — all three decisions stand under the pre-declared > 0.02 adoption
+rule. The default mode of `post_checks.py` reproduces the stage-1 record (`post_checks.csv`).
+
+**Correction (2026-11-07, found by the P6 planning pass, verified against the vendored scorer).**
+Until this date `tuning/sweep.py::_score` and `tuning/post_checks.py` scored predicted `X` without
+the forward-fill that the official `evaluate()` applies (`fill_abstentions`), so the X-policy
+ablation counted `H X X H` as two possessions. The P5 sweep never writes `X` on graded frames and
+is unaffected (verified: no `X` inside any graded run at any cell); the earlier X-policy figures
+(−0.0113 stage-1, −0.0338 shipped) were artifacts. Both post-check matrices were regenerated with
+the corrected scorer (previous versions in git history at `a6bb75a` and `d60b66d`); the d_bias
+rows are unchanged to the last digit, the X rows now show the spellF1 tie and the macroF1 loss.
+The harness scorer is pinned to `evaluate()`'s semantics by a test.
 
 **Selection rule — implementation note.** The plateau rule's "worst grid-neighbour" took its
 candidate values from the stage-1 grid literal; on the stage-2/3 extension this ignored the new
