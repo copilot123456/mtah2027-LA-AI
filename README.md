@@ -16,6 +16,11 @@ independent audit of the frozen state is `AUDIT.md`.
 > **[PIPELINE_STANDARD_AI.md](./PIPELINE_STANDARD_AI.md)** (AI agents) — the plug-and-play
 > pipeline framework: swap, add or reorder pipeline stages in one file (`pipeline_spec.py`).
 > **Any change to the framework itself must be shared with the team before it merges.**
+>
+> **🧾 Branch reports: [AI-SOP-SKILL.md](./AI-SOP-SKILL.md)** — the standard for the two reports
+> every branch produces before the Wed 11-11 sync: human `reports/<slug>.html` (exec style,
+> improvement-focused) + AI `reports/<slug>_AI.md` (full detail), built on the branch they
+> describe.
 
 ## Layout
 
@@ -37,6 +42,7 @@ independent audit of the frozen state is `AUDIT.md`.
 | `TECHNICAL_REPORT.md` | submission document |
 | `AUDIT.md` | independent audit of the frozen pipeline: findings, fixes, verification |
 | `PIPELINE_STANDARD.html`, `PIPELINE_STANDARD_AI.md` | the pipeline framework standard in two editions (human / AI) — **framework changes must be shared with the team before merging** |
+| `AI-SOP-SKILL.md`, `reports/` | parallel-work report standard (workflow + human/AI templates); per-branch reports live in `reports/` on the branch they describe |
 | `reference-docs/` | local-only copies of the challenge docs (not tracked) |
 
 ## Reproduce
