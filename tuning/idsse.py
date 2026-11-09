@@ -97,6 +97,48 @@ def derive_letters(period: np.ndarray, state: np.ndarray, owner,
     return letters, counts
 
 
+def derive_letters_controlled(letters: np.ndarray, fps: int = 25,
+                              hold_s: float = 3.0) -> np.ndarray:
+    """Challenge-definition labels (E1) — pre-declared: dossier §7 P6 (2026-11-09).
+
+    Rule (plan §0 "literal rule, sequential, chaining merges"; T a priori from
+    CHALLENGE.md "a player keeps the ball for a few seconds"):
+
+      * maximal H/A runs are alive runs; D or X is a stoppage between them;
+      * the first alive run after a stoppage starts a fresh possession (never absorbed);
+      * an alive run shorter than `hold_s`, directly preceded by another alive run with no
+        stoppage between, is relabelled to the preceding team ("loose or contested ball
+        stays with the last team"); the absorbing team persists, so consecutive short runs
+        chain into the same possession;
+      * an alive run >= `hold_s` is a genuine possession change;
+      * D/X frames never change (dead share invariant by construction).
+
+    Pure: the input array is not modified. `hold_s` is pinned a priori (primary 3 s,
+    sensitivity {2, 5} reported — never selected on the public window).
+    """
+    out = np.array(letters, dtype=object)          # writable copy
+    need = max(1, int(round(hold_s * fps)))
+    current = None                                  # team of the possession in progress
+    n, i = len(out), 0
+    while i < n:
+        lab = out[i]
+        if lab not in ("H", "A"):
+            current = None                          # stoppage/outside: next run is fresh
+            i += 1
+            continue
+        j = i
+        while j < n and out[j] == lab:
+            j += 1                                 # maximal alive run [i, j)
+        if current is None or current == lab:
+            current = lab                          # fresh possession or continuation
+        elif (j - i) < need:
+            out[i:j] = current                     # absorb short control into last team
+        else:
+            current = lab                          # held >= hold_s: genuine change
+        i = j
+    return out
+
+
 def _parse(match_id: str) -> IdsseMatch:
     from kloppy import sportec
 
