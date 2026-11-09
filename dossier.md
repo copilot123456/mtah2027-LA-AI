@@ -154,6 +154,29 @@ the operator, per the guard protocol.
 - **If adopted:** `LA+AI.csv` is regenerated in the same branch commit (new md5 documented in
   the branch report); adoption into the final branch remains a team decision.
 
+#### E1 — challenge-definition labels (pre-declared 2026-11-09, operator: "proceed with E1")
+
+- **Rule (exact; lands as `derive_letters_controlled()` in `tuning/idsse.py`):** process the
+  maximal alive runs (H/A) of the original IDSSE-derived letters left to right; `D`/`X` is a
+  stoppage. The first alive run after a stoppage starts a **fresh possession — never
+  absorbed**. An alive run **shorter than `T`** that is directly preceded by another alive run
+  (no stoppage between) is relabelled to the preceding team ("loose or contested ball stays
+  with the last team"; CHALLENGE.md: "a player keeps the ball for a few seconds"); the
+  absorbing team persists — **chaining merges**. An alive run **≥ `T`** is a genuine
+  possession change. `D`/`X` frames never change (dead share invariant by construction).
+- **`T` = 3 s primary, a priori** (CHALLENGE.md "a few seconds"; plan §2; operator approval
+  2026-11-09). **Sensitivity `T` ∈ {2, 5} s** — reported in the statistics table, never used
+  to select: plan §0 correction and do-not-do 1 forbid choosing `T` by matching the public
+  window.
+- **Purpose now:** the label-statistics table only. Scoring happens solely inside the
+  pre-declared E1→E2 combined 144-cell pass (plan §2 protocol: primary table aligned labels ×
+  phase masks, plateau rule, adopt only > 0.02 paired and not worse > 0.02 elsewhere) — that
+  pass's grid and rule go into this section *before* it runs.
+- **Fidelity probe (pre-registered):** statistics at `T` = 3 s must land near the plan §0
+  audited probe (mean 2.49 possessions/min, 13.4 s mean length, 0.03 share under 2 s over the
+  7 matches). A material mismatch means this implementation differs from the probed rule and
+  must be reconciled before any compute.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
