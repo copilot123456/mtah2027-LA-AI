@@ -303,6 +303,49 @@ the operator, per the guard protocol.
 - **Reproduce:** `.venv/bin/python -m tuning.stage4` (≈35 min) →
   `.venv/bin/python -m tuning.gate1` (read + report) → tests green.
 
+#### E7 — set-piece dead-ball prior + band-C D-feature audit (pre-declared 2026-11-09, before implementation and before the gate)
+
+- **Trigger:** plan §2 rank 6 (pre-existing) + band-C read (dossier §3: `f1_D` low →
+  D-feature audit folded into E7) + Gate 1 finished a day early, so E7 pulls forward
+  per plan §3 ("E7 only if early").
+- **Feature (exact):** `f_sp(t) = 1` iff a set-piece tag start lies in
+  `[start − sp_pre_s, start + sp_post_s]` with `sp_pre_s = 2.0`, `sp_post_s = 1.0`
+  (plan §2 E7 window, a priori). It enters **only** the dead logit:
+  `z += d_w_set_piece · f_sp`, `d_w_set_piece` = **0.0 (OFF)** with the ON value pinned
+  at **1.0** (plan §2 "weight prior 1.0"). Timing only — no team, no side, no type
+  distinction (`Team` is `N/A` on throw-ins and is ignored entirely).
+- **Inputs:**
+  - *Provided match (inference input, allowed):* smart tagging `code == "SET PIECES"` —
+    59 instances (Throw-in 26, Corner 12, Goal Kick 10, Free Kick 5, Kick Off 6),
+    `start_frame = round(seconds · 25)`.
+  - *IDSSE (gate + audit):* event children `ThrowIn`/`FreeKick`/`GoalKick`/`CornerKick`/
+    `KickOff` — 90–108 per match (J03WPY 93 = plan's ≈93) — parent `EventTime` mapped to
+    rows by the same StartFrame-anchored per-period alignment as E2 cue 3, then
+    **simulated tagging noise, all a priori** (plan §2 E7): jitter ±1 s uniform, drop 25 %,
+    add `round(0.10 × n_real)` spurious events at uniformly random frames; one seeded
+    stream per match, `default_rng(MASK_SEED + 700 + Σ ord(match_id))`.
+- **Gate (a priori):** frozen cell only, `d_w_set_piece` 0 → 1, 7 matches, the four
+  decision tables (uniform/phase × orig/aligned), **primary = phase α=2 × aligned**
+  (the standing Gate-1 primary). Pass iff paired Δ > 0.02 **and** ≥ 5/7 positive **and**
+  no-harm (≥ −0.02) on the other three tables. Fail → stays OFF. The plan's own prior
+  (+0.00 … +0.01) sits **below** the bar: the expected outcome is OFF unless surprised.
+- **D-feature audit (band C, read-only):** frozen cell, feature OFF, both masks × both
+  labels — per-frame D confusion and each dead feature's firing rate conditioned on
+  {D-correct, missed-D, false-D}, plus `f_sp` coverage of missed-D frames (the external
+  upside estimate). Report only; the audit never adjusts a weight — the gate decides alone.
+- **Implementation surface:** `config.py` (+`d_w_set_piece`, `sp_pre_s`, `sp_post_s`,
+  provenance), `src/emission.py` (`f_sp` + z term), `src/data.py` (`MatchArrays.setpiece`),
+  `src/steps.py` (one pass-through line), `tuning/e7.py` (gate + audit + report). The
+  `pipeline_spec.py` contract is **unchanged** (the field rides inside `arrays`; stage
+  names and requires/provides untouched). With `d_w_set_piece = 0` the z-vector is
+  bit-identical → `LA+AI.csv` regeneration stays byte-identical. If the gate ever passes,
+  the adoption follows the standard's external-evidence rule and is shared with the team
+  at the Wednesday convergence.
+- **Outputs:** `tuning/results/e7_gate.csv`, `tuning/results/report_e7.md`, dossier entry.
+- **Boundaries:** tagging is an inference input only (timing), never a fitting signal;
+  noise parameters a priori from plan §2; no window/GT/video; nothing here re-opens the
+  frozen cell's other parameters.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
