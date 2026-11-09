@@ -46,6 +46,7 @@ The video may be inspected to understand possession (allowed). Outputs are never
 1. Does "tune on external data" exclude fitting on the provided tracking (no GT/video)?
 2. May the public GT be used to evaluate (not fit) a frozen pipeline?
 3. May cloud AI assistants read aggregate diagnostics computed from the provided match?
+4. May a pretrained model run with a-priori parameters on the provided tactical video feed the pipeline (video as an input source, beyond "inspection to understand")? And are weights fine-tuned on provided-match material usable? (Jose's notebooks 02/04 assume video inference is allowed; `ball_ft_v3` training provenance unknown — asked 2026-11-09 after his notebook review.)
 
 Answers will be appended here verbatim when received.
 
