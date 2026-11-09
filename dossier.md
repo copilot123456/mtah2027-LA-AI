@@ -25,6 +25,7 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 |---|---|---|---|
 | 2026-11-07 | `evaluation/run_evaluation.py` on shipped baselines (repo smoke test) | assistant | environment validation only — no design decision taken from it |
 | 2026-11-07 | `evaluation/run_evaluation.py` after baseline regeneration (byte-identical check) | assistant | reproducibility check only |
+| 2026-11-09 | guarded run via `tuning/guarded_eval.py` → `run_evaluation.py --bootstrap 1000` on the frozen `LA+AI.csv` (public GT); full board archived `evaluation/reports/guarded_board_*.txt`, operator eyes only | operator | **band C**; flags `count 23–30 · f1_D low · balance normal · latency none` → **Gate 0 proceed** (sanity clean, band ∈ {A, B, C}); orders the P6 backlog per plan §1 — E2/E1 promoted, E3 demoted, D-feature audit (E7 variant) after E2; diagnosis: dead-ball mis-calibration (not over-merging, not latency); no design decision taken from the score; a second run only if a code path changes before the freeze |
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
