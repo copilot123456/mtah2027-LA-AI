@@ -75,7 +75,7 @@ def test_real_pre_kickoff_window_is_mostly_d_when_enabled(arrays):
     em = build_emission(track, arrays.players, arrays.players_s, arrays.slot_team, CFG)
 
     on = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": True})
-    off = decode(em, track.source, arrays.half, CFG)
+    off = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": False})
 
     window = slice(110_808, 113_742)
     d_on = float((on.labels[window] == CODE_D).mean())
