@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch report — ruiz-work (MTAH 2027 · LA+AI)</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1b2333; --muted:#5b6579; --line:#e3e7f0;
+  --accent:#4457d6; --accent2:#7c4ddb; --ok:#1a9e6b; --warn:#c77716; --bad:#c2453f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:74px}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--mono);font-size:.92em}
+pre{background:#141a2a;color:#dfe6f5;padding:14px 16px;border-radius:10px;overflow-x:auto}
+code{background:#eef1f8;padding:1px 6px;border-radius:6px}
+pre code{background:none;padding:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+h2{font-size:1.65rem;margin-top:0}
+h3{font-size:1.15rem}
+p{margin:.5em 0}
+small{color:var(--muted)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
+nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
+nav a:hover{background:#eef1f8;color:var(--ink)}
+nav a.active{background:var(--accent);color:#fff}
+nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
+
+/* ---------- hero ---------- */
+header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
+header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
+header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:99px;font-size:.83rem;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:26px}
+.kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
+.kpi .v{font-size:1.55rem;font-weight:800}
+.kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
+
+/* ---------- layout blocks ---------- */
+section{padding:44px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.b-done{background:#e2f6ed;color:var(--ok)} .b-run{background:#fff3df;color:var(--warn)}
+.b-next{background:#eef1f8;color:var(--muted)} .b-key{background:#eceefe;color:var(--accent)}
+.b-bad{background:#fdeceb;color:var(--bad)}
+.callout{border-left:4px solid var(--accent);background:#eef1f8;border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+.callout.warn{border-color:var(--warn);background:#fff7e8}
+.callout.ok{border-color:var(--ok);background:#eaf7f1}
+.callout.good{border-color:var(--accent2);background:#f3edfd}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
+tr:nth-child(even) td{background:#fbfcff}
+.bar{position:relative;height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);background:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+
+/* ---------- timeline ---------- */
+.timeline{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:3px solid var(--line)}
+.timeline li{position:relative;padding:0 0 22px 22px}
+.timeline li::before{content:"";position:absolute;left:-33px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.timeline li.todo::before{background:#c9cfdd}
+.timeline .t-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.timeline .t-title{font-weight:700}
+.timeline .t-body{color:var(--muted);font-size:.93rem}
+
+/* ---------- pipeline ---------- */
+.pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:18px 0}
+.pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;min-width:150px}
+.pipe .stage .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;align-items:center;justify-content:center;margin-bottom:6px}
+.pipe .stage .t{font-weight:700;font-size:.9rem}
+.pipe .stage .d{font-size:.76rem;color:var(--muted);margin-top:4px}
+.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;padding:0 6px}
+
+/* ---------- file docs ---------- */
+details.file{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+details.file summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
+details.file summary::-webkit-details-marker{display:none}
+details.file summary::before{content:"▸";color:var(--accent);transition:.15s}
+details.file[open] summary::before{transform:rotate(90deg)}
+details.file summary .role{font-weight:500;color:var(--muted);font-size:.85rem}
+details.file .body{padding:4px 18px 16px;border-top:1px solid var(--line);font-size:.93rem}
+.path{font-family:var(--mono);font-size:.85rem;background:#eef1f8;padding:2px 8px;border-radius:6px;color:#2b3557}
+.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin:26px 0 6px}
+
+/* ---------- commits ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font-weight:600;font-size:.83rem;cursor:pointer;color:var(--muted)}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.commit{display:grid;grid-template-columns:96px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:9px 0}
+.commit .hash{font-family:var(--mono);font-size:.82rem;color:var(--accent);font-weight:700}
+.commit .date{font-size:.74rem;color:var(--muted)}
+.commit .subj{font-weight:700;font-size:.95rem}
+.commit .why{font-size:.87rem;color:var(--muted);margin-top:3px}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.t-foundation{background:#eef1f8;color:#5b6579} .t-pipeline{background:#eceefe;color:#4457d6}
+.t-tuning{background:#f3edfd;color:#7c4ddb} .t-audit{background:#fff3df;color:#c77716}
+.t-docs{background:#e2f6ed;color:#1a9e6b} .t-vendor{background:#f0f1f4;color:#6b7280}
+
+footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;text-align:center}
+@media (max-width:640px){ header.hero h1{font-size:1.7rem} .commit{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">Branch report</span>
+  <a href="#summary">Summary</a>
+  <a href="#idea">The idea</a>
+  <a href="#changes">Changes</a>
+  <a href="#evidence">Evidence</a>
+  <a href="#compliance">Compliance</a>
+  <a href="#ask">Wednesday ask</a>
+  <a href="#reproduce">Reproduce</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <h1>Branch report — <span class="mono">ruiz-work</span></h1>
+  <p class="sub">E10 "no-play" rule: built, pre-declared, gated — <b>passed the gate, adopted,
+  then retracted</b> when the measured effect turned out to be 17× the approved envelope.
+  The frozen submission is untouched.</p>
+  <div class="chips">
+    <span class="chip">baseline: main @ de91a9f (locked common ground)</span>
+    <span class="chip">head: 34e76ba · 6 commits</span>
+    <span class="chip">operator + Copilot · LA+AI</span>
+    <span class="chip">2026-11-09</span>
+    <span class="chip">🟡 PROPOSED · verdict: ITERATE</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">PASS → retract</div><div class="l">no-harm gate → decision</div></div>
+    <div class="kpi"><div class="v">byte-identical</div><div class="l">md5 aeef0058… preserved</div></div>
+    <div class="kpi"><div class="v">97</div><div class="l">tests (92 → 97)</div></div>
+    <div class="kpi"><div class="v">8</div><div class="l">net files · +286 −2</div></div>
+  </div>
+</div></header>
+
+<section id="summary"><div class="wrap"><div class="card">
+  <h2>🖥️ One-screen summary</h2>
+  <p><b>The idea in one sentence:</b> the organizers' FAQ says the 2,934 graded frames before
+  the second-half kick-off are <i>all</i> <code>D</code> — our output says only 37 % — so build
+  a <i>generic</i> rule (no frame numbers) that labels sustained no-play stretches as dead,
+  gate it on external data, adopt if harmless.</p>
+  <table>
+    <tr><th>Metric</th><th>Common ground (de91a9f)</th><th>This branch (34e76ba)</th></tr>
+    <tr><td>Submission</td><td><code>aeef0058a08860c9e2407423b1172684</code></td><td><b>identical</b> — adopt + retract net to zero</td></tr>
+    <tr><td>Pre-kick-off window <code>D</code></td><td>37.4 % (fails the FAQ fact)</td><td>37.4 % — <b>fix shipped OFF, decision open</b></td></tr>
+    <tr><td>Rule status</td><td>does not exist</td><td>implemented, pre-declared, gate <b>PASS</b>, adopted, <b>retracted</b></td></tr>
+    <tr><td>Tests</td><td>92</td><td><b>97</b> (5 rule tests)</td></tr>
+    <tr><td>Organizer questions</td><td>Q1–Q3</td><td><b>+ Q4</b> (video as input; weights provenance)</td></tr>
+  </table>
+  <div class="callout warn"><b>Verdict: ITERATE.</b> The process worked exactly as designed —
+  pre-declare → gate → adopt → <i>measure</i> → discovered the effect left the approved
+  envelope → <b>retracted within the same session</b>, frozen output restored. The decision
+  (keep off / re-adopt / redesign) is yours, and the numbers are below.</div>
+</div></div></section>
+
+<section id="idea"><div class="wrap"><div class="card">
+  <h2>💡 The idea — what we tried to break</h2>
+  <p><b>E10 (P6 backlog rank 8):</b> the FAQ documents those pre-kick-off frames as all <code>D</code>;
+  we emit 37 % — a known, generic-fixable compliance gap (~1.8 % of graded frames, plan
+  estimated +0…+0.005 spellF1). The plan allowed only a <i>generic</i> rule — frame-specific
+  forcing is banned — checked for no-harm on IDSSE.</p>
+  <p><b>The rule as pre-declared:</b> inside the decoder, after gating and min-dwell: label a
+  frame <code>D</code> when the mean player speed stays below the existing 2 m/s prior for a
+  continuous ≥10 s (a-priori dwell), within one half. Existing priors only, no fitted numbers,
+  no frame ids.</p>
+</div></div></section>
+
+<section id="changes"><div class="wrap"><div class="card">
+  <h2>🧱 What changed from common ground</h2>
+  <p>Net diff from baseline <code>de91a9f</code>: <b>8 files, +286 −2 — and
+  <code>LA+AI.csv</code> is not among them.</b></p>
+  <table>
+    <tr><th>Area</th><th>Common ground</th><th>This branch</th></tr>
+    <tr><td>Config</td><td>40 keys</td><td>+ <code>no_play_rule</code> (False), <code>no_play_s</code> (10.0) — both with provenance recording the full saga</td></tr>
+    <tr><td>Decoder</td><td>3 stages</td><td>+ <code>apply_no_play()</code> post-pass (unit-tested, OFF)</td></tr>
+    <tr><td>Emission</td><td>—</td><td>+ <code>activity</code> field exposed (same computation the low-activity feature always used)</td></tr>
+    <tr><td>Compliance</td><td>Q1–Q3</td><td>dossier §6 <b>+Q4</b>; §7 <b>pre-declaration</b> (committed before code or run)</td></tr>
+    <tr><td>Evidence</td><td>—</td><td>gate runner + <code>tuning/results/no_harm_no_play.csv</code> (committed)</td></tr>
+    <tr><td>Submission</td><td>md5 <code>aeef0058…</code></td><td><b>byte-identical</b> (adopted at <code>537b0df</code>, retracted at <code>34e76ba</code>)</td></tr>
+    <tr><td>Tests</td><td>92</td><td>97</td></tr>
+  </table>
+</div></div></section>
+
+<section id="evidence"><div class="wrap"><div class="card">
+  <h2>📈 Improvements — the evidence (the full story)</h2>
+  <table>
+    <tr><th>Stage</th><th>Result</th></tr>
+    <tr><td>1 · Pre-declaration (dossier §7, <code>2f5ac66</code>)</td><td>Rule + gate tolerances fixed <b>before any code or run</b>: IDSSE 7 matches, pass iff mean Δ ≥ −0.005 and no match &lt; −0.02</td></tr>
+    <tr><td>2 · Gate (<code>no_harm_no_play.csv</code>)</td><td><b>PASS</b> — mean −0.0001, worst −0.0005; harness reproduced the frozen baseline with drift <b>0.000000</b></td></tr>
+    <tr><td>3 · Measured effect after adoption</td><td><b>49,165 graded frames flip H/A→D = 30.9 % of graded</b> (plan envelope: 1.8 %); D share <b>26.6 % → 57.5 %</b> vs the public window's 19.6 %</td></tr>
+    <tr><td>4 · Retraction (<code>34e76ba</code>)</td><td>Flag OFF, CSV regenerated → <b>byte-identical to baseline</b>, provenance and record kept intact</td></tr>
+  </table>
+  <div class="grid c3">
+    <div class="card"><b>Lens 1 — is the process sound?</b><p>Yes: pre-declared before code,
+    gate before adoption, measure after adoption, retract when the effect left the approved
+    envelope — same session, nothing shipped outside what you authorized.</p></div>
+    <div class="card"><b>Lens 2 — why did the gate pass?</b><p><b>Vacuously:</b> the rule fires
+    on 0–1 of 7 IDSSE matches (different speed distributions) while firing on a third of our
+    match. Learning adopted: future no-harm gates must show the rule <b>fires externally</b>
+    before "no harm" means anything.</p></div>
+    <div class="card"><b>Lens 3 — what did NOT improve?</b><p>The score. Mean player speed
+    &lt; 2 m/s holds on ~66 % of <i>live</i> frames — as a hard rule it's a D-hammer, not a
+    stoppage detector. The 37 % window deficiency remains open (your decision: keep off /
+    re-adopt / redesign a priori).</p></div>
+  </div>
+</div></div></section>
+
+<section id="compliance"><div class="wrap"><div class="card">
+  <h2>✅ Rules &amp; compliance</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>No provided-match per-frame values in this report</td><td>✅ aggregates/counts only</td></tr>
+    <tr><td>No guarded-evaluator numbers</td><td>✅ band status <code>PENDING</code></td></tr>
+    <tr><td>No GT/video-derived claims</td><td>✅ FAQ = public doc; effects on our own output; gate = committed external results</td></tr>
+    <tr><td>CFG deltas carry provenance</td><td>✅ both new keys, full story in the notes</td></tr>
+    <tr><td>Behaviour changes through the pre-declared gate</td><td>✅ ran → PASS → adopted → measured → retracted on divergence</td></tr>
+    <tr><td>Frame-specific rule (plan ban)</td><td>✅ never used</td></tr>
+    <tr><td>Forbidden paths / data / gitignore / history</td><td>✅ untouched; tests green after every commit (92 → 97)</td></tr>
+    <tr><td>Human ↔ AI agreement</td><td>✅ <code>reports/ruiz-work_AI.md</code> carries the same claims with pasted outputs</td></tr>
+  </table>
+</div></div></section>
+
+<section id="ask"><div class="wrap"><div class="card">
+  <h2>🙋 Verdict &amp; the ask for Wednesday</h2>
+  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch ships the frozen
+  submission plus a tested, gated, OFF-by-default rule and the complete evidence trail.</div>
+  <ol>
+    <li><b>Operator call (open now):</b> keep E10 retracted · re-accept with eyes open
+    (D-share 57.5 %) · or redesign a priori — honest routes: accept the 37 % as-is, a
+    tag/timing-driven rule (E7's turf), or organizer <b>Q4</b> unlocking video/tag inputs.</li>
+    <li><b>Team acknowledges the gate lesson:</b> no-harm gates need external <i>firing-rate</i>
+    evidence, not just score deltas.</li>
+    <li><b>Remember the frozen invariant:</b> <code>md5 aeef0058…</code> holds on this branch —
+    nothing about the submission changed net.</li>
+  </ol>
+</div></div></section>
+
+<section id="reproduce"><div class="wrap"><div class="card">
+  <h2>🔁 Reproduce it yourself (3 commands)</h2>
+<pre><code>.venv/bin/python -m pytest -q                 # 97 passed
+.venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
+                                              # aeef0058a08860c9e2407423b1172684
+.venv/bin/python -m tuning.no_harm_no_play    # re-runs the IDSSE gate (minutes)</code></pre>
+  <p>Full record, commit trail and compliance log →
+  <a href="./ruiz-work_AI.md"><code>reports/ruiz-work_AI.md</code></a>.</p>
+</div></div></section>
+
+<footer><div class="wrap">
+  <p><b>Branch report</b> per <code>AI-SOP-SKILL.md</code> — baseline <code>de91a9f</code>
+  (locked main) → head <code>34e76ba</code>; net 8 files +286 −2; submission byte-identical
+  (md5 <code>aeef0058…</code>); 97 tests · official validator PASS · gate results committed at
+  <code>tuning/results/no_harm_no_play.csv</code>.</p>
+  <p>MTAH 2027 · LA+AI · branch report — <span class="mono">ruiz-work</span> · 2026-11-09</p>
+</div></footer>
+
+</body>
+</html>
