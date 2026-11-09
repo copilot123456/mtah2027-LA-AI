@@ -27,10 +27,11 @@ CFG = dict(
     min_dwell_s=2.0,              # minimum segment length, seconds (was 1.0 prior)
     switch_support_s=1.5,         # non-ATD evidence must persist this long to switch
     gate_switches=True,           # revert switches unsupported by nearby ATD frames (P5 ablates)
-    no_play_rule=True,            # E10: D over sustained low-activity runs; ADOPTED
-                                  # 2026-11-09 after the pre-declared no-harm gate PASSED
-                                  # (IDSSE 7 matches: mean -0.0001, worst -0.0005;
-                                  # dossier §7 + tuning/results/no_harm_no_play.csv)
+    no_play_rule=False,           # E10: D over sustained low-activity runs — gate PASSED but
+                                  # ADOPTION RETRACTED 2026-11-09: measured effect 17x the
+                                  # plan's envelope (30.9% of graded frames flip, D share
+                                  # 26.6% -> 57.5%; IDSSE gate was vacuous — rule fires 0-1
+                                  # matches externally). Awaiting operator decision.
     no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
 
     # --- ball fill tiers ---
@@ -90,9 +91,12 @@ PROVENANCE = {
     "gate_switches": ("prior", "tier-2/3 must not switch alone; ablated +/- on IDSSE (scenario "
                       "results embed gating on)"),
     "no_play_rule": ("prior", "E10 compliance fix (FAQ: pre-kickoff frames are D): D over "
-                     "sustained low-activity runs. Adopted 2026-11-09: pre-declared no-harm "
-                     "gate PASSED on IDSSE (7 matches, mean -0.0001, worst -0.0005; "
-                     "dossier §7, tuning/results/no_harm_no_play.csv)"),
+                     "sustained low-activity runs. No-harm gate PASSED 2026-11-09 (IDSSE "
+                     "mean -0.0001, worst -0.0005) but adoption RETRACTED same day: the rule "
+                     "fires on 30.9% of our graded frames (D share 26.6% -> 57.5%, 17x the "
+                     "plan's 1.8% envelope) while firing on 0-1 IDSSE matches — the gate was "
+                     "vacuous. Flag stays False pending an operator decision; full record "
+                     "dossier §7 + tuning/results/no_harm_no_play.csv"),
     "no_play_s": ("prior", "10 s of unbroken low activity = stoppage, same scale as "
                    "d_missing_run_s; a priori (dossier §7 E10 pre-declaration)"),
     "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "

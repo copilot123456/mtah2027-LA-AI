@@ -10,7 +10,7 @@ Quick start (the point of the framework):
         Step("name", fn, requires=(...), provides=(...))
     to SPEC. `requires` must name fields earlier steps `provides`.
   * The default SPEC below is the frozen pipeline: it must keep reproducing
-    LA+AI.csv byte-for-byte (md5 0ed725f70f4a230cd50ee9023dda60b6).
+    LA+AI.csv byte-for-byte (md5 aeef0058a08860c9e2407423b1172684).
 
 Rules that bind (full list in PIPELINE_STANDARD_AI.md):
   * No tuning/fitting/selecting on the provided match, its ground truth, the

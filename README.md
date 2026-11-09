@@ -64,7 +64,7 @@ python3 -m virtualenv .venv              # or: python3 -m venv .venv
 # 3. verify, then regenerate the submission
 .venv/bin/python -m pytest -q            # 92 tests, ~20 s with a warm cache
 .venv/bin/python -m src.submit           # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                         # 0ed725f70f4a230cd50ee9023dda60b6
+md5sum LA+AI.csv                         # aeef0058a08860c9e2407423b1172684
 ```
 
 The first run parses the ATD with kloppy and caches it under `data/.cache/` (about 1m40s and

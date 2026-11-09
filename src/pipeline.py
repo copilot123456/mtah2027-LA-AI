@@ -12,7 +12,7 @@ Contract (full team standard: PIPELINE_STANDARD.html / PIPELINE_STANDARD_AI.md):
     docstring — the framework enforces that each step documents itself.
   * `run` returns `(labels, summary)`; a spec that never produces either fails.
   * The default spec reproduces the frozen submission byte-for-byte
-    (md5 0ed725f70f4a230cd50ee9023dda60b6); tests/test_submission.py enforces it.
+    (md5 aeef0058a08860c9e2407423b1172684); tests/test_submission.py enforces it.
 
 The only inputs are the provided match files and cfg; nothing here reads ground
 truth or the video.
