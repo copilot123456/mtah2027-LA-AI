@@ -210,6 +210,70 @@ the operator, per the guard protocol.
   allowed signals, **no gate run taken** (a run on a rule measured inert would be theater).
   Reopening requires either an organizer answer or a rule shaped from documents alone.
 
+#### E2 + E3 + E11 combined pass — grid G6, tables, simulator, rule (pre-declared 2026-11-09, before implementation and before the run)
+
+- **Authorization / trigger:** plan §2 combined protocol (pre-existing), operator NEXT
+  instruction (E2 → pin → run → Gate 1 2026-11-10), Gate 0 read (band C: E2/E1 promoted,
+  E3 demoted, dossier §3). E1 is already pinned (T = 3 s) and implemented; scoring of E1
+  happens only inside this pass.
+- **Grid G6 = 144 cells** (plan §2, verbatim): `switch_pen` {1, 2, 4} × `dead_pen` {5, 8, 12}
+  × `sigma_m` {1.5, 2.0} × `min_dwell_s` {1.0, 1.5, 2.0, 3.0} × `switch_support_s` {1.0, 1.5},
+  parameter order `tuning.sweep.PARAMS`. The frozen cell (2 / 5 / 1.5 / 2.0 / 1.5) is in the
+  grid. E3's demotion (band C) means: its notches stay for neighbour continuity, no separate
+  E3 adoption path — the uniform rule below decides everything.
+- **Simulator (exact, all cues external to the provided match):**
+  - cue 1 — *possession change*: frame `t` where an alive (`H`/`A`) frame of the **original**
+    IDSSE letters follows a non-alive frame or a direct team change; dilated ±2 s (50 frames
+    at 25 fps). Original letters are used (the provider-faithful change points; E1's aligned
+    set is a scoring interpretation and is not coupled to the mask).
+  - cue 2 — *crowded*: ≥ 3 finite players within 3 m of a finite raw-ball frame (metres via
+    `CFG` pitch dimensions — the same convention `emission._team_evidence` uses on IDSSE);
+    ball missing → false.
+  - cue 3 — *tackle*: ±2 s (same a-priori window) around `TacklingGame` parent events from
+    `data/idsse/DFL_03_02_events_raw_*.xml`, mapped to tracking rows through per-period
+    timestamp offsets (tracking `timestamp` = µs since period start) anchored on the events'
+    `StartFrame` attributes — per-period median offset, anchor residual reported per match
+    (J03WPY: std 1.3 s / 1.7 s; all 7 matches carry 12–23 anchors and 173–229 tackles;
+    validation: 100 % of mapped J03WPY tackle rows have finite raw ball). Unmappable events
+    are dropped and counted.
+  - weight: `cue_t = c1 + c2 + c3 ∈ {0..3}`, `w_t = 1 + α·cue_t`, **α = 2 primary** (docs:
+    missingness "disproportionately on crowded boxes, aerial duels, tackles"), **α = 3
+    sensitivity** (never selects). Placement: `mask_ball` mechanics unchanged (empirical run
+    lengths from the provided match's graded missingness — the P5 structural diagnostic,
+    target 43.1 %, non-overlap rejection); only the start-frame sampling changes from uniform
+    to `∝ w_t`. Same seed per match as P5 (`MASK_SEED + Σ ord(match_id)`) for every mask kind.
+- **Tables — six decode runs, four decision tables + two reported twins**, all 144 cells ×
+  7 matches, fill off unless stated, each run scored on **both** label sets (original
+  `derive_letters`, aligned `derive_letters_controlled` T = 3 s) with `sweep._score`
+  (official X-fill semantics):
+
+  | run | mask | fill | scored on | role |
+  |---|---|---|---|---|
+  | T1 | uniform (P5 mechanics) | off | orig + aligned | decision table |
+  | T2 | phase α = 2 | off | orig + aligned | decision table; **primary = T2 × aligned** |
+  | T3 | phase α = 2 | **on** (kinematic tier) | orig + aligned | E11 re-check, reported only |
+  | T4 | phase α = 3 | off | orig + aligned | sensitivity, reported only, never selects |
+
+- **Selection rule (verbatim plan §2):** plateau rule on the primary table (within 0.01 of
+  the best mean, maximise the worst swept grid-neighbour, ties by mean) → candidate. Adopt the
+  candidate only if its primary-table mean beats the frozen cell's by **> 0.02 paired with
+  ≥ 5/7 matches positive** AND it is not worse than frozen by > 0.02 on any of the other three
+  decision tables. Delta 0.01–0.02 → tie → keep frozen; < 0.01 → reject. Otherwise the frozen
+  cell ships and the tables go into the report as robustness evidence. LOMO and the
+  match-level bootstrap CI are reported for whichever cell ships. Fill (E11) adopts only
+  through the same > 0.02 bar on its own parameter.
+- **Pre-registered mask statistics** (`tuning/results/stage4_masks.csv`, reported in
+  `report_stage4.md`): per match × mask kind — overall masked share; masked share inside vs
+  outside the cue-1 window (the plan's "external switches vs overall"); the same inside/outside
+  split for cue 2, cue 3 and any-cue.
+- **Outputs:** `tuning/results/stage4_uniform.csv`, `stage4_phase_a2.csv`,
+  `stage4_phase_a3.csv`, `stage4_phase_a2_fill.csv`, `stage4_masks.csv`,
+  `report_stage4.md`; runner `tuning/stage4.py`; 7 workers (plan §0 compute note), ≈ 45–60 min.
+- **Boundaries honored:** no provided-match value enters the simulator beyond the already-
+  accepted run-length structural diagnostic (P5, GREEN); α is a priori (Q1 pending — calibrating
+  α on provided aggregates stays barred); no window/GT/video input; nothing is selected on the
+  public window; second evaluator run only if a code path changes before the freeze.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
