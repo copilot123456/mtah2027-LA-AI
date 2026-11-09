@@ -25,16 +25,12 @@ h2{font-size:1.65rem;margin-top:0}
 h3{font-size:1.15rem}
 p{margin:.5em 0}
 small{color:var(--muted)}
-
-/* ---------- nav ---------- */
 nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
 nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
 nav a:hover{background:#eef1f8;color:var(--ink)}
 nav a.active{background:var(--accent);color:#fff}
 nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
-
-/* ---------- hero ---------- */
 header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
 header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
 header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
@@ -44,8 +40,6 @@ header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
 .kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
 .kpi .v{font-size:1.55rem;font-weight:800}
 .kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
-
-/* ---------- layout blocks ---------- */
 section{padding:44px 0 8px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
 .grid{display:grid;gap:14px}
@@ -63,11 +57,6 @@ table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
 th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
 th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
 tr:nth-child(even) td{background:#fbfcff}
-.bar{position:relative;height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);background:#fff}
-.bar div{display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
-
-/* ---------- timeline ---------- */
 .timeline{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:3px solid var(--line)}
 .timeline li{position:relative;padding:0 0 22px 22px}
 .timeline li::before{content:"";position:absolute;left:-33px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
@@ -75,42 +64,8 @@ tr:nth-child(even) td{background:#fbfcff}
 .timeline .t-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .timeline .t-title{font-weight:700}
 .timeline .t-body{color:var(--muted);font-size:.93rem}
-
-/* ---------- pipeline ---------- */
-.pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:18px 0}
-.pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;min-width:150px}
-.pipe .stage .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;align-items:center;justify-content:center;margin-bottom:6px}
-.pipe .stage .t{font-weight:700;font-size:.9rem}
-.pipe .stage .d{font-size:.76rem;color:var(--muted);margin-top:4px}
-.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;padding:0 6px}
-
-/* ---------- file docs ---------- */
-details.file{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
-details.file summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
-details.file summary::-webkit-details-marker{display:none}
-details.file summary::before{content:"▸";color:var(--accent);transition:.15s}
-details.file[open] summary::before{transform:rotate(90deg)}
-details.file summary .role{font-weight:500;color:var(--muted);font-size:.85rem}
-details.file .body{padding:4px 18px 16px;border-top:1px solid var(--line);font-size:.93rem}
-.path{font-family:var(--mono);font-size:.85rem;background:#eef1f8;padding:2px 8px;border-radius:6px;color:#2b3557}
-.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin:26px 0 6px}
-
-/* ---------- commits ---------- */
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
-.filters button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font-weight:600;font-size:.83rem;cursor:pointer;color:var(--muted)}
-.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.commit{display:grid;grid-template-columns:96px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:9px 0}
-.commit .hash{font-family:var(--mono);font-size:.82rem;color:var(--accent);font-weight:700}
-.commit .date{font-size:.74rem;color:var(--muted)}
-.commit .subj{font-weight:700;font-size:.95rem}
-.commit .why{font-size:.87rem;color:var(--muted);margin-top:3px}
-.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle}
-.t-foundation{background:#eef1f8;color:#5b6579} .t-pipeline{background:#eceefe;color:#4457d6}
-.t-tuning{background:#f3edfd;color:#7c4ddb} .t-audit{background:#fff3df;color:#c77716}
-.t-docs{background:#e2f6ed;color:#1a9e6b} .t-vendor{background:#f0f1f4;color:#6b7280}
-
 footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;text-align:center}
-@media (max-width:640px){ header.hero h1{font-size:1.7rem} .commit{grid-template-columns:1fr} }
+@media (max-width:640px){ header.hero h1{font-size:1.7rem} }
 </style>
 </head>
 <body>
@@ -128,146 +83,242 @@ footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);colo
 
 <header class="hero"><div class="wrap">
   <h1>Branch report — <span class="mono">ruiz-work</span></h1>
-  <p class="sub">E10 "no-play" rule: built, pre-declared, gated — <b>passed the gate, adopted,
-  then retracted</b> when the measured effect turned out to be 17× the approved envelope.
-  The frozen submission is untouched.</p>
+  <p class="sub">Four pre-declared external experiments on the frozen decoder — E10
+  (built → retracted → closed as infeasible), E1 (challenge-definition labels), the
+  E2+E3+E11 combined pass (<b>Gate 1: keep the frozen cell</b>) and E7 (set-piece
+  prior: <b>rejected</b>) — every gate run, every verdict recorded, and the submission
+  byte-identical throughout.</p>
   <div class="chips">
     <span class="chip">baseline: main @ de91a9f (locked common ground)</span>
-    <span class="chip">head: 34e76ba · 6 commits</span>
+    <span class="chip">head: 3a7d7aa · 16 commits</span>
     <span class="chip">operator + Copilot · LA+AI</span>
     <span class="chip">2026-11-09</span>
     <span class="chip">🟡 PROPOSED · verdict: ITERATE</span>
+    <span class="chip">P6 band: C (categorical)</span>
   </div>
   <div class="kpis">
-    <div class="kpi"><div class="v">PASS → retract</div><div class="l">no-harm gate → decision</div></div>
+    <div class="kpi"><div class="v">C</div><div class="l">P6 band + flags (operator)</div></div>
+    <div class="kpi"><div class="v">92 → 122</div><div class="l">tests green</div></div>
     <div class="kpi"><div class="v">byte-identical</div><div class="l">md5 aeef0058… preserved</div></div>
-    <div class="kpi"><div class="v">97</div><div class="l">tests (92 → 97)</div></div>
-    <div class="kpi"><div class="v">8</div><div class="l">net files · +286 −2</div></div>
+    <div class="kpi"><div class="v">4 gates · 0 adopted</div><div class="l">every bar honored</div></div>
   </div>
 </div></header>
 
 <section id="summary"><div class="wrap"><div class="card">
   <h2>🖥️ One-screen summary</h2>
-  <p><b>The idea in one sentence:</b> the organizers' FAQ says the 2,934 graded frames before
-  the second-half kick-off are <i>all</i> <code>D</code> — our output says only 37 % — so build
-  a <i>generic</i> rule (no frame numbers) that labels sustained no-play stretches as dead,
-  gate it on external data, adopt if harmless.</p>
+  <p><b>The idea in one sentence:</b> run the P6 backlog the only way this project allows —
+  every grid and rule pinned in the dossier <i>before</i> the compute, every behaviour change
+  gated on external evidence, every verdict recorded — and ship only what clears
+  &gt; 0.02. Nothing did; the frozen submission and the evidence record are the output.</p>
   <table>
-    <tr><th>Metric</th><th>Common ground (de91a9f)</th><th>This branch (34e76ba)</th></tr>
-    <tr><td>Submission</td><td><code>aeef0058a08860c9e2407423b1172684</code></td><td><b>identical</b> — adopt + retract net to zero</td></tr>
-    <tr><td>Pre-kick-off window <code>D</code></td><td>37.4 % (fails the FAQ fact)</td><td>37.4 % — <b>fix shipped OFF, redesign closed as infeasible 2026-11-09</b></td></tr>
-    <tr><td>Rule status</td><td>does not exist</td><td>implemented, pre-declared, gate <b>PASS</b>, adopted, <b>retracted</b></td></tr>
-    <tr><td>Tests</td><td>92</td><td><b>97</b> (5 rule tests)</td></tr>
-    <tr><td>Organizer questions</td><td>Q1–Q3</td><td><b>+ Q4</b> (video as input; weights provenance)</td></tr>
+    <tr><th>Metric</th><th>Common ground (de91a9f)</th><th>This branch (3a7d7aa)</th></tr>
+    <tr><td>Submission</td><td><code>aeef0058a08860c9e2407423b1172684</code></td>
+        <td><b>identical</b> — E10's adopt+retract net to zero; every new feature ships OFF</td></tr>
+    <tr><td>Tests</td><td>92</td><td><b>122</b> (E1 ×6, stage-4 ×8, E7 ×6, guarded-eval ×5, E10 ×5 …)</td></tr>
+    <tr><td>P6 band + flags</td><td>PENDING</td>
+        <td><b>C</b> · count 23–30 · f1_D low · balance normal · latency none (operator run)</td></tr>
+    <tr><td>E10 pre-kickoff window <code>D</code></td><td>37.4 % (fails the FAQ fact)</td>
+        <td>37.4 % — rule closed as <b>infeasible under the allowed signals</b> (disposition A)</td></tr>
+    <tr><td>Gate 1 — E2/E3/E11 combined pass</td><td>frozen cell</td>
+        <td><b>REJECT</b> — plateau candidate +0.0032 (3/7), CI straddles 0 → frozen ships</td></tr>
+    <tr><td>E7 set-piece prior</td><td>—</td>
+        <td><b>REJECT</b> — primary −0.0075 (2/7), all four tables negative → stays OFF</td></tr>
+    <tr><td>E1 challenge labels</td><td>—</td>
+        <td>pinned T = 3 s, fidelity PASS, +0.105 aligned-label lift (scoring use only)</td></tr>
+    <tr><td>Dossier §7</td><td>P5 record</td>
+        <td>+ 4 P6 pre-declarations + 2 gate reads, each timestamped before its run</td></tr>
   </table>
-  <div class="callout warn"><b>Verdict: ITERATE.</b> The process worked exactly as designed —
-  pre-declare → gate → adopt → <i>measure</i> → discovered the effect left the approved
-  envelope → <b>retracted within the same session</b>, frozen output restored. The decision
-  (keep off / re-adopt / redesign) is yours, and the numbers are below.</div>
+  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch ships the
+  frozen submission plus tested, gated, OFF-by-default features and the complete external
+  evidence trail. Confidence: high on process (four pre-declared gates, zero rule
+  violations, byte-identity after every commit); the score itself was never the target —
+  band C only ordered the work.</div>
 </div></div></section>
 
 <section id="idea"><div class="wrap"><div class="card">
   <h2>💡 The idea — what we tried to break</h2>
-  <p><b>E10 (P6 backlog rank 8):</b> the FAQ documents those pre-kick-off frames as all <code>D</code>;
-  we emit 37 % — a known, generic-fixable compliance gap (~1.8 % of graded frames, plan
-  estimated +0…+0.005 spellF1). The plan allowed only a <i>generic</i> rule — frame-specific
-  forcing is banned — checked for no-harm on IDSSE.</p>
-  <p><b>The rule as pre-declared:</b> inside the decoder, after gating and min-dwell: label a
-  frame <code>D</code> when the mean player speed stays below the existing 2 m/s prior for a
-  continuous ≥10 s (a-priori dwell), within one half. Existing priors only, no fitted numbers,
-  no frame ids.</p>
+  <p>The frozen decoder shipped at P5 with a band-C-shaped risk: one systematic weakness
+  (dead-ball mis-calibration), no structural bug. P6 asks whether <i>external-only</i>
+  evidence can move it: does realistic (phase-correlated) missingness move the plateau
+  (E2), do challenge-faithful labels change what "good" means (E1), does grid closure
+  (E3) or a fill re-check (E11) hide a gain, and does restart timing sharpen
+  <code>D</code> (E7)? Plus the compliance loop: the FAQ says 2,934 pre-kickoff frames
+  are all <code>D</code> and we emit 37 % — fix it generically or document why not (E10).</p>
+  <p>Why it could move spellF1: under uniform masking 38–48 % of hand-overs have no ball
+  on the boundary frame; if real missingness concentrates there, the switch gate reverts
+  true switches and the decoder under-segments (up to ±0.03). Every hypothesis below was
+  tested against the same bar: &gt; 0.02 paired on IDSSE, ≥ 5/7 matches, no-harm on the
+  other tables.</p>
 </div></div></section>
 
 <section id="changes"><div class="wrap"><div class="card">
   <h2>🧱 What changed from common ground</h2>
-  <p>Net diff from baseline <code>de91a9f</code>: <b>8 files, +286 −2 — and
-  <code>LA+AI.csv</code> is not among them.</b></p>
+  <p>Net diff from baseline <code>de91a9f</code>: <b>34 files, +7 191 −12</b> —
+  <code>LA+AI.csv</code> is not among them. Everything behavioural ships OFF.</p>
   <table>
     <tr><th>Area</th><th>Common ground</th><th>This branch</th></tr>
-    <tr><td>Config</td><td>40 keys</td><td>+ <code>no_play_rule</code> (False), <code>no_play_s</code> (10.0) — both with provenance recording the full saga</td></tr>
-    <tr><td>Decoder</td><td>3 stages</td><td>+ <code>apply_no_play()</code> post-pass (unit-tested, OFF)</td></tr>
-    <tr><td>Emission</td><td>—</td><td>+ <code>activity</code> field exposed (same computation the low-activity feature always used)</td></tr>
-    <tr><td>Compliance</td><td>Q1–Q3</td><td>dossier §6 <b>+Q4</b>; §7 <b>pre-declaration</b> (committed before code or run)</td></tr>
-    <tr><td>Evidence</td><td>—</td><td>gate runner + <code>tuning/results/no_harm_no_play.csv</code> (committed)</td></tr>
-    <tr><td>Submission</td><td>md5 <code>aeef0058…</code></td><td><b>byte-identical</b> (adopted at <code>537b0df</code>, retracted at <code>34e76ba</code>)</td></tr>
-    <tr><td>Tests</td><td>92</td><td>97</td></tr>
+    <tr><td>Config (+5 keys, all OFF/default)</td><td>40 keys</td>
+        <td>+ <code>no_play_rule</code>=False, <code>no_play_s</code>=10.0 (E10, full saga in
+        provenance) · + <code>d_w_set_piece</code>=0.0, <code>sp_pre_s</code>=2.0,
+        <code>sp_post_s</code>=1.0 (E7, gated)</td></tr>
+    <tr><td>Emission</td><td>5 dead features</td>
+        <td>+ <code>set_piece</code> feature (zero-weight by default) + <code>activity</code>
+        field exposure (E10); <code>build_emission(..., setpiece_starts=)</code> default-safe</td></tr>
+    <tr><td>Decoder</td><td>3 stages</td>
+        <td>+ <code>apply_no_play()</code> post-pass (unit-tested, OFF); no other path changed</td></tr>
+    <tr><td>Data</td><td>arrays</td><td>+ <code>MatchArrays.setpiece_starts</code> (59 SET
+        PIECES tags, smart tagging — allowed input, timing only)</td></tr>
+    <tr><td>External test bed</td><td>P5 sweep</td>
+        <td>+ phase-correlated missingness simulator (3 IDSSE cues, α = 2/3, weighted
+        placement) · + stage-4 runner (144 cells × 4 runs × 2 label sets) · + gate reader ·
+        + E7 gate/audit · guarded-eval redacting wrapper</td></tr>
+    <tr><td>Compliance</td><td>Q1–Q3</td>
+        <td>dossier §6 +Q4; §7 + 4 P6 pre-declarations + 2 gate reads; §3 + the guarded-run log</td></tr>
+    <tr><td>Framework contract</td><td>6 stages</td>
+        <td><b>unchanged</b> — <code>pipeline_spec.py</code> untouched; new data rides inside
+        <code>arrays</code> (adoption note in the AI report)</td></tr>
+    <tr><td>Tests</td><td>92</td><td><b>122</b></td></tr>
   </table>
 </div></div></section>
 
 <section id="evidence"><div class="wrap"><div class="card">
   <h2>📈 Improvements — the evidence (the full story)</h2>
+
+  <h3>P6 KPI — band + flags only (operator-guarded run, numbers archived operator-side)</h3>
   <table>
-    <tr><th>Stage</th><th>Result</th></tr>
-    <tr><td>1 · Pre-declaration (dossier §7, <code>2f5ac66</code>)</td><td>Rule + gate tolerances fixed <b>before any code or run</b>: IDSSE 7 matches, pass iff mean Δ ≥ −0.005 and no match &lt; −0.02</td></tr>
-    <tr><td>2 · Gate (<code>no_harm_no_play.csv</code>)</td><td><b>PASS</b> — mean −0.0001, worst −0.0005; harness reproduced the frozen baseline with drift <b>0.000000</b></td></tr>
-    <tr><td>3 · Measured effect after adoption</td><td><b>49,165 graded frames flip H/A→D = 30.9 % of graded</b> (plan envelope: 1.8 %); D share <b>26.6 % → 57.5 %</b> vs the public window's 19.6 %</td></tr>
-    <tr><td>4 · Retraction (<code>34e76ba</code>)</td><td>Flag OFF, CSV regenerated → <b>byte-identical to baseline</b>, provenance and record kept intact</td></tr>
+    <tr><th>Band</th><th>Flags</th><th>Reading (plan §1)</th></tr>
+    <tr><td><b>C</b></td><td>count 23–30 · <b>f1_D low</b> · balance normal · latency none</td>
+        <td>one systematic weakness = dead-ball mis-calibration (count ≫ 17 rules out
+        over-merging; latency and team balance ruled out) → E2/E1 promoted, E3 demoted,
+        D-audit folded into E7</td></tr>
   </table>
+
+  <h3>Gate 1 — E2 + E3 + E11 combined pass (144 cells × 7 matches × 4 runs, 1 921 s)</h3>
+  <table>
+    <tr><th>Condition (pre-declared, dossier §7)</th><th>Result</th></tr>
+    <tr><td>Plateau candidate, primary = phase masks × aligned labels</td>
+        <td><code>switch1 / dead12 / σ1.5 / dwell2 / support1</code> = 0.3699 vs frozen 0.3667 (frozen rank 12/144)</td></tr>
+    <tr><td>paired Δ &gt; 0.02</td><td><b>+0.0032</b> — no · 95 % CI [−0.0078, +0.0179]</td></tr>
+    <tr><td>positive on ≥ 5/7</td><td><b>3/7</b> — no</td></tr>
+    <tr><td>no-harm on the other three tables</td><td>yes (+0.0014 / +0.0032 / +0.0044)</td></tr>
+    <tr><td>LOMO (plateau on 6, report on held-out)</td><td>fold pick = global pick on <b>7/7</b> — selection stable</td></tr>
+    <tr><td>Twins (reported only)</td><td>fill-on <b>+0.0000</b> (E11: fill stays off) · α=3 picks the same cell, scores −0.0087 (sensitivity ✓)</td></tr>
+    <tr><td>Verdict</td><td><b>REJECT → the frozen cell ships</b>; md5 untouched</td></tr>
+  </table>
+  <p><small>Simulator sanity: phase masks lift removal onto every cue (anycue 0.475 in /
+  0.410 out) while the uniform control stays flat (0.428 / 0.435), consistent across the
+  7 matches; TacklingGame events mapped 100 % (173–229 per match). E2's predicted plateau
+  direction appeared — at noise magnitude.</small></p>
+
+  <h3>E7 — set-piece dead-ball prior + band-C D-audit (frozen cell, 14 ON decodes)</h3>
+  <table>
+    <tr><th>Table (ON − OFF)</th><th>uniform × orig</th><th>uniform × aligned</th><th>phase × orig</th><th>phase × aligned (primary)</th></tr>
+    <tr><td>Δ (positive)</td><td>−0.0092 (0/7)</td><td>−0.0112 (0/7)</td><td>−0.0057 (1/7)</td><td><b>−0.0075 (2/7)</b></td></tr>
+  </table>
+  <p><b>Verdict: REJECT → <code>d_w_set_piece</code> stays 0.0.</b> OFF-side
+  fresh-vs-committed drift <b>0.000000</b> (determinism proven); set pieces mapped 100 %
+  on all 7 matches (90–108 raw → noisy 84 + 9 spurious).</p>
+  <div class="callout good"><b>D-feature audit (the band-C payload):</b> missed-D frames
+  are a <i>ball-absent</i> phenomenon — <code>long_missing</code> fires on <b>53.0 %</b>
+  of missed-D (base 19.2 %) while <code>stationary</code> (1.3 %) and
+  <code>near_boundary</code> (1.2 %) cannot speak without ball evidence;
+  <code>set_piece</code> covers only <b>6.9 %</b> of missed-D (base 4.4 %). The weakness
+  is dead-feature <i>availability</i> under missing ball, not missing priors → recorded
+  as a freeze-time limitation candidate (any fix needs its own &gt; 0.02 pre-declared gate).</div>
+
+  <h3>E10 — the compliance loop (full saga, compressed)</h3>
+  <ul class="timeline">
+    <li><div class="t-head"><span class="t-title">Pre-declare → gate → adopt</span> <span class="badge b-done">done</span></div>
+      <div class="t-body">Generic low-activity rule pinned first; no-harm gate PASS
+      (mean −0.0001, worst −0.0005); adopted.</div></li>
+    <li><div class="t-head"><span class="t-title">Measure → 17× the envelope → retract same day</span> <span class="badge b-bad">retract</span></div>
+      <div class="t-body">30.9 % of graded frames flipped (D share 26.6 → 57.5 %) vs the
+      1.8 % plan envelope; the gate was vacuous (rule fires on 0–1 IDSSE matches). Flag
+      OFF, byte-identical restoration, record kept.</div></li>
+    <li><div class="t-head"><span class="t-title">Redesign → feasibility probes → closed as infeasible (A)</span> <span class="badge b-done">closed</span></div>
+      <div class="t-body">Kickoff-geometry redesign (ball at centre, kicker, static
+      formation) probed read-only: conjunction fires <b>0.0 %</b> of the window — it is
+      warm-up milling, not a formed-up restart; the sanctioned signals are absent.
+      Disposition A (operator): flag stays OFF, 37 % deficiency documented as
+      unobservable from allowed signals; window-derived alternatives barred by the
+      no-fitting rule.</div></li>
+  </ul>
+
+  <h3>Is it good? — three honest lenses</h3>
   <div class="grid c3">
-    <div class="card"><b>Lens 1 — is the process sound?</b><p>Yes: pre-declared before code,
-    gate before adoption, measure after adoption, retract when the effect left the approved
-    envelope — same session, nothing shipped outside what you authorized.</p></div>
-    <div class="card"><b>Lens 2 — why did the gate pass?</b><p><b>Vacuously:</b> the rule fires
-    on 0–1 of 7 IDSSE matches (different speed distributions) while firing on a third of our
-    match. Learning adopted: future no-harm gates must show the rule <b>fires externally</b>
-    before "no harm" means anything.</p></div>
-    <div class="card"><b>Lens 3 — what did NOT improve?</b><p>The score. Mean player speed
-    &lt; 2 m/s holds on ~66 % of <i>live</i> frames — as a hard rule it's a D-hammer, not a
-    stoppage detector. The 37 % window deficiency remains open (your decision: keep off /
-    re-adopt / redesign a priori).</p></div>
+    <div class="card"><b>1 — Is the process sound?</b><p>Four pre-declared gates, every
+    one run and honored: two REJECTs kept the frozen cell, one retraction restored it
+    byte-identically, one closure refused a rule the data cannot support. No rule
+    violation, no window tuning, no evaluator number in any AI channel.</p></div>
+    <div class="card"><b>2 — What improved?</b><p>The <i>knowledge</i>: a realistic
+    missingness test bed (phase masks, cues validated 100 %), challenge-faithful labels
+    (+0.105 aligned lift, scoring-only), a stable selection (LOMO 7/7), and a precise
+    external diagnosis of band C's weakness (ball-absent missed-D).</p></div>
+    <div class="card"><b>3 — What did NOT improve?</b><p>The score. No change cleared
+    &gt; 0.02, so nothing adopted; the 37 % window deficiency stays open (documented);
+    the missed-D availability gap remains a limitation candidate for the freeze write-up.</p></div>
   </div>
 </div></div></section>
 
 <section id="compliance"><div class="wrap"><div class="card">
-  <h2>✅ Rules &amp; compliance</h2>
+  <h2>✅ Rules &amp; compliance (live results)</h2>
   <table>
     <tr><th>Check</th><th>Result</th></tr>
-    <tr><td>No provided-match per-frame values in this report</td><td>✅ aggregates/counts only</td></tr>
-    <tr><td>No guarded-evaluator numbers</td><td>✅ band status <code>PENDING</code></td></tr>
-    <tr><td>No GT/video-derived claims</td><td>✅ FAQ = public doc; effects on our own output; gate = committed external results</td></tr>
-    <tr><td>CFG deltas carry provenance</td><td>✅ both new keys, full story in the notes</td></tr>
-    <tr><td>Behaviour changes through the pre-declared gate</td><td>✅ ran → PASS → adopted → measured → retracted on divergence</td></tr>
-    <tr><td>Frame-specific rule (plan ban)</td><td>✅ never used</td></tr>
-    <tr><td>Forbidden paths / data / gitignore / history</td><td>✅ untouched; tests green after every commit (92 → 97)</td></tr>
-    <tr><td>Human ↔ AI agreement</td><td>✅ <code>reports/ruiz-work_AI.md</code> carries the same claims with pasted outputs</td></tr>
+    <tr><td>No provided-match per-frame values in either report</td><td>✅ coarse aggregates only</td></tr>
+    <tr><td>No guarded-evaluator numbers</td><td>✅ band letter + categorical flags only; full board archived operator-side</td></tr>
+    <tr><td>No GT/video-derived claims</td><td>✅ all evidence = IDSSE (external), public docs, own-output aggregates</td></tr>
+    <tr><td>Behaviour changes &gt; 0.02 paired, pre-declared §7 — or explicitly not met</td>
+        <td>✅ both bars evaluated and <b>not met → REJECT</b> (never ADOPT)</td></tr>
+    <tr><td>Every CFG delta carries provenance + evidence</td><td>✅ 5 new keys, full saga in the notes (E10 comment updated to the closure decision)</td></tr>
+    <tr><td>Frame-specific rules (plan ban)</td><td>✅ never used; E10 redesign closed rather than bent</td></tr>
+    <tr><td>Forbidden paths / data / .gitignore / history</td><td>✅ untouched; main locked @ de91a9f</td></tr>
+    <tr><td>Byte-identity after every commit</td><td>✅ <code>aeef0058a08860c9e2407423b1172684</code> — verified 7 commits running</td></tr>
+    <tr><td>Tests green after every commit</td><td>✅ 92 → 122, batch re-run for this report</td></tr>
+    <tr><td>Human ↔ AI reports agree</td><td>✅ <code>reports/ruiz-work_AI.md</code> carries the same claims with pasted outputs</td></tr>
   </table>
 </div></div></section>
 
 <section id="ask"><div class="wrap"><div class="card">
   <h2>🙋 Verdict &amp; the ask for Wednesday</h2>
-  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch ships the frozen
-  submission plus a tested, gated, OFF-by-default rule and the complete evidence trail.</div>
+  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch carries the
+  frozen submission plus the P6 evidence record; the team decides what enters the final
+  branch.</div>
   <ol>
-    <li><b>Operator decision (2026-11-09): E10 closed as infeasible under the allowed
-    signals</b> (disposition A). Four read-only window probes (no GT/video/scoring) show the
-    sanctioned kick-off signals absent where the rule must fire — ball or kicker within 1.5 m
-    of the centre spot on <b>0.0 %</b> of frames, formation milling (median 29.9 m displacement
-    vs 36.3 m live), conjunction <b>0.0 %</b>; the window is warm-up, not a formed-up restart
-    (dossier §7 closure note). Flag stays OFF; the 37 % deficiency stays documented; no gate
-    run taken. Honest routes now: accept 37 % as-is, E7's tag/timing turf, or an organizer
-    answer.</li>
-    <li><b>Team acknowledges the gate lesson:</b> no-harm gates need external <i>firing-rate</i>
-    evidence, not just score deltas.</li>
-    <li><b>Remember the frozen invariant:</b> <code>md5 aeef0058…</code> holds on this branch —
-    nothing about the submission changed net.</li>
+    <li><b>Accept the two REJECTs as the shipping decision</b> — frozen cell unchanged
+    (Gate 1) and <code>d_w_set_piece = 0</code> (E7), with the four-table + twin evidence
+    attached as robustness/limitations material.</li>
+    <li><b>Accept E10's closure (disposition A)</b> — the FAQ deficiency is documented as
+    unobservable from allowed generic signals; reopening needs an organizer answer or a
+    documents-only rule.</li>
+    <li><b>Adopt the process lessons:</b> no-harm gates must report external firing rates
+    (E10 learning); band-C ordering was followed (E2/E1 first, D-audit folded into E7,
+    E3 demoted).</li>
+    <li><b>Adoption-step reminder (PIPELINE_STANDARD):</b> this branch touched
+    <code>config.py</code> provenance and <code>src/steps.py</code> (one pass-through
+    line) — flagged here so the team reviews it at the sync; <code>pipeline_spec.py</code>
+    itself is unchanged.</li>
+    <li><b>Still owed:</b> organizer Q1–Q4; E13 queued for Jose material.</li>
   </ol>
 </div></div></section>
 
 <section id="reproduce"><div class="wrap"><div class="card">
   <h2>🔁 Reproduce it yourself (3 commands)</h2>
-<pre><code>.venv/bin/python -m pytest -q                 # 97 passed
+<pre><code>.venv/bin/python -m pytest -q                 # 122 passed
 .venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
                                               # aeef0058a08860c9e2407423b1172684
-.venv/bin/python -m tuning.no_harm_no_play    # re-runs the IDSSE gate (minutes)</code></pre>
-  <p>Full record, commit trail and compliance log →
-  <a href="./ruiz-work_AI.md"><code>reports/ruiz-work_AI.md</code></a>.</p>
+.venv/bin/python -m tuning.gate1              # Gate-1 read + report_stage4.md</code></pre>
+  <p>Also: <code>python -m tuning.e7</code> (E7 gate + D-audit, ~3 min warm),
+  <code>python -m tuning.no_harm_no_play</code> (E10's gate),
+  <code>python -m tuning.stage4</code> (full pass, ~35 min). Full record, commit trail
+  and compliance log → <a href="./ruiz-work_AI.md"><code>reports/ruiz-work_AI.md</code></a>.</p>
 </div></div></section>
 
 <footer><div class="wrap">
   <p><b>Branch report</b> per <code>AI-SOP-SKILL.md</code> — baseline <code>de91a9f</code>
-  (locked main) → head <code>34e76ba</code>; net 8 files +286 −2; submission byte-identical
-  (md5 <code>aeef0058…</code>); 97 tests · official validator PASS · gate results committed at
-  <code>tuning/results/no_harm_no_play.csv</code>.</p>
+  (locked main) → head <code>3a7d7aa</code>; net 34 files +7 191 −12; submission
+  byte-identical (md5 <code>aeef0058…</code>); 92 → 122 tests · official validator PASS ·
+  gates committed under <code>tuning/results/</code> (stage4, e7, no_harm) and
+  <code>dossier.md</code> §3/§7.</p>
   <p>MTAH 2027 · LA+AI · branch report — <span class="mono">ruiz-work</span> · 2026-11-09</p>
 </div></footer>
 

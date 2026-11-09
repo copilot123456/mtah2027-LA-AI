@@ -2,160 +2,171 @@
 branch: ruiz-work
 slug: ruiz-work
 baseline: de91a9f                   # merge-base with main (main locked at de91a9f — true baseline)
-head: 34e76ba                       # at report time (6 commits on the branch)
+head: 3a7d7aa                       # at report time (16 commits on the branch)
 author: operator + Copilot (LA+AI)
 date: 2026-11-09
 status: PROPOSED                    # shipped on the branch; team adoption Wed 2026-11-11
-verdict: ITERATE                    # E10 rule: gate passed, adoption retracted, redesign closed infeasible (A)
-kpi_band: PENDING                   # no guarded evaluator run yet — categorical only, never numbers
+verdict: ITERATE                    # four pre-declared gates: Gate 1 REJECT (frozen ships), E7 REJECT (OFF), E10 retract+closure, E1 label bed shipped
+kpi_band: C                         # operator-guarded run; flags: count 23-30 · f1_D low · balance normal · latency none
 ---
 
-# Branch report (AI) — E10 no-play rule: gate PASS, adoption RETRACTED, redesign closed as infeasible (A)
+# Branch report (AI) — P6 on `ruiz-work`: four pre-declared gates, zero adoptions, frozen submission preserved
 
 ## 1. Purpose & scope
 
-First experiment on `ruiz-work`: execute **E10** from the P6 backlog — a generic rule that
-labels FAQ-documented pre-kick-off frames (and any sustained no-play stretch) as `D`, fixing
-the measured 37 % deficiency (plan §0, 2026-11-07). Scope: own-output compliance against a
-public doc fact; no parameter tuning; no GT/video.
+The P6 external-evidence phase for the LA+AI possession decoder, executed on `ruiz-work`
+off the locked common ground: E10 (FAQ compliance rule), E1 (challenge-definition labels),
+the E2+E3+E11 combined 144-cell pass (Gate 1) and E7 (set-piece dead-ball prior + the
+band-C D-feature audit). Every grid, rule and gate was pinned in `dossier.md` §7 *before*
+its compute; every verdict is recorded there. Scope: external evidence only (IDSSE),
+no GT/video/window tuning, submission byte-identical throughout. For the team: what was
+tried, what the bars said, and what ships (frozen cell + evidence + OFF-by-default features).
 
 ## 2. Anchor
 
-- **Baseline (common ground):** `de91a9f` — main, locked by team agreement until the common
-  solution is pushed.
-- **Head:** `34e76ba` — 6 commits, all on `ruiz-work`.
-- **Net state vs baseline: 8 files, +286/−2 — `LA+AI.csv` byte-identical**
-  (adopt-then-retract restored the frozen output; README/PIPELINE md5 references net to zero).
-- Clean tree at verification.
+- baseline: `de91a9f` (= `git merge-base main ruiz-work`; main locked), head `3a7d7aa`,
+  tree clean at report time (`git status --porcelain` → 0 files).
+- 16 commits, `de91a9f..HEAD`:
 
-### Commit trail
+```
+3a7d7aa E7: set-piece dead-ball prior — gate REJECT (stays OFF) + band-C D-feature audit
+7388a47 dossier §7: pre-declare E7 — set-piece dead-ball prior + band-C D-feature audit
+5f86440 Gate 1: REJECT — frozen cell ships; stage-4 matrices + report + gate1 reader
+12f0c21 stage 4: E2 phase simulator (three IDSSE cues) + combined-pass runner + tests
+a516fe6 dossier §7: pre-declare the E2+E3+E11 combined pass — grid G6, tables, simulator, rule
+6ee2b24 dossier §3: log the guarded evaluator run — band C + flags, Gate 0 proceed
+d131a77 E10 closed as infeasible (disposition A): window probes + closure docs; guarded-eval redacting wrapper
+eb9bbb2 E1: derive_letters_controlled + statistics; fidelity probe vs plan section 0 PASSES
+d0d6765 dossier: pre-declare E1 challenge-definition labels (rule + T=3 a priori)
+7c347d1 Add ruiz-work branch report pair: E10 full story (gate PASS, retract, decision open)
+34e76ba E10 adoption RETRACTED: effect 17x the approved envelope; frozen state restored
+537b0df E10 ADOPTED: no-play rule on; LA+AI.csv regenerated (md5 0ed725f7)
+ea357c7 tuning: add E10 no-harm gate runner (paired off/on, pre-declared tolerances)
+2613ba8 E10: implement generic no-play rule behind no_play_rule=False (OFF)
+2f5ac66 dossier: pre-declare E10 generic no-play rule + no-harm gate (before any run)
+abd9e5c dossier: add organizer Q4 (video as input source; weights provenance)
+```
 
-| Commit | What |
-|---|---|
-| `abd9e5c` | dossier §6: organizer Q4 (video-as-input-source; weights provenance) |
-| `2f5ac66` | dossier §7: E10 rule + gate tolerances pre-declared (**before any implementation or run**) |
-| `2613ba8` | implementation behind `no_play_rule=False` + 5 tests (97 total) |
-| `ea357c7` | gate runner `tuning/no_harm_no_play.py` (post_checks --final semantics) |
-| `537b0df` | gate PASS → adopted: flag ON, CSV regenerated (md5 `0ed725f7…`) |
-| `34e76ba` | **adoption RETRACTED**: effect measured at 17× the approved envelope; frozen state restored |
+## 3. Verification batch (real output, report time)
 
-## 3. Verification batch (real output, 2026-11-09)
-
-```text
+```
+$ git status --porcelain | wc -l
+0
+$ git merge-base main ruiz-work
+de91a9fd707b4b19fc06f8461f34240bb6e14155
 $ .venv/bin/python -m pytest -q
-97 passed in 21.99s
-
-$ rm -f /tmp/v.csv && .venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
-Valid. Note this checks the format only -- it says nothing about whether the labels are right.
-aeef0058a08860c9e2407423b1172684  /tmp/v.csv      # == committed == baseline: byte-identical
+122 passed in 24.64s
+$ .venv/bin/python -m src.submit --out /tmp/vrep2.csv && md5sum /tmp/vrep2.csv
+Valid. … (format validator OK)
+aeef0058a08860c9e2407423b1172684  /tmp/vrep2.csv
+$ git diff --stat de91a9f...HEAD | tail -1
+ 34 files changed, 7191 insertions(+), 12 deletions(-)
 ```
 
-## 4. The E10 record (all four stages)
+md5 equals the baseline's frozen value → all changes are OFF/default or external tooling;
+no regeneration was needed (the E10 adopt→retract cycle restored it byte-identically at
+`34e76ba`).
 
-### 4.1 Pre-declaration (dossier §7, `2f5ac66` — before code, before the run)
+## 4. Diff inventory
 
-Rule: inside `decode()`, after gating + min-dwell, mark a frame `D` iff it lies in a maximal
-run of ≥ `no_play_s` = 10.0 s (a priori, same scale as `d_missing_run_s`) of consecutive
-frames with per-frame mean player speed < `d_activity_thr_ms` = 2.0 (existing prior). Per
-decoded half; no frame numbers, no match identifiers, no ball-position conditions (DATA.md:
-camera/homography unreliable across half-time). Gate: IDSSE frozen cell, 7 matches, paired
-off/on, same seeds; **pass iff mean Δ ≥ −0.005 AND no match < −0.02**.
+`git diff --stat de91a9f...HEAD`: 34 files, +7 191 −12. `LA+AI.csv` not among them.
 
-### 4.2 Gate result (`tuning/results/no_harm_no_play.csv`): **PASS**
+### Config deltas (key | baseline | branch | origin | evidence)
 
-```text
-harness sanity: max |rule-off - committed post_checks_final baseline| = 0.000000
-paired Δ (on − off): 6 matches +0.0000 | J03WPY -0.0005
-mean -0.0001 | worst -0.0005  →  gate: PASS
-```
+| key | baseline | branch | origin | evidence |
+|---|---|---|---|---|
+| `no_play_rule` | (absent) | `False` | prior, E10 | gate PASS (`no_harm_no_play.csv`) → adopt → **retract** (17× envelope) → redesign closed infeasible (§7); provenance carries the full saga |
+| `no_play_s` | (absent) | `10.0` | prior, E10 | same scale as `d_missing_run_s`, a-priori |
+| `d_w_set_piece` | (absent) | `0.0` (ON value 1.0 pre-declared) | prior, E7 | gate **REJECT** (primary −0.0075, 2/7); `e7_gate.csv` |
+| `sp_pre_s` | (absent) | `2.0` | prior, plan §2 E7 | window [start−2 s, start+1 s], a-priori |
+| `sp_post_s` | (absent) | `1.0` | prior, plan §2 E7 | same |
 
-### 4.3 Measured effect after adoption (`537b0df`) — the reason for retraction
+Behaviour-bearing defaults are unchanged; the frozen cell (switch 2 / dead 5 / σ 1.5 /
+dwell 2.0 / support 1.5, fill off, X off, no_play off) is untouched.
 
-```text
-rows changed: 49,165 of 199,319 (24.7%) — all within graded frames, ALL H/A → D
-changed within graded: 49,165 of 158,857 (30.9%)   [half1 24,723 | half2 24,442]
-transitions: H→D 26,293 | A→D 22,872
-D share on graded: 26.6% → 57.5% (+30.9 pp)   [public window dead share: 19.6%]
-activity structure: mean player speed < 2 m/s on 65.6% (half1) / 67.2% (half2) of frames;
-  qualifying ≥10 s runs: 50 (half1, 40,143 frames) + 52 (half2, 41,556 frames)
-```
+### Code surface
 
-- Plan §2 E10 envelope: "**117 s of one half** … ≈1.8 % of graded … 0 … +0.005".
-  Actual: **30.9 % of graded — 17× the envelope.**
-- Cause: `mean(player speeds) < 2 m/s` is the **normal state of live football** (most of 22
-  players walk at any instant) — fine as one weak sigmoid feature (weight 0.5), a D-hammer as
-  a hard match-wide rule.
-- **Why the gate couldn't see it:** the rule fires on 0–1 of 7 IDSSE matches (different speed
-  distributions) — a *vacuous* no-harm pass. **Methodological learning: future no-harm gates
-  must check external firing rates** (does the rule fire on external data at all, and at a
-  comparable rate?) before "no harm" means anything.
-
-### 4.4 Retraction (`34e76ba`)
-
-`no_play_rule` → False; `LA+AI.csv` regenerated → byte-identical to baseline
-(`aeef0058a08860c9e2407423b1172684`); live md5 references restored; provenance records the
-full story. Evidence kept: pre-declaration, runner, results CSV, tests (rule remains
-implemented and tested, OFF).
+- `src/emission.py` — `set_piece` dead feature + `z += d_w_set_piece·f_sp` (zero-weight
+  by default; `build_emission(..., setpiece_starts=None)` default-safe); `activity` field.
+- `src/data.py` — `MatchArrays.setpiece_starts` (59 `SET PIECES` tag starts).
+- `src/steps.py` — one pass-through line (`setpiece_starts=ctx.arrays.setpiece_starts`).
+- `src/decoder.py` — `apply_no_play()` (OFF).
+- `tuning/` — `simulate.py` (3 phase cues, weighted `mask_ball`, event-row alignment),
+  `stage4.py` (G6 runner), `gate1.py` (Gate-1 reader), `e7.py` (gate + audit),
+  `idsse.py` (`derive_letters_controlled`), `guarded_eval.py` (redacting wrapper).
+- `dossier.md` — §3 guarded-run log; §7 four pre-declarations + two gate reads.
+- `pipeline_spec.py`, `src/pipeline.py`, `games.py`, `evaluation/`, `starter/`,
+  `.gitignore`: **untouched**.
 
 ## 5. Evidence
 
-| Claim | Evidence | Artifact |
+### P6 band + flags (operator-guarded run; numbers never entered any AI channel)
+
+Band **C** · flags `count 23-30 · f1_D low · balance normal · latency none` — delivered by
+the operator after `tuning/guarded_eval.py` (full board archived operator-side,
+`evaluation/reports/guarded_board_*.txt`). Logged in dossier §3. Gate 0: proceed.
+
+### IDSSE artifacts (all committed)
+
+| Artifact | Path | Result |
 |---|---|---|
-| FAQ fact | reference-docs/FAQ.md: frames 110,808–113,741 "graded and all of them are `D`" | docs quote, dossier §7 |
-| Baseline deficiency | own output = 37 % `D` on the window (measured 2026-11-07, plan §0) | plan §0 |
-| Rule is generic | no frame ids/match ids/ball-position conditions; unit tests on synthetic runs | `tests/test_no_play.py` |
-| No-harm gate | IDSSE 7 matches paired, mean −0.0001, worst −0.0005, sanity drift 0.000000 | `tuning/results/no_harm_no_play.csv` |
-| Effect magnitude | 49,165 flips, D share +30.9 pp, all H/A→D | measured on the adopted commit `537b0df` |
-| Frozen state restored | fresh run == committed == baseline md5 | verification batch above |
-| P6 KPI | `PENDING` — band letter + flags arrive from the operator | — |
+| E1 fidelity | `tuning/results/e1_label_stats.csv` | T=3: 2.485/min · 13.42 s · 0.034 vs plan §0 audited 2.49 · 13.4 · 0.03 — PASS on every figure; dead share invariant |
+| E10 gate | `tuning/results/no_harm_no_play.csv` | PASS (mean −0.0001, worst −0.0005) → adopt → **retract** (30.9 % flips = 17× envelope); redesign probes → closed infeasible (A) |
+| Gate-1 matrices | `tuning/results/stage4_{uniform,phase_a2,phase_a3,phase_a2_fill}.csv` + `stage4_masks.csv` | plateau candidate `switch1/dead12/σ1.5/dwell2/support1` 0.3699 vs frozen 0.3667; **Δ +0.0032 (3/7)**, CI [−0.0078, +0.0179]; LOMO 7/7; fill twin +0.0000; α=3 same cell → **REJECT, frozen ships** |
+| Gate-1 report | `tuning/results/report_stage4.md` | full four-table + twin + mask statistics |
+| E7 gate/audit | `tuning/results/e7_gate.csv`, `e7_audit.csv`, `e7_noise.csv`, `report_e7.md` | primary −0.0075 (2/7), all tables negative, OFF drift 0.000000 → **REJECT, stays OFF**; audit: missed-D = ball-absent (long_missing 53.0 % vs base 19.2 %; set_piece covers 6.9 %) |
+| Simulator validation | inside the above | phase masks lift onto all three cues (anycue 0.475/0.410) vs flat uniform (0.428/0.435); TacklingGame/set-piece rows mapped 100 % on all 7 matches |
+
+Tests: 92 (baseline) → **122**. E1 labels: `derive_letters_controlled()` + 6 tests;
+aligned labels lift the frozen cell **+0.105** over per-touch labels on the phase table
+(scoring use only, per §7).
 
 ## 6. Reproduction from a clean clone
 
-```bash
-.venv/bin/python -m pytest -q                       # 97 passed
-.venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
-# aeef0058a08860c9e2407423b1172684
-.venv/bin/python -m tuning.no_harm_no_play          # re-runs the gate (minutes)
-```
+1. `git clone -b ruiz-work <repo> && cd <repo> && python -m venv .venv && .venv/bin/pip install -r requirements.txt`
+   (IDSSE files fetch on first use into gitignored `data/idsse/`; caches under `data/.cache/`).
+2. `.venv/bin/python -m pytest -q` → 122 passed.
+3. `.venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv` → `aeef0058a08860c9e2407423b1172684`.
+4. `.venv/bin/python -m tuning.gate1` → Gate-1 read + regenerates `report_stage4.md`.
+5. `.venv/bin/python -m tuning.e7` → E7 gate + audit + `report_e7.md` (~20 min first run
+   for event parsing, ~3 min warm).
+6. `.venv/bin/python -m tuning.no_harm_no_play` → E10's gate (~minutes).
 
-## 7. Compliance log
+## 7. Compliance log (SOP §4 with results)
 
-- [x] No provided-match per-frame values in this report — aggregates/counts only.
-- [x] No guarded-evaluator numbers — `kpi_band: PENDING`; no run performed.
-- [x] No GT/video-derived claim — FAQ is a public doc; effects measured on our own output;
-      gate numbers are committed external (IDSSE) results.
-- [x] Every CFG delta carries provenance (`no_play_rule`, `no_play_s` — origin `prior`).
-- [x] Behaviour changes went through the pre-declared external gate (record in §7) — and the
-      adoption was retracted when the measured effect left the operator-approved envelope.
-- [x] Frame-specific rule never used (plan ban honoured).
-- [x] Forbidden paths untouched; no `data/*`; no history rewrite; tests green after every
-      commit (92 → 97).
-- [x] Human ↔ AI reports agree, claim for claim.
-- [x] Operator reviewed the loop (design_now approval 2026-11-09); disposition A taken the
-      same day — redesign attempted, probes showed the sanctioned signals absent from the
-      window, E10 closed as infeasible under the rules (dossier §7 closure note).
+- [x] No provided-match per-frame values in either report — coarse aggregates only.
+- [x] No guarded-evaluator numbers — band letter + categorical flags only (as delivered).
+- [x] No claim derived from the video or the ground truth — evidence = IDSSE + public docs + own-output aggregates.
+- [x] Every CFG delta carries provenance origin + evidence (§4 table above).
+- [x] Behaviour changes > 0.02 paired on IDSSE, pre-declared §7 — or explicitly **not met → REJECT**: Gate 1 (+0.0032) and E7 (−0.0075) both rejected; E10's adoption retracted on divergence; nothing ADOPTED.
+- [x] Framework touched → adoption step flagged (§8).
+- [x] Verification batch pasted with real output; md5 matches baseline.
+- [x] Human and AI reports agree, claim for claim.
+- [x] Operator reviewed before commit (dispositions A / E7 choice / report refresh instructed by the operator).
 
 ## 8. Standard-change detection
 
-This branch did **not** change the pipeline framework contract (`src/pipeline.py`,
-`pipeline_spec.py`, `src/steps.py` — untouched). It touched `dossier.md` (§6 Q4, §7
-pre-declaration) and — during the adopted window — refreshed md5 references in README and
-PIPELINE_STANDARD (restored by the retraction; net zero). The **methodological addition**
-(firing-rate parity for no-harm gates) is proposed for the P6 plan via the vault, not a
-framework change.
+- `pipeline_spec.py` — **not touched** (stage names, requires/provides unchanged; the new
+  `setpiece` data rides inside `arrays`).
+- `src/pipeline.py` — not touched. This SOP / PIPELINE_STANDARD — not touched.
+- `src/steps.py` — **touched**: one pass-through line in the emission step.
+- `config.py` provenance — **grew**: 5 new keys, all OFF/default, each with origin+evidence.
+- **Adoption-step reminder:** per PIPELINE_STANDARD, the `steps.py` line + config keys are
+  shared with the team at the Wed 2026-11-11 sync before anything merges to common ground.
+  Behaviour is unchanged today (all weights zero / flags false; byte-identity proven).
 
 ## 9. Open questions / handoff
 
-1. **Operator decision (2026-11-09): disposition A — E10 closed as infeasible under the
-   allowed generic signals.** The kickoff-geometry redesign was probed read-only (no
-   GT/video): ball or kicker within 1.5 m of the centre spot on 0.0 % of the window,
-   formation milling (29.9 m median displacement vs 36.3 m live), four-clause conjunction
-   0.0 % — the window is warm-up, not a formed-up restart, and the plan §2 sanctioned rule
-   has no firing opportunity in it. Flag stays OFF; 37 % stays documented; no gate run.
-   Remaining honest routes: accept as-is, E7's tag/timing turf, or an organizer answer.
-2. **Gate-methodology fix (queued):** require external firing-rate evidence in future no-harm
-   gates — proposed as a P6 plan note.
-3. E1 (challenge-definition labels, T = 3 s a priori) is next per operator instruction; P6
-   band + flags, E1 rule T — now approved by "proceed with E1"; organizer Q1–Q4 remain owed.
-4. First real `pipeline_spec.py` handler swap by a team member has not happened yet —
-   Wednesday 2026-11-11 is the stress test.
+1. **Organizer Q1–Q4 open** (dossier §6). Q1 gates any future α-calibration; Q4 (video as
+   input) would reopen E10's window question — until answers arrive, both stay closed.
+2. **Frozen invariant:** md5 `aeef0058…`, frozen cell, all flags OFF. A second guarded
+   evaluator run is allowed only if a *code path* changes before the freeze (none did).
+3. **E13 queued** (detector-tier value simulation, Jose's notebooks) — needs its own §7
+   pre-declaration before any run; E8/E12 discarded in the plan.
+4. **Limitation candidate for the freeze write-up:** missed-D availability under missing
+   ball (E7 audit: `long_missing` 53.0 % of missed-D, stationary/boundary silent);
+   fixing it would need a new pre-declared > 0.02 gate — not attempted here.
+5. **Band-C ordering was executed as plan §1 prescribes:** E2/E1 first (done), E3 demoted
+   (folded into G6, did not clear the bar), D-audit folded into E7 (done).
+6. Downstream: `python -m tuning.gate1` and `python -m tuning.e7` are the two readers;
+   matrices are immutable records — never re-run selection with a different rule.

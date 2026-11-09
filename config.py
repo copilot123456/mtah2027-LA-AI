@@ -31,7 +31,8 @@ CFG = dict(
                                   # ADOPTION RETRACTED 2026-11-09: measured effect 17x the
                                   # plan's envelope (30.9% of graded frames flip, D share
                                   # 26.6% -> 57.5%; IDSSE gate was vacuous — rule fires 0-1
-                                  # matches externally). Awaiting operator decision.
+                                  # matches externally). Operator decision 2026-11-09:
+                                  # redesign probed and closed as infeasible (dossier §7).
     no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
 
     # --- ball fill tiers ---
@@ -98,7 +99,8 @@ PROVENANCE = {
                      "mean -0.0001, worst -0.0005) but adoption RETRACTED same day: the rule "
                      "fires on 30.9% of our graded frames (D share 26.6% -> 57.5%, 17x the "
                      "plan's 1.8% envelope) while firing on 0-1 IDSSE matches — the gate was "
-                     "vacuous. Flag stays False pending an operator decision; full record "
+                     "vacuous. Flag stays False — the redesign was probed and closed as "
+                     "infeasible 2026-11-09 (dossier §7); full record "
                      "dossier §7 + tuning/results/no_harm_no_play.csv"),
     "no_play_s": ("prior", "10 s of unbroken low activity = stoppage, same scale as "
                    "d_missing_run_s; a priori (dossier §7 E10 pre-declaration)"),
