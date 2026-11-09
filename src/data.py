@@ -138,10 +138,18 @@ class MatchArrays:
     slot_team: np.ndarray   # (46,) int8, 0 home / 1 away
     graded: np.ndarray      # (N,) bool
     half: np.ndarray        # (N,) int8, 0/1/2
+    setpiece_starts: np.ndarray  # (M,) int64, smart-tagging SET PIECES start frames (E7)
 
     @property
     def n_frames(self) -> int:
         return len(self.frame_id)
+
+
+def set_piece_starts() -> np.ndarray:
+    """Start frames of the smart-tagging SET PIECES instances (E7 timing input)."""
+    tags = load_smart_tagging()
+    sel = tags[tags["code"] == "SET PIECES"]
+    return np.sort(sel["start_frame"].to_numpy(dtype=np.int64))
 
 
 def load_arrays(force: bool = False) -> MatchArrays:
@@ -163,4 +171,5 @@ def load_arrays(force: bool = False) -> MatchArrays:
         slot_team=load_slot_teams(),
         graded=graded_mask(len(df)),
         half=half_labels(len(df)),
+        setpiece_starts=set_piece_starts(),
     )

@@ -346,6 +346,29 @@ the operator, per the guard protocol.
   noise parameters a priori from plan §2; no window/GT/video; nothing here re-opens the
   frozen cell's other parameters.
 
+##### E7 gate + D-feature audit (2026-11-09, same day — `e7_gate.csv`, `e7_audit.csv`, `e7_noise.csv`, `report_e7.md`)
+
+- **Run:** 14 ON decodes + a fresh-OFF cross-check; set pieces mapped **100 %** on all
+  7 matches (90–108 raw → noisy mean 84 + 9 spurious each); **OFF fresh-vs-committed
+  drift 0.000000** — masks, seeds and the code path reproduce the committed stage-4
+  rows exactly.
+- **Verdict: REJECT → `d_w_set_piece` stays 0.0.** Primary (phase × aligned) Δ
+  **−0.0075**, 2/7 positive; all four tables negative (−0.0057 … −0.0112). With noisy
+  tag timing the ON value pushes D where the Viterbi path disagrees — the plan's
+  +0.00 … +0.01 prior was optimistic and the > 0.02 bar did its job. `LA+AI.csv`
+  untouched (md5 `aeef0058a08860c9e2407423b1172684`).
+- **Audit (band-C `f1_D` low, external picture, phase masks, 7-match means):**
+  missed-D is a **ball-absent** phenomenon — `long_missing` fires on **53.0 %** of
+  missed-D frames (base 19.2 %) while `stationary` (1.3 %) and `near_boundary`
+  (1.2 %) cannot speak without ball evidence; `set_piece` covers only **6.9 %** of
+  missed-D (base 4.4 %) — a real but tiny upside, consistent with the gate. False-D
+  also rides `long_missing` (28.3 %). Reading: the band-C weakness is dead-feature
+  *availability* under a missing ball, not missing priors. Recorded as a freeze-time
+  limitation candidate; any fix would need its own pre-declared > 0.02 gate — nothing
+  changed today.
+- **Reproduce:** `.venv/bin/python -m tuning.e7` (~20 min first run incl. event
+  parsing, ~3 min with warm caches) → `python -m pytest -q`.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state

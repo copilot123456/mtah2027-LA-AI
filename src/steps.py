@@ -36,7 +36,8 @@ def ball_track(ctx: "Ctx", cfg: dict) -> None:
 def emission(ctx: "Ctx", cfg: dict) -> None:
     """Build the per-frame H/A/D log-emission (team kernel, confidence, dead-ball)."""
     ctx.emission = build_emission(
-        ctx.track, ctx.arrays.players, ctx.arrays.players_s, ctx.arrays.slot_team, cfg
+        ctx.track, ctx.arrays.players, ctx.arrays.players_s, ctx.arrays.slot_team, cfg,
+        setpiece_starts=ctx.arrays.setpiece_starts,
     )
 
 

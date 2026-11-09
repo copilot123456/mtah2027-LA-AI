@@ -63,14 +63,15 @@ def grid6_points() -> list[dict]:
             for combo in product(*(GRID6[p] for p in PARAMS))]
 
 
-def _tackle_events(xml_path: Path) -> tuple[list[tuple[float, int]], list[float]]:
-    """(anchors: epoch_s from StartFrame events, epochs: all TacklingGame parent times)."""
+def _event_anchors_and_epochs(xml_path: Path, tags: tuple[str, ...]
+                              ) -> tuple[list[tuple[float, int]], list[float]]:
+    """(anchors: epoch_s from any StartFrame event, epochs: parents carrying `tags`)."""
     tree = ET.parse(xml_path)
     anchors: list[tuple[float, int]] = []
     epochs: list[float] = []
     for ev in tree.getroot().iter("Event"):
         attrs = ev.attrib
-        if any(c.tag == "TacklingGame" for c in ev):
+        if any(c.tag in tags for c in ev):
             epochs.append(pd.Timestamp(attrs["EventTime"]).timestamp())
         if "StartFrame" in attrs:
             anchors.append((pd.Timestamp(attrs["EventTime"]).timestamp(),
@@ -78,16 +79,16 @@ def _tackle_events(xml_path: Path) -> tuple[list[tuple[float, int]], list[float]
     return anchors, epochs
 
 
-def load_tackle_rows(match_id: str) -> np.ndarray:
-    """TacklingGame rows for one IDSSE match; kloppy+XML once, then a local npy cache."""
+def load_event_rows(match_id: str, tags: tuple[str, ...], cache_name: str) -> np.ndarray:
+    """Rows for one IDSSE event type; kloppy+XML once, then a local npy cache."""
     CACHE.mkdir(parents=True, exist_ok=True)
-    cache = CACHE / f"tackles_{match_id}.npy"
+    cache = CACHE / f"{cache_name}_{match_id}.npy"
     if cache.exists():
         return np.load(cache)
     xmls = sorted(IDSSE_DIR.glob(f"*events_raw*{match_id}.xml"))
     if not xmls:
         raise FileNotFoundError(f"events XML for {match_id} under {IDSSE_DIR}")
-    anchors, epochs = _tackle_events(xmls[0])
+    anchors, epochs = _event_anchors_and_epochs(xmls[0], tags)
 
     from kloppy import sportec
 
@@ -101,10 +102,15 @@ def load_tackle_rows(match_id: str) -> np.ndarray:
         df["period_id"].to_numpy(),
         anchors, epochs)
     kept = rows[rows >= 0]
-    print(f"{match_id}: tackles {len(kept)}/{len(epochs)} mapped, "
+    print(f"{match_id}: {cache_name} {len(kept)}/{len(epochs)} mapped, "
           f"{len(anchors)} anchors", flush=True)
     np.save(cache, kept)
     return kept
+
+
+def load_tackle_rows(match_id: str) -> np.ndarray:
+    """TacklingGame rows for one IDSSE match (E2 cue 3)."""
+    return load_event_rows(match_id, ("TacklingGame",), "tackles")
 
 
 def cues_for(case, tackle_rows: np.ndarray) -> list[np.ndarray]:

@@ -59,6 +59,9 @@ CFG = dict(
     d_w_boundary=0.5,
     d_w_long_missing=0.5,
     d_w_low_activity=0.5,
+    d_w_set_piece=0.0,             # E7: OFF; ON value 1.0 a priori (dossier §7); dead-logit only
+    sp_pre_s=2.0,                  # E7 window: seconds before a set-piece tag start (plan §2)
+    sp_post_s=1.0,                 # E7 window: seconds after a set-piece tag start (plan §2)
     ball_stationary_thr_ms=1.0,   # m/s below which the ball counts as at rest
     d_missing_run_s=10.0,         # no-ball run length (s) that saturates the missing feature
     d_activity_thr_ms=2.0,        # mean player speed (m/s) below which play looks stopped
@@ -118,6 +121,11 @@ PROVENANCE = {
     "d_w_boundary": ("prior", "ball on the line => dead (throw-ins, corners)"),
     "d_w_long_missing": ("prior", "long no-ball runs correlate with stoppages (measured 75% of gaps are 5-30 s)"),
     "d_w_low_activity": ("prior", "low team activity during stoppages (Jose WP3 design)"),
+    "d_w_set_piece": ("prior", "E7 set-piece prior: OFF by default, ON value 1.0 a priori "
+                     "(plan §2 E7); gated on IDSSE > 0.02 paired, dossier §7 E7 "
+                     "pre-declaration 2026-11-09; timing only, no team/type"),
+    "sp_pre_s": ("prior", "E7 window [start - 2 s, start + 1 s] a priori (plan §2 E7)"),
+    "sp_post_s": ("prior", "E7 window [start - 2 s, start + 1 s] a priori (plan §2 E7)"),
     "ball_stationary_thr_ms": ("prior", "~1 m/s is a still ball; measured p50 pass speed is ~7 m/s (deep-dive 2)"),
     "d_missing_run_s": ("prior", "10 s without a ball: matches the median missing run (~10.7 s)"),
     "d_activity_thr_ms": ("prior", "players walking (<~2 m/s) is the stoppage signature"),

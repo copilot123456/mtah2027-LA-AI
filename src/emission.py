@@ -14,8 +14,9 @@ Design notes (tests enforce the behaviours):
     none = 0. At conf = 0 the H/A columns are exactly equal (a frame with no
     trustworthy ball evidence says nothing about which team has it) while the
     dead-ball term still speaks (tier-3 rule).
-  * p_d = sigmoid(d_bias + sum w_i f_i) with five dead-ball features
-    (out_of_pitch, stationary, near boundary, long missing run, low activity).
+  * p_d = sigmoid(d_bias + sum w_i f_i) with six dead-ball features
+    (out_of_pitch, stationary, near boundary, long missing run, low activity,
+    set-piece — E7, OFF by default).
   * Duel (both teams equally close) => equal H/A columns by construction.
   * A constant added to all three columns of one frame cannot change any Viterbi
     path, so only the *contrast* matters; the formulation keeps that contrast
@@ -109,7 +110,22 @@ def _ball_speed_ms(track: BallTrack, cfg: dict) -> np.ndarray:
     return speed
 
 
-def _dead_features(track: BallTrack, players_s: np.ndarray, cfg: dict) -> dict:
+def _set_piece_feature(starts: np.ndarray | None, n: int, cfg: dict) -> np.ndarray:
+    """f_sp (E7): 1.0 within [start − sp_pre_s, start + sp_post_s] of any tag start."""
+    out = np.zeros(n, dtype=np.float64)
+    if starts is None or len(starts) == 0:
+        return out
+    pre = int(round(cfg["sp_pre_s"] * cfg["fps"]))
+    post = int(round(cfg["sp_post_s"] * cfg["fps"]))
+    for s in np.asarray(starts, dtype=np.int64):
+        a, b = max(int(s) - pre, 0), min(int(s) + post + 1, n)
+        if a < b:
+            out[a:b] = 1.0
+    return out
+
+
+def _dead_features(track: BallTrack, players_s: np.ndarray, cfg: dict,
+                   setpiece_starts: np.ndarray | None = None) -> dict:
     n = len(track.source)
     has_pos = ~np.isnan(track.xy).any(axis=1)
 
@@ -137,12 +153,16 @@ def _dead_features(track: BallTrack, players_s: np.ndarray, cfg: dict) -> dict:
         "near_boundary": near_boundary.astype(np.float64),
         "long_missing": long_missing,
         "low_activity": low_activity.astype(np.float64),
+        "set_piece": _set_piece_feature(setpiece_starts, n, cfg),
         "activity": activity,          # raw per-frame mean speed (E10 no-play rule)
     }
 
 
 def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
-                   slot_team: np.ndarray, cfg: dict = CFG) -> Emission:
+                   slot_team: np.ndarray, cfg: dict = CFG,
+                   setpiece_starts: np.ndarray | None = None) -> Emission:
+    """`setpiece_starts` feeds the E7 dead-logit term; with `d_w_set_piece = 0`
+    (the default) the output is identical to passing nothing."""
     n = len(track.source)
     if not (len(players) == len(players_s) == n):
         raise ValueError("track and player arrays must have the same length")
@@ -155,13 +175,14 @@ def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
     live = total > EPS
     p_team[live] = ev[live] / total[live, None]
 
-    feats = _dead_features(track, players_s, cfg)
+    feats = _dead_features(track, players_s, cfg, setpiece_starts)
     z = np.full(n, cfg["d_bias"], dtype=np.float64)
     z += cfg["d_w_out_of_pitch"] * feats["out_of_pitch"]
     z += cfg["d_w_stationary"] * feats["stationary"]
     z += cfg["d_w_boundary"] * feats["near_boundary"]
     z += cfg["d_w_long_missing"] * feats["long_missing"]
     z += cfg["d_w_low_activity"] * feats["low_activity"]
+    z += cfg["d_w_set_piece"] * feats["set_piece"]
     p_d = _sigmoid(z)
 
     log_e = np.empty((n, 3), dtype=np.float64)
