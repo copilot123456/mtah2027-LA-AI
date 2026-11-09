@@ -177,6 +177,38 @@ the operator, per the guard protocol.
   7 matches). A material mismatch means this implementation differs from the probed rule and
   must be reconciled before any compute.
 
+#### E10 redesign — feasibility probes and closure (2026-11-09, operator decision: A, close as infeasible)
+
+- **Trigger:** operator proposed re-deriving E10 from kickoff geometry — ball at the centre
+  spot, a kicker beside it, players near no movement, formation stable/static (motivated by
+  public broadcast stills of a kick-off; no eval video used).
+- **Method:** four read-only probes of the target window (frames 110,808–113,741) on our own
+  arrays — no GT, no video, no scoring run. Every tested value was an existing prior
+  (`sigma_m` 1.5, `ball_stationary_thr_ms` 1.0, `d_activity_thr_ms` 2.0, `no_play_s` 10.0);
+  no threshold was chosen from any measurement.
+- **Findings (own-output aggregates):**
+  - ball within 1.5 m of the centre spot: **0.0 %** of window frames; ball at rest < 1 m/s:
+    6.1 %. Camera is not the obstacle — reprojection error at the window is 0.20 (play-quality).
+  - a player within 1.5 m of the centre: **0.0 %** (closest approach 1.93 m, final 0.5 s).
+    At 9.15 m (centre circle): 57.6 % of the window vs **96.2 %** of a live-play contrast
+    span — centre proximity fires *more* in live play than in the window (anti-discriminative).
+  - formation static: median per-slot displacement across the window **29.9 m** vs 36.3 m on
+    the live-play contrast — the window is warm-up milling, not a formed-up restart; the
+    kick-off-stills geometry exists only in the last ~10 s (89.6 % of the final 250 frames
+    within 5 m of centre), i.e. ~4 % of the window, and the window ends before formation.
+  - players quiet (< 2 m/s): 95.5 % of the window vs 56.6 % live — the only clause that
+    covers the window is the round-1 D-hammer on its own (30.9 % of graded frames, retracted).
+  - the four-clause conjunction (quiet ∧ ball at rest ∧ centre ∧ kicker): **0.0 %**.
+- **Conclusion:** the plan §2 sanctioned fix (ball at rest near the centre spot, no player
+  movement) has no firing opportunity in the target window; the FAQ's all-D window is a
+  match-state fact that the allowed generic, frame-number-free signals do not expose in this
+  tracking. Signatures derived from the window itself (e.g. an "unattended warm-up ball")
+  are barred by plan §4.1/§4.5 (no fitting to the public window) and were not pursued.
+- **Disposition A (operator, 2026-11-09):** E10 closed as infeasible under the rules —
+  `no_play_rule` stays OFF, the 37 % deficiency stays documented as unobservable from the
+  allowed signals, **no gate run taken** (a run on a rule measured inert would be theater).
+  Reopening requires either an organizer answer or a rule shaped from documents alone.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state

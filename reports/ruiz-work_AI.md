@@ -6,11 +6,11 @@ head: 34e76ba                       # at report time (6 commits on the branch)
 author: operator + Copilot (LA+AI)
 date: 2026-11-09
 status: PROPOSED                    # shipped on the branch; team adoption Wed 2026-11-11
-verdict: ITERATE                    # E10 rule: gate passed, adoption retracted, decision open
+verdict: ITERATE                    # E10 rule: gate passed, adoption retracted, redesign closed infeasible (A)
 kpi_band: PENDING                   # no guarded evaluator run yet — categorical only, never numbers
 ---
 
-# Branch report (AI) — E10 no-play rule: gate PASS, adoption RETRACTED, decision open
+# Branch report (AI) — E10 no-play rule: gate PASS, adoption RETRACTED, redesign closed as infeasible (A)
 
 ## 1. Purpose & scope
 
@@ -131,7 +131,9 @@ implemented and tested, OFF).
 - [x] Forbidden paths untouched; no `data/*`; no history rewrite; tests green after every
       commit (92 → 97).
 - [x] Human ↔ AI reports agree, claim for claim.
-- [x] Operator reviewed the loop (design_now approval 2026-11-09); decision on next step open.
+- [x] Operator reviewed the loop (design_now approval 2026-11-09); disposition A taken the
+      same day — redesign attempted, probes showed the sanctioned signals absent from the
+      window, E10 closed as infeasible under the rules (dossier §7 closure note).
 
 ## 8. Standard-change detection
 
@@ -144,10 +146,13 @@ framework change.
 
 ## 9. Open questions / handoff
 
-1. **Operator decision (open):** keep E10 retracted (current state) · re-adopt despite the
-   D-share excursion · redesign the rule a priori (hard: any new shape is now informed by the
-   window look — the honest routes are (a) accept 37 % as-is, (b) a docs/tag-driven timing
-   rule à la E7, or (c) organizer Q4 answers unlocking video/tag inputs).
+1. **Operator decision (2026-11-09): disposition A — E10 closed as infeasible under the
+   allowed generic signals.** The kickoff-geometry redesign was probed read-only (no
+   GT/video): ball or kicker within 1.5 m of the centre spot on 0.0 % of the window,
+   formation milling (29.9 m median displacement vs 36.3 m live), four-clause conjunction
+   0.0 % — the window is warm-up, not a formed-up restart, and the plan §2 sanctioned rule
+   has no firing opportunity in it. Flag stays OFF; 37 % stays documented; no gate run.
+   Remaining honest routes: accept as-is, E7's tag/timing turf, or an organizer answer.
 2. **Gate-methodology fix (queued):** require external firing-rate evidence in future no-harm
    gates — proposed as a P6 plan note.
 3. E1 (challenge-definition labels, T = 3 s a priori) is next per operator instruction; P6
