@@ -122,6 +122,38 @@ inspected for sanity only, never used to select.
 the audit. The single frozen `submission_eval` run (section 10 of the plan) remains pending
 the operator, per the guard protocol.
 
+### P6 pre-declarations
+
+#### E10 — generic no-play rule (pre-declared 2026-11-09, before implementation and before the run)
+
+- **Authorization:** operator approval 2026-11-09 ("if we can confirm the theory … then yes");
+  condition confirmed by `reference-docs/FAQ.md` (second half graded from 110,808, kick-off at
+  113,742, "those 2,934 frames … are all `D`"). The check itself was measured 2026-11-07
+  (plan §0): our output is 37 % `D` on those frames.
+- **Rule (exact, generic):** inside `decode()`, after gating and min-dwell, mark a frame `D`
+  iff it lies in a maximal run of ≥ `no_play_s` = **10.0 s** (a priori: same scale as the
+  existing `d_missing_run_s` prior; 10 s of unbroken low activity is unambiguously a stoppage)
+  of consecutive frames whose per-frame mean player speed is < `d_activity_thr_ms` = 2.0
+  (existing prior). The whole qualifying run is marked, including its first `no_play_s`.
+  Runs are computed within one decoded half only — never across the halftime hole. New cfg
+  keys: `no_play_rule` (bool; default OFF until the gate below passes), `no_play_s` (10.0,
+  origin `prior`). No frame numbers, no match identifiers, no ball-position conditions. The
+  centre-spot clause of plan §2 is dropped because DATA.md documents the camera/homography as
+  unreliable across halftime (ball position cannot be verified exactly where the rule must
+  fire); the FAQ fact is a match-state fact, not a ball-state fact.
+- **Why this is a compliance fix, not a tune:** the FAQ states the labels for this situation
+  outright; the rule implements a documented property of the challenge using existing priors
+  plus one a-priori dwell — no number is fitted to any data.
+- **Gate (a priori):** no-harm on IDSSE — frozen cell (config as shipped), all 7 matches,
+  paired rule-off vs rule-on, same seeds; **pass iff** mean paired Δ spellF1 ≥ −0.005 **and**
+  no single match worse than −0.02 (mean within the bootstrap noise floor of the frozen cell's
+  CI; per-match bound = the standard evidence-rule harm bound). Fail ⇒ the flag stays OFF and
+  the result is reported as-is.
+- **Expected own-output effect:** the pre-kickoff window moves from 37 % to ≈ 95 % `D`;
+  plan §2's estimate stands (0 … +0.005 spellF1).
+- **If adopted:** `LA+AI.csv` is regenerated in the same branch commit (new md5 documented in
+  the branch report); adoption into the final branch remains a team decision.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
