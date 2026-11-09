@@ -10,6 +10,8 @@ Per graded span (the two halves, decoded independently, never across the halftim
   3. Min-dwell post-pass: segments shorter than min_dwell_s merge into the longer
        neighbouring segment (edges merge into their only neighbour), shortest first
        until stable.
+  4. Generic no-play pass (cfg no_play_rule, OFF by default — E10): D over sustained
+       low-activity runs, applied per half after gating and min-dwell (dossier §7).
 
 Frames outside the graded spans are CODE_X (free for the scorer).
 Pure function: inputs are not modified.
@@ -127,6 +129,34 @@ def _rebuild(template: np.ndarray, segs: list[tuple[int, int, int]]) -> np.ndarr
     return out
 
 
+def apply_no_play(labels: np.ndarray, activity: np.ndarray, cfg: dict = CFG) -> np.ndarray:
+    """E10 generic no-play rule (pre-declared: dossier §7 P6, 2026-11-09).
+
+    Mark `CODE_D` over every maximal run of >= `no_play_s` seconds in which the per-frame
+    mean player speed stays below `d_activity_thr_ms`; the whole qualifying run is marked,
+    including its first `no_play_s`. Non-finite activity breaks a run. No frame numbers,
+    match identifiers or ball-position conditions are used; runs never span decoded halves
+    (decode() calls this per half span).
+    """
+    if not cfg["no_play_rule"]:
+        return labels
+    need = max(1, int(round(cfg["no_play_s"] * cfg["fps"])))
+    low = np.isfinite(activity) & (activity < cfg["d_activity_thr_ms"])
+    out = labels.copy()
+    i, n = 0, len(low)
+    while i < n:
+        if not low[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and low[j]:
+            j += 1
+        if j - i >= need:
+            out[i:j] = CODE_D
+        i = j
+    return out
+
+
 @dataclass(frozen=True)
 class Decoded:
     labels: np.ndarray        # (N,) int8: CODE_H/A/D on graded frames, CODE_X elsewhere
@@ -152,6 +182,8 @@ def decode(emission: Emission, source: np.ndarray, half: np.ndarray,
         path, reverted = apply_gating(path, source[idx], emission.log_e[idx], cfg)
         reverted_total += reverted
         path = enforce_min_dwell(path, min_len)
+        if cfg["no_play_rule"]:
+            path = apply_no_play(path, emission.activity[idx], cfg)
         labels[idx] = path
 
     return Decoded(labels=labels, reverted_switches=reverted_total)

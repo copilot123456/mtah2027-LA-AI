@@ -49,6 +49,7 @@ class Emission:
     conf: np.ndarray    # (N,) float64 in [0, 1]
     p_d: np.ndarray     # (N,) float64 in (0, 1)
     ev: np.ndarray      # (N, 2) raw team kernel masses (H, A)
+    activity: np.ndarray  # (N,) per-frame mean player speed (m/s), NaN where unknown (E10)
 
     @property
     def margin(self) -> np.ndarray:
@@ -136,6 +137,7 @@ def _dead_features(track: BallTrack, players_s: np.ndarray, cfg: dict) -> dict:
         "near_boundary": near_boundary.astype(np.float64),
         "long_missing": long_missing,
         "low_activity": low_activity.astype(np.float64),
+        "activity": activity,          # raw per-frame mean speed (E10 no-play rule)
     }
 
 
@@ -168,4 +170,4 @@ def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
     log_e[:, CLASS_A] = conf * np.log(np.clip(p_team[:, 1], EPS, 1.0)) + alive
     log_e[:, CLASS_D] = np.log(np.clip(p_d, EPS, 1.0))
 
-    return Emission(log_e=log_e, conf=conf, p_d=p_d, ev=ev)
+    return Emission(log_e=log_e, conf=conf, p_d=p_d, ev=ev, activity=feats["activity"])

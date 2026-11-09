@@ -182,7 +182,8 @@ def test_min_dwell_one_is_a_noop():
 def test_decode_rejects_non_contiguous_half():
     t_len = 40
     log_e = _emission_from_labels([CODE_H] * t_len)
-    em = Emission(log_e=log_e, conf=np.ones(t_len), p_d=np.full(t_len, 0.2), ev=np.ones((t_len, 2)))
+    em = Emission(log_e=log_e, conf=np.ones(t_len), p_d=np.full(t_len, 0.2), ev=np.ones((t_len, 2)),
+                  activity=np.full(t_len, 5.0))
     half = np.zeros(t_len, dtype=np.int8)
     half[:10] = 1
     half[20:30] = 1                                       # half 1 split by a hole

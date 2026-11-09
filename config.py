@@ -27,6 +27,9 @@ CFG = dict(
     min_dwell_s=2.0,              # minimum segment length, seconds (was 1.0 prior)
     switch_support_s=1.5,         # non-ATD evidence must persist this long to switch
     gate_switches=True,           # revert switches unsupported by nearby ATD frames (P5 ablates)
+    no_play_rule=False,           # E10: D over sustained low-activity runs; OFF until the
+                                  # pre-declared no-harm gate passes (dossier §7, 2026-11-09)
+    no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
 
     # --- ball fill tiers ---
     # fill_long_gap_s = 0 DISABLES the kinematic tier: the IDSSE layer ablation
@@ -84,6 +87,11 @@ PROVENANCE = {
                          "both well above 0.3"),
     "gate_switches": ("prior", "tier-2/3 must not switch alone; ablated +/- on IDSSE (scenario "
                       "results embed gating on)"),
+    "no_play_rule": ("prior", "E10 compliance fix (FAQ: pre-kickoff frames are D): D over "
+                     "sustained low-activity runs; flag stays False until the pre-declared "
+                     "no-harm gate passes (dossier §7 P6 pre-declarations, 2026-11-09)"),
+    "no_play_s": ("prior", "10 s of unbroken low activity = stoppage, same scale as "
+                   "d_missing_run_s; a priori (dossier §7 E10 pre-declaration)"),
     "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "
                          "IDSSE layer ablation kinematic-none = -0.0112 spellF1, "
                          "CI [-0.017, -0.007], 7/7 matches negative, all-cell mean -0.0089"),
