@@ -274,6 +274,35 @@ the operator, per the guard protocol.
   α on provided aggregates stays barred); no window/GT/video input; nothing is selected on the
   public window; second evaluator run only if a code path changes before the freeze.
 
+##### Gate 1 read (2026-11-09, same day — matrices `tuning/results/stage4_*.csv`, report `report_stage4.md`)
+
+- **Run:** 1921 s wall, 7 workers; 144 cells × 7 matches × 4 runs, both label sets scored;
+  TacklingGame mapped 100 % on every match (173–229 events, 12–23 anchors each).
+  Mask statistics confirm the simulator did its job: uniform flat (anycue 0.428 in /
+  0.435 out — the control), phase α=2 lifted on every cue (0.475 / 0.410), α=3 harder
+  (0.488 / 0.404), consistent across the 7 matches.
+- **Primary (phase × aligned) plateau:** candidate `switch_pen=1 / dead_pen=12 /
+  σ=1.5 / dwell=2 / support=1` mean **0.3699** vs frozen **0.3667** (frozen rank 12/144;
+  best 0.3731; 23/144 cells within 0.01 of best).
+- **Conditions:** paired Δ **+0.0032** (needs > 0.02) ✗ · positive **3/7** (needs ≥ 5/7) ✗ ·
+  no-harm on the other three decision tables ✓ (+0.0014 / +0.0032 / +0.0044) ·
+  bootstrap 95 % CI **[−0.0078, +0.0179]**.
+- **Verdict: REJECT → the frozen cell ships** (Δ ≤ 0.01 under the pinned rule);
+  `LA+AI.csv` md5 `aeef0058a08860c9e2407423b1172684` unchanged, no config touched.
+- **LOMO:** fold pick = global pick on **all 7 folds** — the selection is stable; the
+  candidate is simply not better than frozen by the bar.
+- **Twins (reported only):** fill-on (E11) = **+0.0000** for both cells — the fill tier
+  adds nothing under realistic missingness, P5's drop stands; α=3 picks the **same** cell
+  and scores slightly worse (−0.0087 candidate / −0.0040 frozen) — sensitivity confirms
+  the shape, not a different choice.
+- **E2 hypothesis read:** the plateau moved exactly as predicted (lower switch penalty,
+  shorter support) but at noise magnitude — under phase-correlated missingness the gating
+  bottleneck is worth ≤ +0.003, far under the adoption bar. E3's notches (folded in,
+  demoted by band C) did not clear it either. The four tables + twins + mask statistics
+  are the pre-declared robustness evidence for the frozen cell.
+- **Reproduce:** `.venv/bin/python -m tuning.stage4` (≈35 min) →
+  `.venv/bin/python -m tuning.gate1` (read + report) → tests green.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state

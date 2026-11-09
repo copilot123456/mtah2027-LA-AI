@@ -118,3 +118,17 @@ def test_mask_ball_weighted_concentrates_and_uniform_is_untouched():
                       weights=None)
     assert np.array_equal(np.isnan(a), np.isnan(b))
     assert sa == sb
+
+
+def test_gate1_read_reproduces_the_recorded_verdict():
+    """The committed stage-4 matrices reproduce the dossier §7 Gate-1 verdict."""
+    from tuning.gate1 import gate1_read
+
+    r = gate1_read()
+    assert r["verdict"] == "REJECT-KEEP"
+    assert r["chosen"] == {"switch_pen": 1.0, "dead_pen": 12.0, "sigma_m": 1.5,
+                           "min_dwell_s": 2.0, "switch_support_s": 1.0}
+    assert r["delta"] < 0.01
+    assert r["n_pos"] == 3
+    assert abs(r["twins"]["fill"][0]) < 1e-12 and abs(r["twins"]["fill"][1]) < 1e-12
+    assert r["chosen_a3"] == r["chosen"]
