@@ -26,6 +26,7 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 | 2026-11-07 | `evaluation/run_evaluation.py` on shipped baselines (repo smoke test) | assistant | environment validation only — no design decision taken from it |
 | 2026-11-07 | `evaluation/run_evaluation.py` after baseline regeneration (byte-identical check) | assistant | reproducibility check only |
 | 2026-11-09 | guarded run via `tuning/guarded_eval.py` → `run_evaluation.py --bootstrap 1000` on the frozen `LA+AI.csv` (public GT); full board archived `evaluation/reports/guarded_board_*.txt`, operator eyes only | operator | **band C**; flags `count 23–30 · f1_D low · balance normal · latency none` → **Gate 0 proceed** (sanity clean, band ∈ {A, B, C}); orders the P6 backlog per plan §1 — E2/E1 promoted, E3 demoted, D-feature audit (E7 variant) after E2; diagnosis: dead-ball mis-calibration (not over-merging, not latency); no design decision taken from the score; a second run only if a code path changes before the freeze |
+| 2026-11-11 | assistant opened the local `evaluation/scoreboard.csv` (gitignored, untracked) while preparing a submission-simulation answer — the LA+AI row from the 2026-11-09 guarded run (full board) entered the AI session | assistant (logged by operator decision 2026-11-11) | **incident — no use**: numbers never quoted back and never used in any decision; file verified never in git (`.gitignore:27`; `evaluation/reports/` also ignored) and a single run only (board mtimes 2026-11-09 14:05 — no re-run); no rule changed and nothing re-run — standing fix: board files are never opened assistant-side, band + flags by operator report only |
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
@@ -37,6 +38,7 @@ Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no
 - Diagnostics run locally; only coarse aggregates (rounded percentages, binned counts) appear in local documents.
 - Background research agents performed web/GitHub search only; their model endpoint issues are logged in the session history.
 - Organizers' clarification (2026-11-03): no uploading provided data to AI services — our operating rule is stricter than needed (coarse aggregates only) pending organizer Q3.
+- **Incident 2026-11-11 (disclosed, no use):** while preparing a local submission simulation the assistant read the gitignored `evaluation/scoreboard.csv`, which carries the full board of the 2026-11-09 guarded run; those numbers entered one AI session. They were never quoted, never used for a decision, and the file has never been in git or in any shared artifact. Standing fix: evaluator/board artifacts are never opened assistant-side — only the band letter and the categorical flags cross to the assistant.
 
 ## 5. Video statement
 
