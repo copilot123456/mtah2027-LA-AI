@@ -66,7 +66,7 @@ def test_arrays_carry_kickoff_starts(arrays):
 
 
 def test_check_verdicts_and_buckets():
-    from tuning.kickoff_check import bucket, diagnosis, spans, verdicts
+    from tuning.kickoff_check import amended_verdicts, bucket, diagnosis, spans, verdicts
 
     half = np.zeros(20_000, dtype=np.int8)
     half[1_000:8_000] = 1
@@ -80,8 +80,15 @@ def test_check_verdicts_and_buckets():
     assert not pinned["one tag inside each graded half"]
     assert pinned["second-half span within +/-250 frames of the FAQ's 2,934"]
     assert all(diagnosis(half, starts).values())
+    assert all(amended_verdicts(spans(half, starts)).values()), "amended clause accepts it"
+    assert not all(amended_verdicts(spans(half, np.array([1_600, 12_934]))).values()), \
+        "a first-half tag deep inside the half is still rejected"
     # a second-half tag far from the documented kick-off is rejected
     assert not verdicts(spans(half, np.array([1_100, 14_000])))[
         "second-half span within +/-250 frames of the FAQ's 2,934"]
     assert [bucket(x) for x in (0.0, 0.019, 0.03, 0.07, 0.15, 0.4)] == [
         "< 2 %", "< 2 %", "2-5 %", "5-10 %", "10-20 %", "> 20 %"]
+
+
+def test_rule_is_on_in_the_shipped_config():
+    assert CFG["kickoff_rule"] is True

@@ -551,6 +551,16 @@ the operator, per the guard protocol.
   proposed amendment — first half "no tag inside, or span ≤ 250"; second half as pinned.
   Own-output effect with the rule on: "< 2 %" of graded frames. Code, tests and the check
   are committed with `kickoff_rule = False`.
+- **K1 — switched ON by operator decision (2026-11-14, later the same day).** The
+  operator approved the amendment after reading the rule and the failed clause ("switch it
+  on"): first half "no tag inside the graded span, or span ≤ 250 frames"; second half as
+  pinned. `tuning/kickoff_check.py` prints both the pinned verdict (FAIL, kept on record)
+  and the amended one (PASS, PASS). This is a post-hoc amendment of a verification clause,
+  recorded as such; the rule itself is unchanged from its pre-declaration. `LA+AI.csv`
+  regenerated: md5 `47b38c1f778ca2643f8f6429d027ee31` →
+  **`1b0cf9e47af1947021fe470a422db46d`**; validator PASS; own-output effect "< 2 %" of
+  graded frames; own-output counts (sanity only) 319 possessions of mean 17.6 s, D share
+  11.5 % of graded frames. The owed guarded run now covers U1 and K1 together.
 - **Historical matrices:** `sweep_results*`, `stage4_*`, `e7_*`, `post_checks*`,
   `no_harm_no_play.csv` were computed on the km/h bed and are kept as the record of what
   ran. Re-running those scripts now uses m/s and will not reproduce them to the last

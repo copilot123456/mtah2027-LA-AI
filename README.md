@@ -62,9 +62,9 @@ python3 -m virtualenv .venv              # or: python3 -m venv .venv
 #    (or export MTAH_DATA_DIR=/path/to/bundle — see data/README.md)
 
 # 3. verify, then regenerate the submission
-.venv/bin/python -m pytest -q            # 141 tests, ~30 s with a warm cache
+.venv/bin/python -m pytest -q            # 142 tests, ~30 s with a warm cache
 .venv/bin/python -m src.submit           # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                         # 47b38c1f778ca2643f8f6429d027ee31
+md5sum LA+AI.csv                         # 1b0cf9e47af1947021fe470a422db46d
 ```
 
 The first run parses the ATD with kloppy and caches it under `data/.cache/` (about 1m40s and

@@ -49,6 +49,17 @@ def verdicts(per_half: dict[int, list[int]]) -> dict[str, bool]:
             "second-half span within +/-250 frames of the FAQ's 2,934": h2_ok}
 
 
+def amended_verdicts(per_half: dict[int, list[int]]) -> dict[str, bool]:
+    """Operator-approved amendment (dossier §7 P7 K1, 2026-11-14): the first half may carry
+    no tag inside its graded span (it is graded from the kick-off itself, FAQ) — the rule is
+    then a no-op there. The second-half clause is the pinned one, unchanged."""
+    h1_ok = len(per_half[1]) == 0 or (len(per_half[1]) == 1 and per_half[1][0] <= TOLERANCE)
+    h2_ok = (len(per_half[2]) == 1
+             and abs(per_half[2][0] - FAQ_SECOND_HALF_PREKICKOFF) <= TOLERANCE)
+    return {"first half: no tag inside, or span <= 250 frames": h1_ok,
+            "second-half span within +/-250 frames of the FAQ's 2,934": h2_ok}
+
+
 def diagnosis(half: np.ndarray, starts: np.ndarray) -> dict[str, bool]:
     """Why a pinned check failed, still categorical: where the first-half tag sits."""
     idx = np.flatnonzero(half == 1)
@@ -71,7 +82,11 @@ def main() -> int:
     print("pinned checks (dossier §7 P7 K1):")
     for name, ok in checks.items():
         print(f"  {'PASS' if ok else 'FAIL'}  {name}")
-    all_ok = all(checks.values())
+    amended = amended_verdicts(spans(arrays.half, arrays.kickoff_starts))
+    print("amended checks (operator decision 2026-11-14 — these decide):")
+    for name, ok in amended.items():
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}")
+    all_ok = all(amended.values())
     print("diagnosis (not part of the pinned verdict):")
     for name, ok in diagnosis(arrays.half, arrays.kickoff_starts).items():
         print(f"  {'yes' if ok else 'no '}  {name}")

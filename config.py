@@ -34,8 +34,9 @@ CFG = dict(
                                   # matches externally). Operator decision 2026-11-09:
                                   # redesign probed and closed as infeasible (dossier §7).
     no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
-    kickoff_rule=False,           # K1: D from a graded half's start up to its `Kick Off (Start)`
-                                  # tag (dossier §7 P7); OFF until tuning/kickoff_check.py passes
+    kickoff_rule=True,            # K1: D from a graded half's start up to its `Kick Off (Start)`
+                                  # tag (dossier §7 P7); ON by operator decision 2026-11-14 with
+                                  # the amended first-half check (tuning/kickoff_check.py)
 
     # --- ball fill tiers ---
     # fill_long_gap_s = 0 DISABLES the kinematic tier: the IDSSE layer ablation
@@ -112,7 +113,9 @@ PROVENANCE = {
                      "its kick-off and those frames are all D; DATA.md: Smart Tagging "
                      "`Kick Off (Start)`, time base checked against both kickoffs). No "
                      "external gate is possible (IDSSE halves start at the kick-off); "
-                     "pre-declared dossier §7 P7 2026-11-14 with a categorical check"),
+                     "pre-declared dossier §7 P7 2026-11-14 with a categorical check; "
+                     "switched ON by operator decision 2026-11-14 under the amended "
+                     "first-half clause (no tag inside, or span <= 250 frames)"),
     "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "
                          "IDSSE layer ablation kinematic-none = -0.0112 spellF1, "
                          "CI [-0.017, -0.007], 7/7 matches negative, all-cell mean -0.0089"),

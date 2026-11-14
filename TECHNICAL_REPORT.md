@@ -83,6 +83,8 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 - Change of possession requires the decoder to overcome the switch penalty with
   supporting raw tracking nearby — a single deflection or duel win (a few frames of
   flickering evidence) cannot pass both the gate and the dwell filter.
+- Frames of a graded half that precede its Smart Tagging `Kick Off (Start)` tag are `D`
+  (the second half is graded before it kicks off).
 - Restarts produce dead-ball stretches via the D features (stationary/boundary/
   out-of-pitch); D blips shorter than the dwell merge into the surrounding state.
 
@@ -96,7 +98,7 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 | Low-activity dead-ball feature | weight 0 minus 0.5 = **+0.049** spellF1 on the primary table, 7/7 matches; positive on all 8 tables (+0.025 … +0.061), units-corrected bed | **switched off** (2026-11-14) |
 | Dead-ball term re-sweep (49 cells) | no cell gains under every ball-loss regime (best worst-case gain −0.0001) | reference kept |
 | Set-piece tag as dead-ball prior | −0.0075 on the primary table, 2/7 matches | kept off |
-| Kick-off tag rule (`D` before a half's kick-off tag) | documents-only rule; its pre-declared check failed on a mis-specified first-half clause | implemented, **off** pending a team decision |
+| Kick-off tag rule (`D` before a half's kick-off tag) | documents-only rule (FAQ + Smart Tagging `Kick Off (Start)`); no external test possible; second-half tag within 10 s of the documented kick-off; changes < 2 % of graded labels | **on** (2026-11-14, check amended by team decision — see dossier) |
 
 (`tuning/results/post_checks.csv`, `post_checks_final.csv`, `report_stage4.md`,
 `report_e7.md`, `report_stage5.md`, scored with the official forward-fill semantics;
@@ -139,9 +141,9 @@ produced the committed file):
 ```bash
 python3 -m virtualenv .venv && .venv/bin/pip install -r requirements-dev.txt
 # match data in data/tactical + data/broadcast (organiser bundle; gitignored) or MTAH_DATA_DIR
-.venv/bin/python -m pytest -q           # 141 tests: alignment, invariants, format, byte-identity
+.venv/bin/python -m pytest -q           # 142 tests: alignment, invariants, format, byte-identity
 .venv/bin/python -m src.submit          # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                        # 47b38c1f778ca2643f8f6429d027ee31
+md5sum LA+AI.csv                        # 1b0cf9e47af1947021fe470a422db46d
 ```
 
 The first run builds a local cache from the raw ATD (about 1m40s); a clean clone with a cold
@@ -162,7 +164,7 @@ ships in `tuning/results/` (matrices + reports); `tuning/sweep.py` and
 | `x_use` | False | evaluated, rejected |
 | `d_bias` | −0.70 | `prior` (re-fit tried, rejected) |
 | `d_w_low_activity` | 0 (feature off) | `external_fit` (units-corrected bed) |
-| `kickoff_rule` | False | `prior` (documents-only rule, off) |
+| `kickoff_rule` | True | `prior` (documents-only rule) |
 
 External selection: 930-cell union × 7 matches, mean spellF1 **0.2759** (95 % CI
 [0.2578, 0.2932]) on the provider's per-touch labels and uniform masks, LOMO optimism
