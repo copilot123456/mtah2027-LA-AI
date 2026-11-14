@@ -27,6 +27,8 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 | 2026-11-07 | `evaluation/run_evaluation.py` after baseline regeneration (byte-identical check) | assistant | reproducibility check only |
 | 2026-11-09 | guarded run via `tuning/guarded_eval.py` → `run_evaluation.py --bootstrap 1000` on the frozen `LA+AI.csv` (public GT); full board archived `evaluation/reports/guarded_board_*.txt`, operator eyes only | operator | **band C**; flags `count 23–30 · f1_D low · balance normal · latency none` → **Gate 0 proceed** (sanity clean, band ∈ {A, B, C}); orders the P6 backlog per plan §1 — E2/E1 promoted, E3 demoted, D-feature audit (E7 variant) after E2; diagnosis: dead-ball mis-calibration (not over-merging, not latency); no design decision taken from the score; a second run only if a code path changes before the freeze |
 | 2026-11-11 | assistant opened the local `evaluation/scoreboard.csv` (gitignored, untracked) while preparing a submission-simulation answer — the LA+AI row from the 2026-11-09 guarded run (full board) entered the AI session | assistant (logged by operator decision 2026-11-11) | **incident — no use**: numbers never quoted back and never used in any decision; file verified never in git (`.gitignore:27`; `evaluation/reports/` also ignored) and a single run only (board mtimes 2026-11-09 14:05 — no re-run); no rule changed and nothing re-run — standing fix: board files are never opened assistant-side, band + flags by operator report only |
+| 2026-11-14 | second guarded run via `tuning/guarded_eval.py` on `LA+AI.csv` md5 `1b0cf9e47af1947021fe470a422db46d` (public GT); full board archived `evaluation/reports/guarded_board_20261114_175609.txt`, operator eyes only | operator | **band B**; flags `count 14–22 · f1_D low · balance normal · latency none` → correctness gate **PASS** (sanity clean, band ∈ {A, B, C}); covers U1 + K1 of §7 P7. Not used to choose between the previous file and this one (RULES.md) — the choice was made on IDSSE before the run |
+| 2026-11-14 | the operator's improvement list, pasted into the assistant session, quotes public-window diagnostics of the 17:56 run (transition latency, share of false `D` predictions, fragmentation ratio, the `D` row of the confusion matrix, share error) | operator → assistant | **disclosure — provenance only**: those figures motivated hypotheses I1–I4 of §7 P8. None of them enters a grid, a rule or a parameter value; every P8 decision is taken on IDSSE under a rule pinned before the compute. The figures are not restated in this repository |
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
@@ -41,6 +43,7 @@ Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no
 - Background research agents performed web/GitHub search only; their model endpoint issues are logged in the session history.
 - Organizers' clarification (2026-11-03): no uploading provided data to AI services — our operating rule is stricter than needed (coarse aggregates only) pending organizer Q3.
 - **Audit + P7 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. What crossed into the session from the provided match: three categorical checks (speed units = m/s; kick-off PASS/FAIL clauses; label-change bucket) and the own-output summary `src.submit` prints (label counts, possession count and mean length).
+- **P8 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. The operator's improvement list brought public-window diagnostics of the second guarded run into the session (§3, same date); they are treated as the provenance of four hypotheses and nothing else. From the provided match itself only categorical checks and the own-output summary cross into the session, as before.
 - **Incident 2026-11-11 (disclosed, no use):** while preparing a local submission simulation the assistant read the gitignored `evaluation/scoreboard.csv`, which carries the full board of the 2026-11-09 guarded run; those numbers entered one AI session. They were never quoted, never used for a decision, and the file has never been in git or in any shared artifact. Standing fix: evaluator/board artifacts are never opened assistant-side — only the band letter and the categorical flags cross to the assistant.
 
 ## 5. Video statement
@@ -565,6 +568,128 @@ the operator, per the guard protocol.
   `no_harm_no_play.csv` were computed on the km/h bed and are kept as the record of what
   ran. Re-running those scripts now uses m/s and will not reproduce them to the last
   digit; `stage5` is the units-correct reference.
+
+### P8 — operator idea list + auditor additions (pre-declared 2026-11-14 evening, before any stage-8 compute)
+
+- **Trigger / authorization:** operator instruction 2026-11-14 after the second guarded run
+  (band B, §3): evaluate and audit the four listed ideas, add the auditor's own, plan and
+  apply what passes, for a third guarded run. Work stays on `ruiz-work`; `main` stays
+  locked; no push without operator instruction.
+- **Provenance:** the four ideas (I1–I4) were written from public-window diagnostics (§3
+  disclosure row). They are hypotheses only. No figure from that list is used below; every
+  number in this section was measured on IDSSE.
+- **Disclosure — probes run before this pin (IDSSE only, reference cell, diagnostics, no
+  candidate variant scored; provided match touched only for the accepted missing-run
+  lengths of the mask simulator):**
+  - *Transition latency* (predicted − true, matched within ±50 frames, same from/to pair):
+    team switches are **early by 11.0 … 14.5 frames** on average — negative on 7/7 matches
+    under no mask, uniform, cover_q50 and cover_q90, on both label sets. Stoppage onsets
+    are early by 11 … 23 frames; restarts are late by 9 … 12 on the mean, median 0.
+  - *Test-bed artefact:* the IDSSE ball is **frozen while the ball is dead** — ball speed is
+    exactly 0 on 100 % of dead frames in all seven matches (0.4–1.1 % of live frames). The
+    `stationary` feature therefore reads the dead-ball label wherever the ball is unmasked
+    during a stoppage. Every dead-ball result of this bed is inflated in proportion to
+    P(ball visible | dead): most under `uniform` / `phase_a2`, least under `cover_q90`.
+  - *Dead-ball runs:* true dead runs shorter than 3 s are 2.9 % of runs (0.24 % of dead
+    frames), shorter than 5 s 8.3 %. Predicted `D` runs shorter than 3 s have a frame
+    precision of 0.00–0.29 across the four mask conditions, 3–5 s runs 0.05–0.59.
+  - *Switch gate:* the revert overwrites 0.3–1.25 % of frames that carry their own ball
+    evidence for the overwritten label (Viterbi right on 84–93 % of them, the gated label
+    on 5–7 %); 33–121 alive segments with ≥ 1 s of own ball evidence are overwritten whole
+    (of 6,300–9,900 over seven matches) — the gate merges the *entire* new segment into the
+    previous one whenever the Viterbi boundary falls inside a ball gap.
+  - *Team-swap equivariance:* swapping the team of every slot does not mirror the output —
+    0.5 % of frames differ without masks, 4.4–11.9 % with masks. No term of the emission
+    prefers a side; the asymmetry comes from tie-breaks (flat emission inside ball gaps)
+    amplified by the all-or-nothing gate. About 3 % of Viterbi team switches sit on a gap
+    edge.
+
+#### Verdict on the four listed ideas (before compute)
+
+- **I1 — latency of the state change.** Testable: the same early bias exists on IDSSE and
+  has a mechanism (the kernel switches team when the ball is nearer the receiver, i.e.
+  mid-flight; the truth switches when the receiver controls it). → component **S**.
+- **I2 — drop the generic dead-ball detectors.** Not decidable on this bed: because of the
+  frozen ball, removing `stationary` can only lose there, and the bed says nothing about
+  how the feature behaves on real tracking. Adopting it from the public-window figure would
+  be tuning on the public window (RULES.md). → **record-only cells** `R_stat0`
+  (`d_w_stationary = 0`) and `R_noD` (no decoder `D`), reported, never adopted in P8.
+- **I3 — merge a short `D` between the same team (< 1 s).** As written it is already
+  implied: `min_dwell_s = 2.0` leaves no segment under 2 s. The generalisation — a longer
+  minimum for `D` only — is testable. → component **M**.
+- **I4 — home bias on unlabelled dead ball.** No home prior exists in the code; a missed
+  stoppage inherits the team that had the ball. The equivariance defect above is real but
+  is a tie-break, not a prior. → reported by diagnostic (share of missed-dead frames given
+  to H vs H's share of live frames; equivariance mismatch per G cell), fixed only as far as
+  component **G** fixes it.
+
+#### Components (all OFF by default; the reference cell must reproduce stage 5)
+
+- **G — switch gate "move" mode** (auditor). `gate_mode ∈ {revert, move}`. In `move`, a
+  boundary without support is moved forward to the first raw-ATD frame inside the new
+  segment whose own emission favours the new label; the frames before it keep the previous
+  label; a segment with no such frame is merged as today. The tier rule is unchanged (no
+  switch without ball evidence). `gap_switch_frac ∈ {0 (off), 0.5}`: an H↔A boundary that
+  touches a ball gap is placed at that fraction of the gap (0.5 = the middle), clamped so
+  that neither segment vanishes. G cells: (revert, off) = reference, (move, off), (move, 0.5).
+- **S — team-switch delay** (I1). `switch_delay_s ∈ {0, 0.16, 0.32, 0.48, 0.64, 0.80}`
+  (0 … 20 frames). Applied last: every H↔A boundary whose two adjacent frames are raw ATD
+  moves later by min(delay, half the following segment). Boundaries touching a ball gap and
+  every boundary into or out of `D` are not moved. A stoppage delay is deliberately **not**
+  tested: on this bed the stoppage onset is defined by the frozen ball.
+- **M — dead-ball minimum duration** (I3 generalised). `d_min_dwell_s ∈ {0 (off = 2.0),
+  3.0, 4.0, 5.0}`: after the standard min-dwell, `D` segments shorter than this merge into
+  the longer neighbour (same rule and tie-break), shortest first, adjacent equal labels
+  coalesced. The K1 kick-off `D` is applied afterwards and is exempt.
+- **Order in the decoder:** Viterbi → gate → gap placement → min-dwell → `D` minimum →
+  (no-play, OFF) → switch delay → (pipeline step) K1.
+
+#### Stage 8 — one pass
+
+- **Fixed:** frozen decoder cell, shipped dead-ball term (stage-5 reference), fill off,
+  corrected units, the stage-5 masks (same seeds): `uniform`, `phase_a2`, `cover_q50`,
+  `cover_q90`; both label sets; 7 matches.
+- **Cells:** full factorial G (3) × S (6) × M (4) = 72, plus the two record-only cells at
+  the reference post-processing. The harness calls the pipeline's own decoder functions
+  (one Viterbi per task, `finish` per cell) and the official scorer path (`_score`).
+- **Harness pin:** the reference cell must reproduce the stage-5 reference rows
+  (`stage5_<kind>.csv`, long-missing 0.5 / 10 s, low-activity off) to 1e-9 on both
+  spellF1 columns; otherwise the pass is void.
+- **Per cell:** spellF1 / macroF1 on both label sets, predicted `D` share, share of
+  in-match frames whose label differs from the reference cell (the external firing rate),
+  team-switch latency (aligned labels). Diagnostics per (match, kind): equivariance
+  mismatch for the three G cells, the I4 shares.
+- **Outputs:** `tuning/results/stage8_<kind>.csv`, `stage8_record.csv`, `stage8_diag.csv`,
+  `stage8_verdicts.csv`, `report_stage8.md`; runner `tuning/stage8.py`, reader
+  `tuning/gate8.py`.
+
+#### Decision rule (pinned)
+
+- Δ = 7-match mean of paired spellF1 differences; primary table = `phase_a2` × aligned (the
+  standing primary); `g(cell)` = minimum over the four mask kinds of the aligned-label Δ.
+- **Steps, in this order, each conditional on the values kept by the steps before it:**
+  G, then S, then M. Within a step the candidate is the argmax of `g` against the step's
+  starting cell; candidates within 0.005 of the best are tied and the tie goes to the
+  smallest change — (move, off) before (move, 0.5); the shortest delay; the shortest
+  minimum.
+- **A step's candidate is kept iff** on the primary table its Δ against the step's starting
+  cell is > +0.005 with ≥ 5/7 matches positive, **and** Δ ≥ −0.02 on each of the other
+  seven tables. Otherwise the step keeps its current value.
+- **Adoption (the project bar, applied to what would actually ship):** the bundle of kept
+  steps is adopted iff against the reference cell its primary Δ is > 0.02 with ≥ 5/7
+  matches positive and Δ ≥ −0.02 on each of the other seven tables. A bundle that fails
+  adopts nothing.
+- Why a bundle: the 2026-11-14 audit found that P6 scheduled experiments whose expected
+  gain sat below the bar one by one. The bar is unchanged for the decision that changes the
+  submission; a step needs paired consistency, not 0.02 on its own.
+- **Own-output checks after an adoption (categorical only):** share of graded labels
+  changed vs the current file, per kept step and for the bundle, as a bucket (< 2 % ·
+  2–5 % · 5–10 % · 10–20 % · > 20 %). **Parity hold:** if a step's bucket lower edge on the
+  provided match exceeds 3× the largest per-match external firing rate of that step, or
+  the bundle is > 20 %, the adoption is held for the operator (E10 / units lessons).
+  Validator PASS, test suite green, byte-identity test moved to the new md5.
+- **Evaluator:** not run by the assistant. An adoption changes a code path, so a third
+  guarded run is owed (operator only, band + flags, correctness gate, never a selector).
 
 ## 8. Independent audit (2026-11-07)
 
