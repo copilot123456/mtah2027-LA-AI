@@ -98,8 +98,8 @@ def _patch_video_boundary(monkeypatch, n=N_SYNTH):
     matrices, reproj, valid = _homography(n)
     monkeypatch.setattr(F, "set_global_seed", lambda seed: None)
     monkeypatch.setattr(F, "require",
-                        lambda names: ["/fake/tactical.mp4", "/fake/homography.csv"])
-    monkeypatch.setattr(F, "load_homography", lambda: (matrices, reproj, valid))
+                        lambda names, **kw: ["/fake/tactical.mp4", "/fake/homography.csv"])
+    monkeypatch.setattr(F, "load_homography", lambda **kw: (matrices, reproj, valid))
     monkeypatch.setattr(F, "video_geometry", lambda video: (float(FPS), n))
     monkeypatch.setattr(F, "choose_window",
                         lambda valid, cfg, fps, total: (0, n - 1, 1))
@@ -453,6 +453,70 @@ def test_predictions_frame_table_contract():
     assert table["frame"].tolist() == [0, 5, 9]
     assert table["time_s"].iloc[2] == pytest.approx(9 / FPS)
     assert set(table["state"]) == {"DETECTED", "NONE", "FOT_BRIDGED"}
+
+
+def test_export_frame_table_matches_the_notebook_csv_contract():
+    """The 12 play_*.csv columns, pitch geometry from CFG, speed resetting on NONE."""
+    from src.fot_video import export_frame_table
+
+    matrices, reproj, valid = _homography(5)
+    preds = {
+        0: (100.0, 200.0, 0.9, "DETECTED", 0),
+        1: (130.0, 200.0, 0.9, "DETECTED", 0),      # 30 px -> 750 px/s at 25 fps
+        2: (np.nan, np.nan, 0.0, "NONE", 999),      # speed resets here
+        3: (100.0, 200.0, 0.7, "FOT_BRIDGED", 2),   # first frame after NONE: no speed
+        4: (100.0, 200.0, 0.7, "KINEMATIC_BRIDGED", 3),
+    }
+    table = export_frame_table(preds, matrices, reproj, valid, FPS, CFG)
+
+    assert list(table.columns) == [
+        "frame", "time_s", "pred_x", "pred_y",
+        "pitch_x_norm", "pitch_y_norm", "pitch_x_m", "pitch_y_m",
+        "score", "state", "gap_steps", "speed_px_s",
+    ]
+    assert table["speed_px_s"].tolist()[0] == 0.0
+    assert table["speed_px_s"].tolist()[1] == pytest.approx(30 * FPS)
+    assert table["speed_px_s"].tolist()[2] == 0.0, "NONE rows carry no speed"
+    assert table["speed_px_s"].tolist()[3] == 0.0, "speed resets across a NONE gap"
+
+    # Pitch geometry: pixel -> normalised -> metres via config.CFG (105.3 x 68.0).
+    row0 = table.iloc[0]
+    assert row0["pitch_x_norm"] == pytest.approx((100.0 - 160.0) / 1600.0)
+    assert row0["pitch_x_m"] == pytest.approx(row0["pitch_x_norm"] * CFG["pitch_length_m"])
+    assert row0["pitch_y_m"] == pytest.approx(row0["pitch_y_norm"] * CFG["pitch_width_m"])
+    none_row = table.iloc[2]
+    assert np.isnan(none_row["pitch_x_norm"]) and np.isnan(none_row["pitch_x_m"]), (
+        "a NONE row carries no pitch coordinate")
+
+
+def test_cli_csv_only_exports_the_notebook_csv(monkeypatch, tmp_path):
+    """`python -m src.fot_video --csv-only` writes play_*.csv without touching cv2/video."""
+    F = _patch_video_boundary(monkeypatch)
+    from src.fot_video import main
+
+    rc = main(["--csv-only", "--out-dir", str(tmp_path), "--seed", "0",
+               "--half", "1st_half", "--seconds", "1"])
+    assert rc == 0
+
+    csvs = list(tmp_path.glob("play_1st_half_seed0_*.csv"))
+    assert len(csvs) == 1, f"expected exactly one play_*.csv, got {csvs}"
+
+    import pandas as pd
+    table = pd.read_csv(csvs[0])
+    assert len(table) == N_SYNTH
+    assert "pitch_x_m" in table.columns and "speed_px_s" in table.columns
+    assert set(table["state"]) <= {"DETECTED", "FOT_BRIDGED", "KINEMATIC_BRIDGED", "NONE"}
+    assert not list(tmp_path.glob("*.mp4")), "--csv-only must not render a video"
+
+
+def test_cli_rejects_an_unknown_half(monkeypatch, tmp_path):
+    _patch_video_boundary(monkeypatch)
+    from src.fot_video import main
+
+    # argparse's --half choices reject it before any work runs.
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--csv-only", "--half", "3rd_half", "--out-dir", str(tmp_path)])
+    assert excinfo.value.code == 2
 
 
 def test_choose_window_is_seeded_deterministic_and_inside_the_half():

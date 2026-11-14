@@ -1055,6 +1055,48 @@ def predictions_frame_table(preds: dict, fps: float) -> pd.DataFrame:
     ])
 
 
+def export_frame_table(preds: dict, matrices: np.ndarray, reproj_err: np.ndarray,
+                       valid: np.ndarray, fps: float, cfg: dict = CFG) -> pd.DataFrame:
+    """Notebook-style export table: pixel + pitch coordinates + speed, one row per frame.
+
+    Same 12 columns as the play_*.csv the notebook wrote. Pitch geometry comes from
+    ``cfg`` (pitch_length_m / pitch_width_m) instead of the notebook's hard-coded
+    105.0 / 68.0, so pitch_x_m uses the measured 105.3 m. Speed resets across NONE
+    frames exactly as the notebook's rendering loop did.
+    """
+    length = float(cfg["pitch_length_m"])
+    width = float(cfg["pitch_width_m"])
+    rows = []
+    prev_xy = None
+
+    for f in sorted(preds):
+        px, py, conf, state, gap = preds[f]
+        speed_px_s = 0.0
+        pitch_x_norm = pitch_y_norm = pitch_x_m = pitch_y_m = float("nan")
+
+        if state != STATE_NONE and not np.isnan(px):
+            if prev_xy is not None:
+                speed_px_s = float(np.hypot(px - prev_xy[0], py - prev_xy[1]) * fps)
+            prev_xy = (px, py)
+            H_f = get_valid_H(f, matrices, reproj_err, valid)
+            if H_f is not None:
+                nx, ny = unproject(H_f, px, py)
+                pitch_x_norm, pitch_y_norm = float(nx), float(ny)
+                pitch_x_m, pitch_y_m = float(nx) * length, float(ny) * width
+        else:
+            prev_xy = None
+
+        rows.append((f, round(f / fps, 4), px, py,
+                     pitch_x_norm, pitch_y_norm, pitch_x_m, pitch_y_m,
+                     float(conf), state, int(gap), speed_px_s))
+
+    return pd.DataFrame(rows, columns=[
+        "frame", "time_s", "pred_x", "pred_y",
+        "pitch_x_norm", "pitch_y_norm", "pitch_x_m", "pitch_y_m",
+        "score", "state", "gap_steps", "speed_px_s",
+    ])
+
+
 # --------------------------------------------------------------------------- #
 # Optional visualisation (kept from the notebook, still not a pipeline stage)
 # --------------------------------------------------------------------------- #
@@ -1126,11 +1168,11 @@ STATE_COLORS = {
 
 def render_clip(video: str, preds: dict, matrices: np.ndarray, reproj_err: np.ndarray,
                 valid: np.ndarray, out_video: str, out_csv: str, fps: float,
-                title: str = "FoT v2") -> pd.DataFrame:
-    """Write the annotated clip and its prediction CSV.
+                title: str = "FoT v2", cfg: dict = CFG) -> pd.DataFrame:
+    """Write the annotated clip and its prediction CSV (notebook play_*.{mp4,csv}).
 
     ``preds`` must be one contiguous frame run (what :func:`detect_window` produces).
-    Returns the frame table that was written to ``out_csv``.
+    The CSV is the 12-column :func:`export_frame_table`. Returns that table.
     """
     import cv2
 
@@ -1207,7 +1249,7 @@ def render_clip(video: str, preds: dict, matrices: np.ndarray, reproj_err: np.nd
     cap.release()
     writer.release()
 
-    table = predictions_frame_table(preds, fps)
+    table = export_frame_table(preds, matrices, reproj_err, valid, fps, cfg)
     table.to_csv(out_csv, index=False)
     return table
 
@@ -1242,7 +1284,7 @@ def fot_video_track(ctx, cfg: dict) -> None:
     base = build_ball_track(arrays.ball, arrays.half, cfg)
     ctx.track = merge_video_into_track(base, preds, matrices, reproj_err, valid, cfg)
 
-    table = predictions_frame_table(preds, det_pass.fps)
+    table = export_frame_table(preds, matrices, reproj_err, valid, det_pass.fps, cfg)
     counts = table["state"].value_counts().to_dict()
     ctx.extra["fot_video"] = {
         "half": half,
@@ -1262,3 +1304,97 @@ def fot_video_track(ctx, cfg: dict) -> None:
               f" ({n_total - n_none}/{n_total} frames)")
         for state in (STATE_DETECTED, STATE_FOT, STATE_KINEMATIC, STATE_NONE):
             print(f"  {state:18s}: {int(counts.get(state, 0))}")
+
+
+# --------------------------------------------------------------------------- #
+# CLI: the notebook's flow as a script (same pattern as python -m src.submit)
+# --------------------------------------------------------------------------- #
+def main(argv: list[str] | None = None) -> int:
+    """Run the FotV2_videotest flow on a seeded clip and export play_*.{mp4,csv}.
+
+    Reproduces the notebook end to end — window pick, tiled RT-DETR pass, FoT v2
+    fusion, then the annotated video and the 12-column CSV — without a kernel:
+
+        python -m src.fot_video                       # seed 0, 1st_half, 30 s
+        python -m src.fot_video --half 2nd_half --seconds 20 --seed 3
+        python -m src.fot_video --csv-only            # skip the MP4 render
+        python -m src.fot_video --data-dir D:/mtah2027 # bundle elsewhere
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="python -m src.fot_video",
+        description="RT-DETR + FoT v2 ball tracking on a clip; exports play_*.{mp4,csv}.",
+    )
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED,
+                        help=f"clip pick seed (default {DEFAULT_SEED})")
+    parser.add_argument("--half", choices=("1st_half", "2nd_half", "any_half"),
+                        default=DEFAULT_HALF, help="which half to sample the clip from")
+    parser.add_argument("--seconds", type=float, default=DEFAULT_CLIP_SECONDS,
+                        help=f"clip length in seconds (default {DEFAULT_CLIP_SECONDS:g})")
+    parser.add_argument("--profile", choices=sorted(PROFILES), default="max_coverage",
+                        help="FoT v2 operating point")
+    parser.add_argument("--out-dir", default=".",
+                        help="directory for the outputs (created if missing)")
+    parser.add_argument("--prefix", default=None,
+                        help="output basename; default play_{half}_seed{seed}_{start}_{end}")
+    parser.add_argument("--csv-only", action="store_true",
+                        help="skip the annotated MP4 and write only the CSV")
+    parser.add_argument("--data-dir", default=None,
+                        help="match bundle root (default: MTAH_DATA_DIR or ./data)")
+    parser.add_argument("--device", default=None,
+                        help="inference device, e.g. cuda:0 or cpu (default: auto)")
+    args = parser.parse_args(argv)
+
+    cfg = {**CFG,
+           "fot_seed": args.seed,
+           "fot_half": args.half,
+           "fot_clip_seconds": args.seconds,
+           "fot_profile": args.profile,
+           "fot_verbose": True}
+    if args.device:
+        cfg["fot_device"] = args.device
+
+    set_global_seed(args.seed)
+
+    video, _ = require(["video", "homography"], data_dir=args.data_dir)
+    matrices, reproj_err, valid = load_homography(data_dir=args.data_dir)
+
+    fps, n_video_frames = video_geometry(video)
+    start, end, half = choose_window(valid, cfg, fps, n_video_frames)
+    half_name = "1st_half" if half == 1 else "2nd_half"
+    print(f"Seed={args.seed} | [{half_name}] frames [{start} .. {end}]"
+          f" @ {fps:.1f} fps ({args.seconds:g}s, {args.profile})")
+
+    rt_model, fot_model, device = load_models(cfg)
+    det_pass = detect_window(rt_model, video, matrices, reproj_err, valid,
+                             start, end, cfg)
+    preds = fuse_predictions(fot_model, det_pass, matrices, reproj_err, valid,
+                             cfg, device)
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prefix = args.prefix or f"play_{half_name}_seed{args.seed}_{start}_{end}"
+    out_csv = out_dir / f"{prefix}.csv"
+
+    if args.csv_only:
+        table = export_frame_table(preds, matrices, reproj_err, valid,
+                                   det_pass.fps, cfg)
+        table.to_csv(out_csv, index=False)
+        out_video = None
+    else:
+        out_video = out_dir / f"{prefix}.mp4"
+        table = render_clip(video, preds, matrices, reproj_err, valid,
+                            str(out_video), str(out_csv), det_pass.fps,
+                            title=f"seed={args.seed} | {half_name}", cfg=cfg)
+
+    if out_video is not None:
+        print(f"Video guardado: {out_video}")
+    print(f"CSV guardado  : {out_csv}")
+    print("\nDistribución de estados:")
+    print(table["state"].value_counts())
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
