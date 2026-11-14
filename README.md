@@ -35,7 +35,7 @@ independent audit of the frozen state is `AUDIT.md`.
 | `pipeline_spec.py`, `src/pipeline.py`, `src/steps.py` | the pipeline framework: the declaration (the one file to swap/add/reorder stages), the contract + runner, the default handlers — see `PIPELINE_STANDARD.html` |
 | `src/submit.py` | CSV writer + the official validator |
 | `src/diagnostics.py` | aggregate-only data diagnostics (no ground truth, no video) |
-| `tests/` | 92 tests: alignment, provenance, fill/emission/decoder invariants, brute-force Viterbi equivalence, format + validator, byte-identity of the committed CSV, reproduction of the external selection, pipeline-framework contract |
+| `tests/` | 156 tests: alignment, provenance, fill/emission/decoder invariants, brute-force Viterbi equivalence, format + validator, byte-identity of the committed CSV, reproduction of the external selection, pipeline-framework contract |
 | `tuning/` | external tuning bed: IDSSE loader, missingness simulator, 3-stage sweep, post-selection checks; matrices and reports committed under `tuning/results/` |
 | `evaluation/`, `starter/`, `games.py` | official scorer, validator, the four published baselines and the starter helpers (vendored, MIT © Metrica Sports — never edited) |
 | `dossier.md` | compliance dossier: data lineage, parameter provenance, GT-look log, tuning record |
@@ -62,9 +62,9 @@ python3 -m virtualenv .venv              # or: python3 -m venv .venv
 #    (or export MTAH_DATA_DIR=/path/to/bundle — see data/README.md)
 
 # 3. verify, then regenerate the submission
-.venv/bin/python -m pytest -q            # 142 tests, ~30 s with a warm cache
+.venv/bin/python -m pytest -q            # 156 tests, ~30 s with a warm cache
 .venv/bin/python -m src.submit           # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                         # 1b0cf9e47af1947021fe470a422db46d
+md5sum LA+AI.csv                         # de14eb1ccb75d9cd713789da4abde664
 ```
 
 The first run parses the ATD with kloppy and caches it under `data/.cache/` (about 1m40s and

@@ -131,7 +131,7 @@ once, by `tests/test_submission.py`.
 ## 5. Invariants (never break these)
 
 1. **Default output is frozen.** The default `SPEC` must reproduce `LA+AI.csv` byte-for-byte:
-   md5 `1b0cf9e47af1947021fe470a422db46d`. Enforced by
+   md5 `de14eb1ccb75d9cd713789da4abde664`. Enforced by
    `test_committed_submission_is_what_the_code_produces`.
 2. **Tests green after every commit** (currently 92).
 3. **No fitting/tuning/selecting** on the provided match, its ground truth, the video, or the
@@ -198,5 +198,5 @@ adopted, via the same §7 process.
 .venv/bin/python -m pytest -q                    # must be green (92 tests)
 rm -f /tmp/v.csv
 .venv/bin/python -m src.submit --out /tmp/v.csv  # official validator must PASS
-md5sum /tmp/v.csv                                # 1b0cf9e47af1947021fe470a422db46d
+md5sum /tmp/v.csv                                # de14eb1ccb75d9cd713789da4abde664
 ```

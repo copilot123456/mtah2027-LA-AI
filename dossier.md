@@ -34,6 +34,8 @@ Any future evaluator run on the provided match: operator only, via the guard, re
 
 2026-11-14 (P7, §7): no evaluator run. `config.py` and a code path changed, so a second guarded run is owed before submission — operator only, band + flags, correctness gate only.
 
+2026-11-14 (P8, §7): no evaluator run by the assistant. The decoder gate and one config value changed after the second run, so a third guarded run is owed before submission — operator only, band + flags, correctness gate only.
+
 Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no video inspection — checked by grep over the code and by the local `evaluation/scoreboard.csv`, which still lists the four baselines only.
 
 ## 4. AI-service statement
@@ -690,6 +692,55 @@ the operator, per the guard protocol.
   Validator PASS, test suite green, byte-identity test moved to the new md5.
 - **Evaluator:** not run by the assistant. An adoption changes a code path, so a third
   guarded run is owed (operator only, band + flags, correctness gate, never a selector).
+
+##### P8 read (2026-11-14, same evening — `stage8_*.csv`, `stage8_verdicts.csv`, `report_stage8.md`)
+
+- **Run:** 154 s wall, 6 workers; 72 cells × 7 matches × 4 mask kinds, both label sets,
+  plus the two record-only cells. **Harness pin: exact** — the reference cell reproduces
+  the stage-5 reference rows with max |Δ| = 0 on both spellF1 columns. A one-match smoke
+  run (six cells) preceded the pass, after the pin; it selected nothing.
+- **G — KEEP `gate_mode = move`.** Maximin candidate (move, placement off), g = +0.0041;
+  primary **+0.0190**, 7/7; positive 7/7 on all eight tables (+0.0040 … +0.0192).
+  (move, placement 0.5) gains more under three mask kinds (+0.0255 … +0.0341) but only
+  +0.0023 (4/7) under `cover_q90` × aligned, so the pinned maximin keeps the smaller
+  change. **Operator option, not adopted:** `gap_switch_frac = 0.5`; it also removes most
+  of the team-swap asymmetry (below).
+- **S — KEEP `switch_delay_s = 0.64`.** Best g +0.0153 at 0.80 s; 0.64 s is the shortest
+  delay within 0.005 of it (g +0.0119). Primary **+0.0119**, 7/7; positive on all eight
+  tables (+0.0114 … +0.0266). The gain is still rising at the grid edge; the grid is not
+  extended after the read. Team-switch latency after G + S: −2.6 … −6.4 frames (from
+  −11.4 … −14.5), i.e. still early, no overshoot.
+- **M — DROP.** Candidate 3 s: primary +0.0001 (5/7); 4–5 s are negative under uniform
+  masks. `d_min_dwell_s` stays 0.
+- **Bundle (move + 0.64 s) vs the reference — ADOPT.** Primary **+0.0309**, 7/7; all eight
+  tables +0.0256 … +0.0330, 7/7 on each. Levels (aligned, 7-match mean): uniform 0.3765 →
+  0.4095, phase_a2 0.3661 → 0.3971, cover_q50 0.3486 → 0.3810, cover_q90 0.3517 → 0.3821.
+- **External firing:** share of in-match frames changed — G alone 0.1 … 5.0 % per match,
+  S alone 0.8 … 2.7 %, bundle 2.6 … 3.5 % (kind means).
+- **Record-only (I2), never adopted:** `R_stat0` −0.094 / −0.094 / −0.037 (0/7) under
+  uniform / phase_a2 / cover_q50 and +0.011 (5/7) under cover_q90; `R_noD` −0.122 /
+  −0.124 / −0.050 and +0.005 (3/7). The sign follows how often the frozen ball is visible
+  during a stoppage — the bed cannot judge these features, as pinned.
+- **I4:** share of missed dead frames given to home vs home's share of live frames —
+  0.46 / 0.49 / 0.58 / 0.61 vs 0.53: no home prior. Team-swap mismatch: revert 4.4–11.9 %,
+  move 3.6–11.5 %, move + placement 0.5 0.7–2.0 %.
+- **Adoption record:** `config.py` (`gate_mode = "move"`, `switch_delay_s = 0.64`, origin
+  `external_fit`; `gap_switch_frac` and `d_min_dwell_s` stay 0); `LA+AI.csv` regenerated,
+  md5 `1b0cf9e47af1947021fe470a422db46d` → **`de14eb1ccb75d9cd713789da4abde664`**;
+  official validator PASS; 156 tests green (14 new; one gating test now pins both modes);
+  the byte-identity test passes on the new file; `tuning/kickoff_check.py` unchanged
+  (pinned FAIL on record, amended PASS / PASS).
+- **Own-output checks (buckets only):** G alone "< 2 %", S alone "2–5 %", bundle "2–5 %"
+  of graded frames change label. Parity hold not triggered (limits: G 3 × 5.0 %, S
+  3 × 2.7 %, bundle 20 %). Own-output counts, sanity only, never used to select: 326
+  possessions of mean 17.4 s.
+- **Evaluator:** not run. A code path and two config values changed, so a **third guarded
+  run is owed** (operator only, band + flags; correctness gate, never a selector between
+  this file and the previous one). The latency flag is the relevant sanity signal for S:
+  `late` would mean the delay overshoots on the provided match.
+- **New limitation on file:** the frozen-ball artefact (disclosure above) also qualifies
+  the P7 dead-ball tables — `uniform` and `phase_a2` overstate dead-ball detection; the
+  U1 decision is unaffected (it passed on all eight tables).
 
 ## 8. Independent audit (2026-11-07)
 

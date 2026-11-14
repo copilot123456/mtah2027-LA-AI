@@ -16,6 +16,16 @@ Per graded span (the two halves, decoded independently, never across the halftim
 `apply_kickoff_rule` (K1, dossier §7 P7) is a separate post-pass the pipeline step applies
 to the decoded labels: D from the start of a graded half up to its kick-off tag.
 
+P8 components (dossier §7 P8, 2026-11-14; all OFF by default, so the default path is
+byte-identical to the P7 decoder):
+  G  gate_mode "move": an unsupported boundary is moved to the first raw-ATD frame of the
+     new segment that favours its label instead of merging the whole segment away;
+     gap_switch_frac: an H<->A boundary touching a ball gap is placed inside that gap.
+  M  d_min_dwell_s: a longer minimum duration for D segments only.
+  S  switch_delay_s: H<->A boundaries placed by ball evidence move later.
+Order per half: Viterbi -> gate -> gap placement -> min-dwell -> D minimum -> no-play ->
+switch delay.
+
 Frames outside the graded spans are CODE_X (free for the scorer).
 Pure function: inputs are not modified.
 """
@@ -83,23 +93,80 @@ def _supported(boundary: int, label: int, source: np.ndarray, log_e: np.ndarray,
     return bool((winners == label).any())
 
 
+def _first_support(start: int, stop: int, label: int, source: np.ndarray,
+                   log_e: np.ndarray) -> int | None:
+    """First raw-ATD frame in [start, stop) whose own emission favours `label`, or None."""
+    atd = source[start:stop] == SOURCE_ATD
+    if not atd.any():
+        return None
+    hits = np.flatnonzero(atd & (np.argmax(log_e[start:stop], axis=1) == label))
+    return start + int(hits[0]) if len(hits) else None
+
+
 def apply_gating(labels: np.ndarray, source: np.ndarray, log_e: np.ndarray,
                  cfg: dict = CFG) -> tuple[np.ndarray, int]:
-    """Merge segments whose start boundary lacks nearby ATD support. Returns (labels, n_reverted)."""
+    """Gate segment boundaries on nearby ATD support. Returns (labels, n_reverted).
+
+    `gate_mode = "revert"` (default): a segment whose start boundary lacks support is merged
+    whole into the previous one. `gate_mode = "move"` (P8 G): the boundary is moved forward
+    to the first raw-ATD frame of the segment that favours its label — the previous label
+    holds until the ball shows the new one — and only a segment with no such frame is
+    merged. `n_reverted` counts merged segments in both modes.
+    """
     if not cfg["gate_switches"]:
         return labels.copy(), 0
     window = int(round(cfg["switch_support_s"] * cfg["fps"]))
+    move = cfg.get("gate_mode", "revert") == "move"
     out: list[tuple[int, int, int]] = []
     reverted = 0
     for start, stop, lab in _segments(labels):
         if out and out[-1][2] == lab:
             out[-1] = (out[-1][0], stop, lab)          # no boundary: extend
         elif out and not _supported(start, lab, source, log_e, window):
-            out[-1] = (out[-1][0], stop, out[-1][2])   # revert: swallow into previous
-            reverted += 1
+            first = _first_support(start, stop, lab, source, log_e) if move else None
+            if first is None:
+                out[-1] = (out[-1][0], stop, out[-1][2])   # revert: swallow into previous
+                reverted += 1
+            else:
+                out[-1] = (out[-1][0], first, out[-1][2])  # previous label holds until support
+                out.append((first, stop, lab))
         else:
             out.append((start, stop, lab))
     return _rebuild(labels, out), reverted
+
+
+def place_gap_switches(labels: np.ndarray, source: np.ndarray, frac: float) -> np.ndarray:
+    """P8 G: put every H<->A boundary that touches a ball gap at `frac` of that gap.
+
+    Inside a maximal run of non-ATD frames the emission says nothing about the team, so the
+    Viterbi boundary there is a tie-break. `frac = 0.5` places it in the middle of the run
+    (1.0 = the first frame after it); the result is clamped so that neither segment
+    vanishes. `frac <= 0` is a no-op. Pure.
+    """
+    if frac <= 0:
+        return labels
+    segs = _segments(labels)
+    atd = source == SOURCE_ATD
+    n = len(labels)
+    for i in range(1, len(segs)):
+        start, stop, lab = segs[i]
+        prev_start, _, prev_lab = segs[i - 1]
+        if lab not in (CODE_H, CODE_A) or prev_lab not in (CODE_H, CODE_A):
+            continue
+        if atd[start] and atd[start - 1]:
+            continue
+        anchor = start if not atd[start] else start - 1     # a frame of the touching gap
+        g0 = anchor
+        while g0 > 0 and not atd[g0 - 1]:
+            g0 -= 1
+        g1 = anchor + 1
+        while g1 < n and not atd[g1]:
+            g1 += 1
+        new = g0 + int(round(frac * (g1 - g0)))
+        new = min(max(new, prev_start + 1), stop - 1)
+        segs[i - 1] = (prev_start, new, prev_lab)
+        segs[i] = (new, stop, lab)
+    return _rebuild(labels, segs)
 
 
 def enforce_min_dwell(labels: np.ndarray, min_len: int) -> np.ndarray:
@@ -129,6 +196,67 @@ def _rebuild(template: np.ndarray, segs: list[tuple[int, int, int]]) -> np.ndarr
     out = template.copy()
     for start, stop, lab in segs:
         out[start:stop] = lab
+    return out
+
+
+def enforce_d_min_dwell(labels: np.ndarray, d_min_len: int) -> np.ndarray:
+    """P8 M: merge D segments shorter than `d_min_len` into the longer neighbour.
+
+    Same rule and tie-break as `enforce_min_dwell` (longer neighbour, tie -> left, edges
+    into their only neighbour), shortest first until stable; adjacent equal labels are
+    coalesced after every merge, so H D H becomes one H segment. Pure.
+    """
+    segs = _segments(labels)
+    while len(segs) > 1:
+        short = [i for i, (start, stop, lab) in enumerate(segs)
+                 if lab == CODE_D and stop - start < d_min_len]
+        if not short:
+            break
+        i = min(short, key=lambda j: segs[j][1] - segs[j][0])
+        if i == 0:
+            j = 1
+        elif i == len(segs) - 1:
+            j = i - 1
+        else:
+            left = segs[i - 1][1] - segs[i - 1][0]
+            right = segs[i + 1][1] - segs[i + 1][0]
+            j = i - 1 if left >= right else i + 1
+        a, b = (i, j) if i < j else (j, i)
+        segs[a] = (segs[a][0], segs[b][1], segs[j][2])
+        del segs[b]
+        merged: list[tuple[int, int, int]] = []
+        for seg in segs:                                   # coalesce equal neighbours
+            if merged and merged[-1][2] == seg[2]:
+                merged[-1] = (merged[-1][0], seg[1], seg[2])
+            else:
+                merged.append(seg)
+        segs = merged
+    return _rebuild(labels, segs)
+
+
+def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int) -> np.ndarray:
+    """P8 S: move ball-placed H<->A boundaries `delay` frames later.
+
+    The kernel hands the ball to the receiving team when it is nearer to it — mid-flight —
+    while a change of possession is the moment the receiver controls it. Only a boundary
+    whose two adjacent frames are raw ATD is moved (the ball evidence placed it); the move
+    is capped at half the following segment. Boundaries touching a ball gap and every
+    boundary into or out of D stay. Pure.
+    """
+    if delay <= 0:
+        return labels
+    out = labels.copy()
+    segs = _segments(labels)
+    atd = source == SOURCE_ATD
+    for i in range(1, len(segs)):
+        start, stop, lab = segs[i]
+        prev_lab = segs[i - 1][2]
+        if lab not in (CODE_H, CODE_A) or prev_lab not in (CODE_H, CODE_A):
+            continue
+        if not (atd[start] and atd[start - 1]):
+            continue
+        shift = min(int(delay), (stop - start) // 2)
+        out[start:start + shift] = prev_lab
     return out
 
 
@@ -192,30 +320,53 @@ class Decoded:
     reverted_switches: int    # switches the gating merged away (span total)
 
 
-def decode(emission: Emission, source: np.ndarray, half: np.ndarray,
-           cfg: dict = CFG) -> Decoded:
-    """Decode each graded half independently; everything outside is CODE_X."""
-    n = len(emission.conf)
-    labels = np.full(n, CODE_X, dtype=np.int8)
+def viterbi_paths(emission: Emission, half: np.ndarray, cfg: dict = CFG) -> dict:
+    """{half: (frame indices, Viterbi path)} — the part of decoding the P8 keys do not touch."""
     trans = transition_log(cfg)
-    min_len = max(1, int(round(cfg["min_dwell_s"] * cfg["fps"])))
-    reverted_total = 0
-
+    paths = {}
     for h in (1, 2):
         idx = np.flatnonzero(half == h)
         if not len(idx):
             continue
         if not (np.diff(idx) == 1).all():
             raise ValueError(f"half {h} is not a contiguous span")
-        path = viterbi(emission.log_e[idx], trans)
-        path, reverted = apply_gating(path, source[idx], emission.log_e[idx], cfg)
+        paths[h] = (idx, viterbi(emission.log_e[idx], trans))
+    return paths
+
+
+def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
+                 cfg: dict = CFG) -> Decoded:
+    """Gate, min-dwell and the post-passes on per-half Viterbi paths (see module docstring)."""
+    n = len(emission.conf)
+    labels = np.full(n, CODE_X, dtype=np.int8)
+    fps = cfg["fps"]
+    min_len = max(1, int(round(cfg["min_dwell_s"] * fps)))
+    d_min_len = int(round(float(cfg.get("d_min_dwell_s", 0.0)) * fps))
+    delay = int(round(float(cfg.get("switch_delay_s", 0.0)) * fps))
+    gap_frac = float(cfg.get("gap_switch_frac", 0.0))
+    reverted_total = 0
+
+    for idx, viterbi_path in paths.values():
+        path, reverted = apply_gating(viterbi_path, source[idx], emission.log_e[idx], cfg)
         reverted_total += reverted
+        if gap_frac > 0:
+            path = place_gap_switches(path, source[idx], gap_frac)
         path = enforce_min_dwell(path, min_len)
+        if d_min_len > min_len:
+            path = enforce_d_min_dwell(path, d_min_len)
         if cfg["no_play_rule"]:
             path = apply_no_play(path, emission.activity[idx], cfg)
+        if delay > 0:
+            path = delay_team_switches(path, source[idx], delay)
         labels[idx] = path
 
     return Decoded(labels=labels, reverted_switches=reverted_total)
+
+
+def decode(emission: Emission, source: np.ndarray, half: np.ndarray,
+           cfg: dict = CFG) -> Decoded:
+    """Decode each graded half independently; everything outside is CODE_X."""
+    return finish_paths(viterbi_paths(emission, half, cfg), emission, source, cfg)
 
 
 def segment_stats(labels: np.ndarray, fps: int = 25) -> dict:

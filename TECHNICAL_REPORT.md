@@ -34,9 +34,14 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 
 3. **Segment decoder** (`src/decoder.py`). Per-half Viterbi in log space with switch and
    dead-ball penalties, followed by two guards the metric analysis motivated:
-   - **switch gating**: a boundary without nearby raw-ATD support is reverted — evidence
-     from estimated/absent ball alone never switches a possession;
-   - **min-dwell**: segments shorter than the dwell merge into the longer neighbour.
+   - **switch gating**: a boundary without nearby raw-ATD support does not stand — the
+     previous label holds until the first raw-ATD frame that supports the new one, and a
+     segment with no such frame is merged away. Evidence from an estimated or absent ball
+     alone never switches a possession;
+   - **min-dwell**: segments shorter than the dwell merge into the longer neighbour;
+   - **team-switch delay**: a change of team that the ball evidence placed is moved 0.64 s
+     later. The kernel hands the ball over as soon as it is nearer to the receiving team —
+     in mid-flight — while a change of possession is the moment the receiver controls it.
    The decoder directly targets `spellF1`'s segment semantics: the raw nearest-player
    baseline fragments a match into hundreds of possessions; segment-coherent decoding
    yields realistic possession counts with 0 % sub-second segments.
@@ -83,6 +88,8 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 - Change of possession requires the decoder to overcome the switch penalty with
   supporting raw tracking nearby — a single deflection or duel win (a few frames of
   flickering evidence) cannot pass both the gate and the dwell filter.
+- The change is timed where the receiving team controls the ball, not where the ball
+  becomes nearer to it: ball-placed team switches are moved 0.64 s later.
 - Frames of a graded half that precede its Smart Tagging `Kick Off (Start)` tag are `D`
   (the second half is graded before it kicks off).
 - Restarts produce dead-ball stretches via the D features (stationary/boundary/
@@ -98,10 +105,14 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 | Low-activity dead-ball feature | weight 0 minus 0.5 = **+0.049** spellF1 on the primary table, 7/7 matches; positive on all 8 tables (+0.025 … +0.061), units-corrected bed | **switched off** (2026-11-14) |
 | Dead-ball term re-sweep (49 cells) | no cell gains under every ball-loss regime (best worst-case gain −0.0001) | reference kept |
 | Set-piece tag as dead-ball prior | −0.0075 on the primary table, 2/7 matches | kept off |
+| Switch gate: move the boundary instead of merging the segment | the merge deleted whole possessions that had their own ball evidence (33–121 over seven matches, by ball-loss model); move − merge = **+0.019** spellF1 on the primary table, 7/7 matches; positive on all 8 tables (+0.004 … +0.019) | **on** (2026-11-14) |
+| Team-switch delay, 0.64 s | external team switches are 11–15 frames early on 7/7 matches; **+0.012** on top of the gate change, 7/7; positive on all 8 tables. Both together: **+0.031**, 7/7, +0.026 … +0.033 on all 8 tables | **on** (2026-11-14) |
+| Mid-gap placement of a switch the ball cannot time | +0.026 … +0.033 under three ball-loss models, +0.002 (4/7) under the strongly dead-tied one | kept off (worst-case rule) |
+| Longer minimum duration for dead-ball segments (3–5 s) | +0.0001 on the primary table | kept off |
 | Kick-off tag rule (`D` before a half's kick-off tag) | documents-only rule (FAQ + Smart Tagging `Kick Off (Start)`); no external test possible; second-half tag within 10 s of the documented kick-off; changes < 2 % of graded labels | **on** (2026-11-14, check amended by team decision — see dossier) |
 
 (`tuning/results/post_checks.csv`, `post_checks_final.csv`, `report_stage4.md`,
-`report_e7.md`, `report_stage5.md`, scored with the official forward-fill semantics;
+`report_e7.md`, `report_stage5.md`, `report_stage8.md`, scored with the official forward-fill semantics;
 adoption rule: paired gain > 0.02 on at least 5 of 7 matches.)
 
 **Units correction (2026-11-14).** The external tracking reports player speed in km/h and
@@ -124,6 +135,19 @@ configuration to within 0.0015 spellF1 at the shipped cell.
   `spellF1` and well below it on `macroF1`. A stronger "no ball → dead" term gains
   +0.05 … +0.09 in that regime and loses about 0.03 when ball loss is unrelated to dead
   ball; without a way to tell which regime the match is in, it was not adopted.
+- **Frozen ball on the test bed.** On the external matches the ball position is frozen
+  while play is stopped (speed exactly 0 on every dead frame, under 1.1 % of live frames).
+  The "ball at rest" feature therefore finds dead ball almost perfectly there whenever
+  the ball is not masked, which automatic tracking of a real match does not guarantee.
+  Dead-ball results of the bed are optimistic in proportion to how often the ball is
+  visible during a stoppage; the strongly dead-tied placement is the least affected. For
+  the same reason the bed cannot say whether the ball-at-rest feature helps on real
+  tracking, and no delay was fitted for stoppage onsets.
+- The gain from the team-switch delay was still rising at the edge of the tested range
+  (0.8 s); the tie rule kept the smaller 0.64 s, which leaves the external switches
+  3–6 frames early.
+- Swapping the two teams does not exactly mirror the output: boundaries inside ball gaps
+  are tie-breaks. On the masked external bed 3.6–11.5 % of frames differ.
 - Broadcast footage is unused (alignment cost); a video-based ball detector tier was
   scoped as stretch and is not in the shipped pipeline.
 - The provider's dead-ball share on external matches (41–52 %) differs from what the
@@ -141,9 +165,9 @@ produced the committed file):
 ```bash
 python3 -m virtualenv .venv && .venv/bin/pip install -r requirements-dev.txt
 # match data in data/tactical + data/broadcast (organiser bundle; gitignored) or MTAH_DATA_DIR
-.venv/bin/python -m pytest -q           # 142 tests: alignment, invariants, format, byte-identity
+.venv/bin/python -m pytest -q           # 156 tests: alignment, invariants, format, byte-identity
 .venv/bin/python -m src.submit          # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                        # 1b0cf9e47af1947021fe470a422db46d
+md5sum LA+AI.csv                        # de14eb1ccb75d9cd713789da4abde664
 ```
 
 The first run builds a local cache from the raw ATD (about 1m40s); a clean clone with a cold

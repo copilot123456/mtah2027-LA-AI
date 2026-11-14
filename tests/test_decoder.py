@@ -155,8 +155,13 @@ def test_gating_support_window_is_half_open():
 
     outside = log_e.copy(); outside[boundary + window] = _emission_from_labels([CODE_A])[0]
     src_out = source.copy(); src_out[boundary + window] = SOURCE_ATD
-    out, reverted = apply_gating(labels, src_out, outside, CFG)
+    out, reverted = apply_gating(labels, src_out, outside, {**CFG, "gate_mode": "revert"})
     assert reverted == 1 and (out == CODE_H).all(), "one frame further is outside the window"
+    # P8 G (shipped): the boundary is not supported where Viterbi put it, so it moves to the
+    # supporting frame instead of the segment being merged away.
+    out, reverted = apply_gating(labels, src_out, outside, {**CFG, "gate_mode": "move"})
+    assert reverted == 0
+    assert (out[:boundary + window] == CODE_H).all() and (out[boundary + window:] == CODE_A).all()
 
 
 def test_gating_first_segment_is_never_reverted():

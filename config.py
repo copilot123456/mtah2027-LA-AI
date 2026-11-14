@@ -34,6 +34,13 @@ CFG = dict(
                                   # matches externally). Operator decision 2026-11-09:
                                   # redesign probed and closed as infeasible (dossier §7).
     no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
+    gate_mode="move",             # P8 G (was "revert"): an unsupported boundary moves to the first
+                                  # ATD frame that supports the new label instead of merging the
+                                  # whole segment away (dossier §7 P8, adopted 2026-11-14)
+    gap_switch_frac=0.0,          # P8 G: 0 = off; 0.5 puts an H<->A boundary touching a ball gap in
+                                  # the middle of that gap — NOT adopted (pinned maximin rule)
+    switch_delay_s=0.64,          # P8 S (was 0): seconds a ball-placed H<->A boundary moves later
+    d_min_dwell_s=0.0,            # P8 M: 0 = off (D uses min_dwell_s) — step dropped, no gain
     kickoff_rule=True,            # K1: D from a graded half's start up to its `Kick Off (Start)`
                                   # tag (dossier §7 P7); ON by operator decision 2026-11-14 with
                                   # the amended first-half check (tuning/kickoff_check.py)
@@ -109,6 +116,20 @@ PROVENANCE = {
                      "dossier §7 + tuning/results/no_harm_no_play.csv"),
     "no_play_s": ("prior", "10 s of unbroken low activity = stoppage, same scale as "
                    "d_missing_run_s; a priori (dossier §7 E10 pre-declaration)"),
+    "gate_mode": ("external_fit", "P8 G: 'move' (was 'revert'). The revert merged whole segments "
+                  "that had their own ball evidence (33-121 alive segments over 7 IDSSE matches). "
+                  "Stage 8: +0.0190 spellF1 on the primary table, 7/7, positive 7/7 on all 8 tables "
+                  "(+0.004 ... +0.019); dossier §7 P8, tuning/results/report_stage8.md"),
+    "gap_switch_frac": ("prior", "P8 G: OFF. 0.5 gains more under three mask kinds (+0.026 ... "
+                        "+0.033) but only +0.002 (4/7) under cover_q90, so the pinned maximin rule "
+                        "kept the smaller change; left as an operator option (dossier §7 P8)"),
+    "switch_delay_s": ("external_fit", "P8 S: 0.64 s (was 0). Team switches are 11-15 frames early "
+                       "on every IDSSE match (the kernel hands over mid-flight). Stage 8 on top of "
+                       "G: +0.0119 on the primary table, 7/7, positive on all 8 tables (+0.011 ... "
+                       "+0.027); gain still rising at the grid edge 0.8 s, 0.64 s chosen by the "
+                       "pinned tie rule (smallest delay within 0.005 of the best)"),
+    "d_min_dwell_s": ("prior", "P8 M: OFF. Stage 8: +0.0001 on the primary table for 3 s, negative "
+                      "under uniform masks for 4-5 s — step dropped (dossier §7 P8)"),
     "kickoff_rule": ("prior", "K1 documents-only rule (FAQ: the second half is graded before "
                      "its kick-off and those frames are all D; DATA.md: Smart Tagging "
                      "`Kick Off (Start)`, time base checked against both kickoffs). No "

@@ -1,0 +1,5 @@
+gate,verdict,cell,gain
+G,KEEP,gate move · gap placement 0 · delay 0 s · D minimum 0 s,0.019
+S,KEEP,gate move · gap placement 0 · delay 0.64 s · D minimum 0 s,0.0119
+M,DROP,gate move · gap placement 0 · delay 0.64 s · D minimum 3 s,0.0001
+bundle,ADOPT,gate move · gap placement 0 · delay 0.64 s · D minimum 0 s,0.0309
