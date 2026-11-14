@@ -1,0 +1,14 @@
+{
+  "trained_fold": "fold_0",
+  "train_games": [
+    4,
+    6
+  ],
+  "val_games": [
+    9
+  ],
+  "frame_step": 2,
+  "best_fot_loss": 1.0221696242894212,
+  "rtdetr_weights": "rtdetr_fold0_best.pt",
+  "fot_v2_weights": "fot_v2_fold0.pt"
+}
