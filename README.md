@@ -62,9 +62,9 @@ python3 -m virtualenv .venv              # or: python3 -m venv .venv
 #    (or export MTAH_DATA_DIR=/path/to/bundle — see data/README.md)
 
 # 3. verify, then regenerate the submission
-.venv/bin/python -m pytest -q            # 92 tests, ~20 s with a warm cache
+.venv/bin/python -m pytest -q            # 141 tests, ~30 s with a warm cache
 .venv/bin/python -m src.submit           # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                         # aeef0058a08860c9e2407423b1172684
+md5sum LA+AI.csv                         # 47b38c1f778ca2643f8f6429d027ee31
 ```
 
 The first run parses the ATD with kloppy and caches it under `data/.cache/` (about 1m40s and
@@ -93,7 +93,14 @@ gitignored; missing files are fetched from the HF mirror `pysport/idsse-data` on
 .venv/bin/python -m tuning.sweep --stage3        # final grid; selection on the stage-2+3 union
 .venv/bin/python -m tuning.post_checks           # d_bias / X-policy checks at the stage-1 cell
 .venv/bin/python -m tuning.post_checks --final   # the same checks at the shipped cell
+.venv/bin/python -m tuning.stage5                # units-corrected dead-ball pass + baselines (~15 min)
+.venv/bin/python -m tuning.gate5                 # applies the pre-declared rules, writes report_stage5.md
+.venv/bin/python -m tuning.kickoff_check         # kick-off tag rule: categorical PASS/FAIL only
 ```
+
+The IDSSE speed column is km/h and is converted to m/s on load (dossier §7 P7). Matrices
+committed before 2026-11-14 were computed on km/h and are kept as the record of what ran;
+`stage5_*` is the units-correct reference.
 
 A sweep stage takes between half an hour and an hour with 7 workers; the IDSSE parse (minutes
 per match) is cached under `data/.cache/` as well.

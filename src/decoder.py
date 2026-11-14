@@ -13,6 +13,9 @@ Per graded span (the two halves, decoded independently, never across the halftim
   4. Generic no-play pass (cfg no_play_rule, OFF by default — E10): D over sustained
        low-activity runs, applied per half after gating and min-dwell (dossier §7).
 
+`apply_kickoff_rule` (K1, dossier §7 P7) is a separate post-pass the pipeline step applies
+to the decoded labels: D from the start of a graded half up to its kick-off tag.
+
 Frames outside the graded spans are CODE_X (free for the scorer).
 Pure function: inputs are not modified.
 """
@@ -154,6 +157,32 @@ def apply_no_play(labels: np.ndarray, activity: np.ndarray, cfg: dict = CFG) -> 
         if j - i >= need:
             out[i:j] = CODE_D
         i = j
+    return out
+
+
+def apply_kickoff_rule(labels: np.ndarray, half: np.ndarray, kickoff_starts: np.ndarray,
+                       cfg: dict = CFG) -> np.ndarray:
+    """K1 kick-off tag rule (pre-declared: dossier §7 P7, 2026-11-14).
+
+    For each graded half, let `k` be the earliest `Kick Off (Start)` tag whose start frame
+    lies inside that half's span. Frames from the half's first frame up to `k - 1` become
+    `CODE_D`: play has not started, so the ball is dead (FAQ: the second half is graded
+    before its kick-off and those frames are all `D`). No tag inside a half -> that half is
+    untouched. No frame numbers or match identifiers; the only input is the automatic
+    Smart Tagging. Pure: `labels` is not modified.
+    """
+    if not cfg["kickoff_rule"]:
+        return labels
+    starts = np.asarray(kickoff_starts, dtype=np.int64)
+    out = labels.copy()
+    for h in (1, 2):
+        idx = np.flatnonzero(half == h)
+        if not len(idx):
+            continue
+        first, last = int(idx[0]), int(idx[-1])
+        inside = starts[(starts >= first) & (starts <= last)]
+        if len(inside):
+            out[first:int(inside.min())] = CODE_D
     return out
 
 

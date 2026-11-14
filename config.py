@@ -34,6 +34,8 @@ CFG = dict(
                                   # matches externally). Operator decision 2026-11-09:
                                   # redesign probed and closed as infeasible (dossier §7).
     no_play_s=10.0,               # sustained inactivity (s) that marks a stoppage (a priori)
+    kickoff_rule=False,           # K1: D from a graded half's start up to its `Kick Off (Start)`
+                                  # tag (dossier §7 P7); OFF until tuning/kickoff_check.py passes
 
     # --- ball fill tiers ---
     # fill_long_gap_s = 0 DISABLES the kinematic tier: the IDSSE layer ablation
@@ -59,7 +61,9 @@ CFG = dict(
     d_w_stationary=1.0,
     d_w_boundary=0.5,
     d_w_long_missing=0.5,
-    d_w_low_activity=0.5,
+    d_w_low_activity=0.0,         # OFF (was 0.5 prior): the IDSSE bed ran this feature on km/h, so it
+                                  # was never validated; on the units-corrected bed weight 0 beats
+                                  # 0.5 on 8/8 tables, 7/7 matches (dossier §7 P7 U1, 2026-11-14)
     d_w_set_piece=0.0,             # E7: OFF; ON value 1.0 a priori (dossier §7); dead-logit only
     sp_pre_s=2.0,                  # E7 window: seconds before a set-piece tag start (plan §2)
     sp_post_s=1.0,                 # E7 window: seconds after a set-piece tag start (plan §2)
@@ -104,6 +108,11 @@ PROVENANCE = {
                      "dossier §7 + tuning/results/no_harm_no_play.csv"),
     "no_play_s": ("prior", "10 s of unbroken low activity = stoppage, same scale as "
                    "d_missing_run_s; a priori (dossier §7 E10 pre-declaration)"),
+    "kickoff_rule": ("prior", "K1 documents-only rule (FAQ: the second half is graded before "
+                     "its kick-off and those frames are all D; DATA.md: Smart Tagging "
+                     "`Kick Off (Start)`, time base checked against both kickoffs). No "
+                     "external gate is possible (IDSSE halves start at the kick-off); "
+                     "pre-declared dossier §7 P7 2026-11-14 with a categorical check"),
     "fill_long_gap_s": ("external_fit", "kinematic fill tier DISABLED (was prior 10.0): "
                          "IDSSE layer ablation kinematic-none = -0.0112 spellF1, "
                          "CI [-0.017, -0.007], 7/7 matches negative, all-cell mean -0.0089"),
@@ -122,7 +131,10 @@ PROVENANCE = {
     "d_w_stationary": ("prior", "ball at rest => dead (restarts)"),
     "d_w_boundary": ("prior", "ball on the line => dead (throw-ins, corners)"),
     "d_w_long_missing": ("prior", "long no-ball runs correlate with stoppages (measured 75% of gaps are 5-30 s)"),
-    "d_w_low_activity": ("prior", "low team activity during stoppages (Jose WP3 design)"),
+    "d_w_low_activity": ("external_fit", "OFF (was prior 0.5): units-corrected IDSSE stage 5, "
+                         "weight 0 minus 0.5 = +0.0492 spellF1 on the primary table (phase "
+                         "masks x aligned labels), 7/7 matches, positive on all 8 tables "
+                         "(+0.025 ... +0.061); dossier §7 P7 U1, tuning/results/report_stage5.md"),
     "d_w_set_piece": ("prior", "E7 set-piece prior: OFF by default, ON value 1.0 a priori "
                      "(plan §2 E7); gated on IDSSE > 0.02 paired, dossier §7 E7 "
                      "pre-declaration 2026-11-09; timing only, no team/type"),
@@ -130,7 +142,9 @@ PROVENANCE = {
     "sp_post_s": ("prior", "E7 window [start - 2 s, start + 1 s] a priori (plan §2 E7)"),
     "ball_stationary_thr_ms": ("prior", "~1 m/s is a still ball; measured p50 pass speed is ~7 m/s (deep-dive 2)"),
     "d_missing_run_s": ("prior", "10 s without a ball: matches the median missing run (~10.7 s)"),
-    "d_activity_thr_ms": ("prior", "players walking (<~2 m/s) is the stoppage signature"),
+    "d_activity_thr_ms": ("prior", "players walking (<~2 m/s); inactive while d_w_low_activity is 0 "
+                          "and no_play_rule is False. In m/s this fires on 36-42% of live IDSSE "
+                          "frames - too high to be a stoppage signature (dossier §7 P7 U0)"),
     "x_use": ("prior", "off by default: emit>=X for a dwell/gated path; IDSSE ablation under the "
               "official scoring: spellF1 identical (the fill restores the label), macroF1 -0.11"),
     "x_stable_s": ("prior", "EVALUATION.md: abstain inside a stable possession, guess at changes"),

@@ -30,6 +30,8 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
+2026-11-14 (P7, §7): no evaluator run. `config.py` and a code path changed, so a second guarded run is owed before submission — operator only, band + flags, correctness gate only.
+
 Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no video inspection — checked by grep over the code and by the local `evaluation/scoreboard.csv`, which still lists the four baselines only.
 
 ## 4. AI-service statement
@@ -38,6 +40,7 @@ Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no
 - Diagnostics run locally; only coarse aggregates (rounded percentages, binned counts) appear in local documents.
 - Background research agents performed web/GitHub search only; their model endpoint issues are logged in the session history.
 - Organizers' clarification (2026-11-03): no uploading provided data to AI services — our operating rule is stricter than needed (coarse aggregates only) pending organizer Q3.
+- **Audit + P7 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. What crossed into the session from the provided match: three categorical checks (speed units = m/s; kick-off PASS/FAIL clauses; label-change bucket) and the own-output summary `src.submit` prints (label counts, possession count and mean length).
 - **Incident 2026-11-11 (disclosed, no use):** while preparing a local submission simulation the assistant read the gitignored `evaluation/scoreboard.csv`, which carries the full board of the 2026-11-09 guarded run; those numbers entered one AI session. They were never quoted, never used for a decision, and the file has never been in git or in any shared artifact. Standing fix: evaluator/board artifacts are never opened assistant-side — only the band letter and the categorical flags cross to the assistant.
 
 ## 5. Video statement
@@ -50,6 +53,10 @@ The video may be inspected to understand possession (allowed). Outputs are never
 2. May the public GT be used to evaluate (not fit) a frozen pipeline?
 3. May cloud AI assistants read aggregate diagnostics computed from the provided match?
 4. May a pretrained model run with a-priori parameters on the provided tactical video feed the pipeline (video as an input source, beyond "inspection to understand")? And are weights fine-tuned on provided-match material usable? (Jose's notebooks 02/04 assume video inference is allowed; `ball_ft_v3` training provenance unknown — asked 2026-11-09 after his notebook review.)
+
+5. May the published full-match baseline scores (EVALUATION.md) be used to sanity-check an external test bed — to judge which simulated ball-loss regime resembles the match — without counting as calibration on the ground truth? (Added 2026-11-14; decides D1 R2, §7 P7.)
+
+**Status 2026-11-14: Q1–Q5 not yet sent.** The clarification of 2026-11-03 already settles half of Q4: a pretrained model may run on the provided video as input; weights trained on the provided video may not be used.
 
 Answers will be appended here verbatim when received.
 
@@ -494,6 +501,60 @@ the operator, per the guard protocol.
 5. May the published full-match baseline scores (EVALUATION.md) be used to sanity-check
    an external test bed — i.e. to judge which simulated missingness regime resembles the
    match — without counting as calibration on the ground truth?
+
+##### P7 read (2026-11-14, same day — `stage5_*.csv`, `stage5_verdicts.csv`, `report_stage5.md`)
+
+- **U0 done:** all seven IDSSE caches migrated to m/s (source factor 3.6 on each);
+  `tests/test_units.py` pins the self-check and both loaders.
+- **Run:** 904 s wall, 6 workers; 50 cells × 7 matches × 4 mask kinds, both label sets.
+  Mask statistics (7-match means, P(missing | dead) / P(dead | missing)): uniform
+  0.43 / 0.44 · phase_a2 0.39 / 0.41 · cover_q50 0.64 / 0.66 · cover_q90 0.90 / 0.92.
+- **U1 — ADOPT, `d_w_low_activity` 0.5 → 0.0.** Primary (phase_a2 × aligned)
+  **+0.0492**, 7/7; positive 7/7 on all eight tables (+0.0249 … +0.0607). Corrected bed
+  with the weight off vs the committed stage-4 frozen-cell rows: mean |Δ| ≤ 0.0015 — the
+  P5/P6 matrices describe the weight-off configuration, which is what now ships.
+- **D1 R1 — REJECT.** No cell gains in all three regimes (best maximin −0.0001); the
+  reference (long-missing 0.5 / 10 s, low-activity off) stays.
+- **D1 R2 — PASS on its own terms, NOT adopted (operator option, Q5).** Candidate
+  `d_w_long_missing = 2.0`, `d_missing_run_s = 3.0`: +0.0513 (cover_q50) and +0.0855
+  (cover_q90), 7/7 on both; −0.0249 (uniform) and −0.0274 (phase_a2). The sign follows
+  P(dead | missing): about −0.025 at 0.44, +0.05 at 0.66, +0.09 at 0.92 — break-even near
+  one half. It pays only if more than about half of the ball-less frames of the match are
+  dead ball, which the allowed signals do not establish.
+- **B1 (aligned labels, spellF1 / macroF1):** smooth50 0.193 / 0.453 (uniform),
+  0.270 / 0.601 (cover_q50), 0.355 / 0.769 (cover_q90) against the published 0.243 /
+  0.672; ours after U1 0.376 / 0.722, 0.349 / 0.612, 0.352 / 0.462. Under strong coupling
+  the decoder is level with smooth50 on spellF1 and far below it on macroF1: with the
+  ball absent it has no dead-ball evidence (the P6 D-audit finding, now quantified).
+- **Adoption record:** `config.py` (`d_w_low_activity = 0.0`, origin `external_fit`);
+  `LA+AI.csv` regenerated, md5 `aeef0058a08860c9e2407423b1172684` →
+  **`47b38c1f778ca2643f8f6429d027ee31`**; official validator PASS; 141 tests green; the
+  byte-identity test passes on the new file.
+- **Own-output check (pinned as a bucket, no veto for U1): "> 20 %" of graded frames
+  change label.** Own-output counts, sanity only, never used to select: 324 possessions
+  of mean 17.6 s; D share 10.0 % of graded frames (was 26.6 %). The retired feature was
+  producing most of our `D` frames. The size of the shift matches the cover rows of
+  stage 5 (predicted dead share 0.19 → 0.07 on cover_q90), where the weight-off cell
+  still wins 7/7 — but it is a large change three days before the deadline and is
+  flagged for the operator.
+- **Evaluator:** not run. Config and a code path changed, so the protocol's second
+  guarded run is owed (operator only, band + flags). It is a correctness gate; it must
+  not be used to choose between the old and the new file (RULES.md: the public window
+  never chooses between two versions).
+- **K1 — pinned verification FAIL, flag stays OFF.** `tuning/kickoff_check.py`: the
+  second-half clause passes (tag within ±250 frames of the FAQ's 2,934); the clause
+  "one tag inside each graded half" fails. Diagnosis (categorical): two tags overall, none
+  inside the first graded half, one within 250 frames *before* the first graded frame —
+  i.e. the first half is graded from the kick-off itself, exactly as the FAQ says, and
+  the rule is a no-op there. The pinned clause was mis-specified, not the rule. Changing
+  a check after seeing it fail is the operator's decision, not the implementer's:
+  proposed amendment — first half "no tag inside, or span ≤ 250"; second half as pinned.
+  Own-output effect with the rule on: "< 2 %" of graded frames. Code, tests and the check
+  are committed with `kickoff_rule = False`.
+- **Historical matrices:** `sweep_results*`, `stage4_*`, `e7_*`, `post_checks*`,
+  `no_harm_no_play.csv` were computed on the km/h bed and are kept as the record of what
+  ran. Re-running those scripts now uses m/s and will not reproduce them to the last
+  digit; `stage5` is the units-correct reference.
 
 ## 8. Independent audit (2026-11-07)
 

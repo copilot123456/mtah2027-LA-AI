@@ -25,10 +25,12 @@ external data (IDSSE), with every parameter carrying an explicit provenance
      carry **zero** team weight — their H/A columns are exactly equal, so evidence-free
      stretches cannot by themselves flip a possession (loose balls stay with the last
      team that had them);
-   - a dead-ball term `p_d = sigmoid(bias + Σ wᵢfᵢ)` over five features: ball outside the
-     pitch margin, ball at rest (< 1 m/s), ball near a boundary, long no-ball run, low
-     team activity. The bias is an a-priori logit(≈1/3) — an external re-fit to the
-     IDSSE dead share was tried and **rejected** (it collapsed performance; see dossier).
+   - a dead-ball term `p_d = sigmoid(bias + Σ wᵢfᵢ)` over four active features: ball
+     outside the pitch margin, ball at rest (< 1 m/s), ball near a boundary, long no-ball
+     run. A fifth, low team activity, is implemented and **switched off by external
+     evidence** (see *Layer decisions*). The bias is an a-priori logit(≈1/3) — an external
+     re-fit to the IDSSE dead share was tried and **rejected** (it collapsed performance;
+     see dossier).
 
 3. **Segment decoder** (`src/decoder.py`). Per-half Viterbi in log space with switch and
    dead-ball penalties, followed by two guards the metric analysis motivated:
@@ -91,15 +93,35 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 | Kinematic fill tier | paired `kinematic − none` = **−0.0112** spellF1, 95 % CI [−0.017, −0.007], 7/7 matches negative; all-cell mean −0.0089 | **dropped** |
 | Dead-bias re-fit to the external D share | **−0.177** spellF1 at the stage-1 cell; **−0.085** at the shipped cell, 7/7 matches negative | rejected; prior kept |
 | X-policy on graded frames | spellF1 **identical** at both cells (the scorer forward-fills `X` inside a possession); macroF1 **−0.079** / **−0.110**, 7/7 matches negative | kept off |
+| Low-activity dead-ball feature | weight 0 minus 0.5 = **+0.049** spellF1 on the primary table, 7/7 matches; positive on all 8 tables (+0.025 … +0.061), units-corrected bed | **switched off** (2026-11-14) |
+| Dead-ball term re-sweep (49 cells) | no cell gains under every ball-loss regime (best worst-case gain −0.0001) | reference kept |
+| Set-piece tag as dead-ball prior | −0.0075 on the primary table, 2/7 matches | kept off |
+| Kick-off tag rule (`D` before a half's kick-off tag) | documents-only rule; its pre-declared check failed on a mis-specified first-half clause | implemented, **off** pending a team decision |
 
-(`tuning/results/post_checks.csv` and `post_checks_final.csv`, scored with the official
-forward-fill semantics; adoption rule: gain > 0.02.)
+(`tuning/results/post_checks.csv`, `post_checks_final.csv`, `report_stage4.md`,
+`report_e7.md`, `report_stage5.md`, scored with the official forward-fill semantics;
+adoption rule: paired gain > 0.02 on at least 5 of 7 matches.)
+
+**Units correction (2026-11-14).** The external tracking reports player speed in km/h and
+the provided match in m/s. Until this date the test bed applied the m/s activity threshold
+to km/h values, so the low-activity feature was effectively inactive in every external
+experiment while it was active on the provided match. The loader now converts to m/s
+behind a self-check, and the feature was re-evaluated on the corrected bed (table above).
+Earlier matrices are kept as the record of what ran; they describe the weight-off
+configuration to within 0.0015 spellF1 at the shipped cell.
 
 ## Limitations
 
-- Tuning runs under a simplified missingness model: mask runs placed uniformly at random
-  on IDSSE using the provided match's *coarse* run-length distribution. The real
-  missingness correlates with match phases this simulation does not reproduce.
+- Tuning runs under simulated ball loss on IDSSE, using the provided match's *coarse*
+  run-length distribution and four placement models: uniform, weighted towards duels and
+  possession changes, and two that tie ball loss to dead ball (moderate and strong). How
+  strongly the real tracker's ball loss is tied to dead ball is not measured here.
+- **Dead ball without a ball.** With the ball absent the decoder has no dead-ball
+  evidence and carries the last team. When ball loss is strongly tied to dead ball the
+  external bed puts the pipeline level with the organisers' `smooth50` baseline on
+  `spellF1` and well below it on `macroF1`. A stronger "no ball → dead" term gains
+  +0.05 … +0.09 in that regime and loses about 0.03 when ball loss is unrelated to dead
+  ball; without a way to tell which regime the match is in, it was not adopted.
 - Broadcast footage is unused (alignment cost); a video-based ball detector tier was
   scoped as stretch and is not in the shipped pipeline.
 - The provider's dead-ball share on external matches (41–52 %) differs from what the
@@ -117,9 +139,9 @@ produced the committed file):
 ```bash
 python3 -m virtualenv .venv && .venv/bin/pip install -r requirements-dev.txt
 # match data in data/tactical + data/broadcast (organiser bundle; gitignored) or MTAH_DATA_DIR
-.venv/bin/python -m pytest -q           # 83 tests: alignment, invariants, format, byte-identity
+.venv/bin/python -m pytest -q           # 141 tests: alignment, invariants, format, byte-identity
 .venv/bin/python -m src.submit          # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                        # aeef0058a08860c9e2407423b1172684
+md5sum LA+AI.csv                        # 47b38c1f778ca2643f8f6429d027ee31
 ```
 
 The first run builds a local cache from the raw ATD (about 1m40s); a clean clone with a cold
@@ -127,7 +149,7 @@ cache reproduces the committed file byte for byte (see `AUDIT.md`). External tun
 ships in `tuning/results/` (matrices + reports); `tuning/sweep.py` and
 `tuning/post_checks.py` regenerate it given `IDSSE_DIR` (see README).
 
-## Final configuration (frozen 2026-11-07)
+## Final configuration (decoder cell frozen 2026-11-07; dead-ball term revised 2026-11-14)
 
 | parameter | shipped | origin |
 |---|---|---|
@@ -139,7 +161,11 @@ ships in `tuning/results/` (matrices + reports); `tuning/sweep.py` and
 | `fill_long_gap_s` | 0 (tier off) | `external_fit` (layer ablation) |
 | `x_use` | False | evaluated, rejected |
 | `d_bias` | −0.70 | `prior` (re-fit tried, rejected) |
+| `d_w_low_activity` | 0 (feature off) | `external_fit` (units-corrected bed) |
+| `kickoff_rule` | False | `prior` (documents-only rule, off) |
 
 External selection: 930-cell union × 7 matches, mean spellF1 **0.2759** (95 % CI
-[0.2578, 0.2932]), LOMO optimism −0.0026. The submission regenerates byte-identically
-(md5-verified) and passes the official validator.
+[0.2578, 0.2932]) on the provider's per-touch labels and uniform masks, LOMO optimism
+−0.0026; **0.366** on challenge-style labels with phase-weighted masks, and 0.35 when ball
+loss is tied to dead ball. The submission regenerates byte-identically (md5-verified) and
+passes the official validator.

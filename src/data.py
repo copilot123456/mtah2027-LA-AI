@@ -139,6 +139,7 @@ class MatchArrays:
     graded: np.ndarray      # (N,) bool
     half: np.ndarray        # (N,) int8, 0/1/2
     setpiece_starts: np.ndarray  # (M,) int64, smart-tagging SET PIECES start frames (E7)
+    kickoff_starts: np.ndarray   # (K,) int64, start frames of `Kick Off (Start)` tags (K1)
 
     @property
     def n_frames(self) -> int:
@@ -150,6 +151,24 @@ def set_piece_starts() -> np.ndarray:
     tags = load_smart_tagging()
     sel = tags[tags["code"] == "SET PIECES"]
     return np.sort(sel["start_frame"].to_numpy(dtype=np.int64))
+
+
+KICKOFF_START_TYPE = "kick off (start)"
+
+
+def kickoff_starts() -> np.ndarray:
+    """Start frames of the SET PIECES instances typed `Kick Off (Start)` (K1, dossier §7 P7).
+
+    Matched case-insensitively (DATA.md: codes are upper case, tag values title case). An
+    export without a `Type` tag group yields an empty array — the rule is then a no-op.
+    """
+    tags = load_smart_tagging()
+    type_col = next((c for c in tags.columns if str(c).strip().lower() == "type"), None)
+    if type_col is None:
+        return np.empty(0, dtype=np.int64)
+    is_set_piece = tags["code"].astype(str).str.strip().str.upper() == "SET PIECES"
+    is_kickoff = tags[type_col].astype(str).str.strip().str.lower() == KICKOFF_START_TYPE
+    return np.sort(tags.loc[is_set_piece & is_kickoff, "start_frame"].to_numpy(dtype=np.int64))
 
 
 def load_arrays(force: bool = False) -> MatchArrays:
@@ -172,4 +191,5 @@ def load_arrays(force: bool = False) -> MatchArrays:
         graded=graded_mask(len(df)),
         half=half_labels(len(df)),
         setpiece_starts=set_piece_starts(),
+        kickoff_starts=kickoff_starts(),
     )

@@ -11,11 +11,12 @@ current gap fill) happens in `pipeline_spec.py`, not here.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from src import data as D
 from src.ball_fill import build_ball_track, coverage
-from src.decoder import decode, segment_stats
+from src.decoder import apply_kickoff_rule, decode, segment_stats
 from src.emission import build_emission
 from src.x_policy import apply_x_policy
 
@@ -42,8 +43,12 @@ def emission(ctx: "Ctx", cfg: dict) -> None:
 
 
 def decode_step(ctx: "Ctx", cfg: dict) -> None:
-    """Per-half Viterbi decode with switch gating and the min-dwell post-pass."""
+    """Per-half Viterbi decode with switch gating and the min-dwell post-pass, then the
+    kick-off tag rule (D before a half's kick-off tag; no-op while cfg['kickoff_rule'] is False)."""
     ctx.decoded = decode(ctx.emission, ctx.track.source, ctx.arrays.half, cfg)
+    if cfg["kickoff_rule"]:
+        ctx.decoded = replace(ctx.decoded, labels=apply_kickoff_rule(
+            ctx.decoded.labels, ctx.arrays.half, ctx.arrays.kickoff_starts, cfg))
 
 
 def x_policy(ctx: "Ctx", cfg: dict) -> None:

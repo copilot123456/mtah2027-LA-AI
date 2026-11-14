@@ -1,0 +1,87 @@
+"""K1 kick-off tag rule (pre-declared: dossier §7 P7, 2026-11-14).
+
+Unit tests of the pure post-pass on synthetic halves, plus the loader contract. The
+provided-match verification is categorical and lives in tuning/kickoff_check.py.
+"""
+
+import numpy as np
+
+from config import CFG
+from src.decoder import CODE_A, CODE_D, CODE_H, CODE_X, apply_kickoff_rule
+
+ON = {**CFG, "kickoff_rule": True}
+
+
+def _match():
+    """Two halves: frames 100..499 and 700..1099; X elsewhere."""
+    half = np.zeros(1200, dtype=np.int8)
+    half[100:500] = 1
+    half[700:1100] = 2
+    labels = np.full(1200, CODE_X, dtype=np.int8)
+    labels[100:500] = CODE_H
+    labels[700:1100] = CODE_A
+    return labels, half
+
+
+def test_frames_before_the_kickoff_tag_become_dead():
+    labels, half = _match()
+    out = apply_kickoff_rule(labels, half, np.array([100, 760]), ON)
+    assert (out[700:760] == CODE_D).all()
+    assert (out[760:1100] == CODE_A).all(), "the kick-off frame itself is live"
+    assert (out[100:500] == CODE_H).all(), "a tag on the half's first frame changes nothing"
+    assert (out[half == 0] == CODE_X).all(), "ungraded frames are never touched"
+    assert (labels[700:760] == CODE_A).all(), "input must not be mutated"
+
+
+def test_earliest_tag_inside_the_half_wins():
+    labels, half = _match()
+    out = apply_kickoff_rule(labels, half, np.array([900, 730, 760]), ON)
+    assert (out[700:730] == CODE_D).all() and (out[730:1100] == CODE_A).all()
+
+
+def test_tags_outside_the_graded_spans_are_ignored():
+    labels, half = _match()
+    out = apply_kickoff_rule(labels, half, np.array([50, 600, 1150]), ON)
+    np.testing.assert_array_equal(out, labels)
+
+
+def test_no_tags_is_a_noop():
+    labels, half = _match()
+    out = apply_kickoff_rule(labels, half, np.empty(0, dtype=np.int64), ON)
+    np.testing.assert_array_equal(out, labels)
+
+
+def test_flag_off_returns_the_input_unchanged():
+    labels, half = _match()
+    out = apply_kickoff_rule(labels, half, np.array([100, 760]), {**CFG, "kickoff_rule": False})
+    assert out is labels
+
+
+def test_arrays_carry_kickoff_starts(arrays):
+    starts = arrays.kickoff_starts
+    assert starts.dtype.kind == "i"
+    assert np.all(np.diff(starts) >= 0)
+    assert len(starts) == 2, "DATA.md: two `Kick Off (Start)` instances"
+    assert set(starts.tolist()) <= set(arrays.setpiece_starts.tolist())
+
+
+def test_check_verdicts_and_buckets():
+    from tuning.kickoff_check import bucket, diagnosis, spans, verdicts
+
+    half = np.zeros(20_000, dtype=np.int8)
+    half[1_000:8_000] = 1
+    half[10_000:18_000] = 2
+    # a tag on each half's kick-off: 100 frames into half 1, 2,934 frames into half 2
+    good = verdicts(spans(half, np.array([1_100, 12_934])))
+    assert all(good.values())
+    # first-half tag just BEFORE the graded span: the pinned check fails, the diagnosis says why
+    starts = np.array([950, 12_934])
+    pinned = verdicts(spans(half, starts))
+    assert not pinned["one tag inside each graded half"]
+    assert pinned["second-half span within +/-250 frames of the FAQ's 2,934"]
+    assert all(diagnosis(half, starts).values())
+    # a second-half tag far from the documented kick-off is rejected
+    assert not verdicts(spans(half, np.array([1_100, 14_000])))[
+        "second-half span within +/-250 frames of the FAQ's 2,934"]
+    assert [bucket(x) for x in (0.0, 0.019, 0.03, 0.07, 0.15, 0.4)] == [
+        "< 2 %", "< 2 %", "2-5 %", "5-10 %", "10-20 %", "> 20 %"]
