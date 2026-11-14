@@ -177,3 +177,51 @@ def map_event_rows(ts_us: np.ndarray, frame_id: np.ndarray, period: np.ndarray,
                         best_d, best_row = d, int(period_rows[p][cand])
         out[k] = best_row
     return out
+
+
+# ---------------- stage-5 dead-cover placement (dossier §7 P7, pre-declared 2026-11-14) -----
+
+def mask_ball_dead_cover(ball: np.ndarray, letters: np.ndarray, run_lengths: np.ndarray,
+                         rng: np.random.Generator, q: float, *,
+                         target_fraction: float = 0.431, min_dead_frames: int = 50,
+                         max_attempts: int = 200_000) -> tuple[np.ndarray, dict]:
+    """Copy of `ball` with ball loss coupled to dead ball.
+
+    Every maximal dead run (`letters == "D"`) of at least `min_dead_frames` is masked
+    entirely with probability `q` — one draw per run, in chronological order. P5 run
+    lengths are then placed uniformly at random, rejecting overlaps, until
+    `target_fraction` of the in-match frames (`letters != "X"`) is masked. `q` is a priori
+    (0.5 moderate, 0.9 strong); it models a tracker that loses the ball when it leaves
+    play, which the uniform and phase-weighted placements do not.
+    """
+    letters = np.asarray(letters, dtype=object)
+    n = len(ball)
+    dead = letters == "D"
+    in_match = letters != "X"
+    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))
+    starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
+    blocked = np.zeros(n, dtype=bool)
+    covered_runs = 0
+    for start, stop in zip(starts, stops):
+        if stop - start >= min_dead_frames and rng.random() < q:
+            blocked[start:stop] = True
+            covered_runs += 1
+    goal = int(target_fraction * int(in_match.sum()))
+    n_masked = int((blocked & in_match).sum())
+    attempts = 0
+    while n_masked < goal and attempts < max_attempts:
+        attempts += 1
+        length = int(rng.choice(run_lengths))
+        if length <= 1:
+            continue
+        start = int(rng.integers(0, n - length))
+        if blocked[start:start + length].any():
+            continue
+        blocked[start:start + length] = True
+        n_masked += int(in_match[start:start + length].sum())
+    masked = ball.copy()
+    masked[blocked] = np.nan
+    stats = {"masked_frames": int(blocked.sum()),
+             "masked_fraction": float(blocked[in_match].mean()) if in_match.any() else 0.0,
+             "n_runs": covered_runs, "attempts": attempts}
+    return masked, stats

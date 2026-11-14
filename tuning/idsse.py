@@ -50,6 +50,54 @@ class IdsseMatch:
     info: dict             # parse log (units, unmapped columns, label counts...)
 
 
+KMH_PER_MS = 3.6
+_PITCH_M = (105.3, 68.0)   # same convention config.CFG applies to normalized coordinates
+
+
+def speed_ratio(players: np.ndarray, players_s: np.ndarray, *, fps: int = 25,
+                lag: int = 25, stride: int = 5) -> float:
+    """Reported speed over position-derived speed — a unit self-check (dossier §7 U0).
+
+    Per frame: the median over slots of the reported speed, and of the chord speed over
+    `lag` frames (1 s: long enough that position jitter and slot swaps do not dominate).
+    Returns the ratio of the two medians over frames with at least 10 usable slots.
+    ≈ 1 when the reported column is m/s, ≈ 3.6 when it is km/h.
+    """
+    a, b = players[:-lag:stride], players[lag::stride]
+    chord = np.hypot((b[..., 0] - a[..., 0]) * _PITCH_M[0],
+                     (b[..., 1] - a[..., 1]) * _PITCH_M[1]) * (fps / lag)
+    rep = players_s[:-lag:stride]
+    ok = np.isfinite(chord) & np.isfinite(rep)
+    enough = ok.sum(axis=1) >= 10
+    if not enough.any():
+        raise ValueError("speed_ratio: no frame with 10 slots carrying position and speed")
+    chord = np.where(ok, chord, np.nan)[enough]
+    rep = np.where(ok, rep, np.nan)[enough]
+    denom = float(np.median(np.nanmedian(chord, axis=1)))
+    if denom <= 0:
+        raise ValueError("speed_ratio: position-derived speed is zero")
+    return float(np.median(np.nanmedian(rep, axis=1))) / denom
+
+
+def speed_unit_factor(players: np.ndarray, players_s: np.ndarray, **kwargs) -> float:
+    """Divisor that turns the reported speed column into m/s: 1.0 (already m/s) or 3.6
+    (km/h). Anything in between is an error — never guess a unit."""
+    ratio = speed_ratio(players, players_s, **kwargs)
+    if 0.7 <= ratio <= 1.4:
+        return 1.0
+    if 2.9 <= ratio <= 4.5:
+        return KMH_PER_MS
+    raise ValueError(f"speed column is neither m/s nor km/h (ratio {ratio:.2f})")
+
+
+def _speeds_to_ms(players: np.ndarray, players_s: np.ndarray, info: dict) -> np.ndarray:
+    """m/s speeds + the conversion logged in `info` (idempotent on m/s input)."""
+    factor = speed_unit_factor(players, players_s)
+    info["speed_units"] = "m/s"
+    info["speed_source_factor"] = factor
+    return players_s / factor if factor != 1.0 else players_s
+
+
 def _files(match_id: str) -> tuple[Path, Path]:
     com = _COM.get(match_id, "DFL-COM-000002")
     meta = IDSSE_DIR / f"DFL_02_01_matchinformation_{com}_DFL-MAT-{match_id}.xml"
@@ -177,6 +225,8 @@ def _parse(match_id: str) -> IdsseMatch:
         steps = np.gradient(players, axis=0) * 25.0
         players_s = np.hypot(steps[..., 0], steps[..., 1])
     slot_team = np.array([prefix_team[g] for g in used], dtype=np.int8)
+    # The provider column is km/h; the pipeline's thresholds are m/s (dossier §7 U0).
+    players_s = _speeds_to_ms(players, players_s, info)
 
     ball = df[["ball_x", "ball_y"]].to_numpy(dtype=np.float64)
     coord_max = float(np.nanmax(np.abs(ball)))
@@ -215,7 +265,16 @@ def load_match(match_id: str, force: bool = False) -> IdsseMatch:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache = CACHE_DIR / f"idsse_{match_id}.pkl"
     if cache.exists() and not force:
-        return IdsseMatch(**pd.read_pickle(cache))
+        payload = pd.read_pickle(cache)
+        if payload["info"].get("speed_units") != "m/s":
+            # Cache written before the 2026-11-14 units fix: convert once, re-save.
+            info = dict(payload["info"])
+            payload["players_s"] = _speeds_to_ms(payload["players"], payload["players_s"], info)
+            sample = payload["players_s"][np.isfinite(payload["players_s"])]
+            info["player_speed_p50"] = float(np.median(sample)) if sample.size else float("nan")
+            payload["info"] = info
+            pd.to_pickle(payload, cache)
+        return IdsseMatch(**payload)
     case = _parse(match_id)
     pd.to_pickle(case.__dict__, cache)
     return case

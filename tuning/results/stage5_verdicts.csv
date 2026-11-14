@@ -1,0 +1,4 @@
+gate,verdict,cell,gain
+U1,ADOPT,long-missing 0.5 / 10 s · low-activity off,0.0492
+D1_R1,REJECT,long-missing 0.5 / 3 s · low-activity off,-0.0001
+D1_R2,PASS,long-missing 2 / 3 s · low-activity off,0.0513
