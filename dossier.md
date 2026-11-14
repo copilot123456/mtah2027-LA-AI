@@ -371,6 +371,130 @@ the operator, per the guard protocol.
 - **Reproduce:** `.venv/bin/python -m tuning.e7` (~20 min first run incl. event
   parsing, ~3 min with warm caches) → `python -m pytest -q`.
 
+### P7 — audit follow-up (pre-declared 2026-11-14, before any stage-5 compute)
+
+- **Trigger / authorization:** design-and-process audit of 2026-11-14 (operator-requested);
+  operator instruction the same day: "do all identified fixes that are unblocked". This
+  overrides Gate 2's "no new ideas after 11-12" cut-off by operator decision. Work stays on
+  `ruiz-work`; `main` stays locked; no push without operator instruction.
+- **Disclosure — what the audit saw before this pin (external data only, repository
+  untouched, provided match / GT / video / board files never opened):** the frozen cell and
+  the organisers' baselines on IDSSE under uniform masks, two dead-weighted masks (start
+  weight 1 + 8·dead, 1 + 60·dead), a no-mask run, and the two dead-cover masks defined
+  below; six D-term probe cells (low-activity weight 0, threshold 1.0 / 1.5, long-missing
+  weight 0 / 2, missing-run 3 s). Those probes shaped the grid ranges below. The audit's
+  lead came partly from the band-C read (§3) and from the own-output aggregates already in
+  this section (E10 probes) — recorded here so the provenance of the idea is on file. The
+  phase α = 2 tables of stage 5 were **not** seen before this pin.
+- **Unit check on the provided match (2026-11-14):** categorical output only — reported
+  player speed vs position-derived speed classifies as **m/s** on the provided match and
+  as **km/h** on IDSSE. No value from the provided match was printed.
+
+#### U0 — test-bed units defect and fix
+
+- **Defect:** the IDSSE `*_s` columns are km/h (median per-frame mean speed in live play
+  7.8–8.2 as reported vs 2.2–2.3 m/s from positions; ratio 3.6), while
+  `d_activity_thr_ms = 2.0` is m/s and the provided match reports m/s. On the bed the
+  `low_activity` dead-ball feature therefore fired on 0.0 % of live frames and 12–17 % of
+  dead frames; in m/s it fires on 36–42 % / 95–96 %. Every P5/P6 matrix and gate was
+  computed with the feature effectively off; the shipped file was produced with it on.
+  The same defect explains E10 (no-play rule: 0–1 external matches vs 30.9 % of our
+  graded frames) — the gate was not vacuous by football, it was vacuous by units.
+- **Fix:** `tuning/idsse.py` converts `players_s` to m/s at parse time and migrates
+  existing caches at load, guarded by `speed_unit_factor` (ratio of reported speed to the
+  1-s chord speed: 0.7–1.4 → m/s, 2.9–4.5 → km/h, anything else is an error).
+  `tests/test_units.py` pins both loaders (IDSSE → m/s after the fix; provided match →
+  m/s, assertion only).
+- **Historical matrices:** left as committed (they are the record of what ran). Stage 5
+  reports the drift between the corrected bed with `d_w_low_activity = 0` and the
+  committed stage-4 frozen-cell rows.
+
+#### Stage 5 — one pass, four mask kinds, both label sets
+
+- **Fixed:** frozen decoder cell (`switch 2 / dead 5 / σ 1.5 / dwell 2.0 / support 1.5`),
+  fill off, corrected units, same per-match seed as P5 for every mask kind.
+- **Mask kinds:** `uniform` (P5 mechanics), `phase_a2` (stage 4, α = 2),
+  `cover_q50`, `cover_q90` — *dead-cover* placement: every maximal dead run of the
+  original letters lasting ≥ 2 s is masked entirely with probability `q` (one draw per
+  run, chronological, per-match seeded generator); P5 run lengths are then placed
+  uniformly, rejecting overlaps, until 43.1 % of in-match frames are masked. `q` = 0.5 and
+  0.9 are a priori (a moderate and a strong coupling of ball loss to dead ball); nothing
+  from the provided match enters beyond the already-accepted run-length diagnostic.
+- **Cells:** grid G7 over the dead-ball term —
+  `d_w_long_missing` {0, 0.5, 1.0, 2.0} × `d_missing_run_s` {3, 10} ×
+  `d_w_low_activity` {0, 0.5, 1.0, 2.0} × `d_activity_thr_ms` {1.0, 1.5}, a zero weight
+  counted once (49 unique cells) — plus the **as-shipped** cell (`d_w_low_activity` 0.5,
+  threshold 2.0, long-missing 0.5, run 10 s). `d_bias` and the other weights stay at their
+  shipped priors (the bias re-fit was already rejected; the dead share is
+  definition-specific).
+- **Outputs:** `tuning/results/stage5_<kind>.csv`, `stage5_baselines.csv` (B1),
+  `stage5_masks.csv`, `report_stage5.md`; runner `tuning/stage5.py`, reader
+  `tuning/gate5.py`.
+
+#### U1 — low-activity weight (gate)
+
+- **OFF** = `d_w_low_activity = 0` (long-missing 0.5 / 10 s); **ON** = as shipped.
+- **Rule:** adopt OFF iff on the standing primary table (phase α = 2 × aligned) the paired
+  mean Δ(OFF − ON) > 0.02 with ≥ 5/7 matches positive, **and** Δ ≥ −0.02 on each of the
+  other seven tables (4 kinds × 2 label sets). Otherwise the shipped value stays.
+- **Not blind:** the audit already measured OFF − ON on uniform (+0.061 aligned) and on
+  both cover masks (+0.040 / +0.037); the phase tables are the unseen part.
+
+#### D1 — dead-ball term re-sweep (two readings, only R1 is automatic)
+
+- **Reference** = the U1 outcome. Per cell, paired Δ vs the reference on aligned labels.
+- **R1 — regime-agnostic (automatic):** `g(cell)` = minimum over the three coupling
+  regimes {`uniform`, `cover_q50`, `cover_q90`} of the 7-match mean Δ. Candidate =
+  argmax `g`; cells within 0.005 of the best are tied and the tie goes to the cell with
+  the fewest parameters changed from the reference, then the smallest summed weight
+  change. **Adopt iff** `g` > 0.02 **and** ≥ 5/7 positive in each of the three regimes
+  **and** Δ ≥ −0.02 on `phase_a2` × aligned and on all four original-label tables.
+  Rationale: the coupling of ball loss to dead ball on the provided match is not measured
+  (strict stance, Q1 open), so the decision must hold whichever regime is true.
+- **R2 — coupled-regime reading (operator option, never automatic):** the same with
+  regimes {`cover_q50`, `cover_q90`} only; `uniform` and `phase_a2` are reported without
+  a veto. R2 is only defensible if the published full-match baseline scores
+  (EVALUATION.md) may be used to judge which bed regime resembles the match — on the bed
+  the baselines' macroF1 is ≈ 0.45 under uniform masks and 0.60 / 0.77 under the cover
+  masks, against the published 0.64–0.68. That is a compliance call for the operator
+  (new organiser question Q5 below); nothing is adopted from R2 without it.
+- **Own-output check after any adoption:** share of graded frames whose label changes,
+  reported as a bucket only (< 2 % · 2–5 % · 5–10 % · 10–20 % · > 20 %). U1 has no veto
+  (it restores the externally evidenced state); a D1 adoption above 20 % is held for the
+  operator (E10 lesson).
+
+#### K1 — kick-off tag rule (documents-only rule; reopens E10 under its closure clause)
+
+- **Basis:** FAQ ("the second half is graded from frame 110,808 but does not kick off
+  until 113,742 … those 2,934 frames are graded and all of them are `D`") and DATA.md
+  (Smart Tagging `Type` = `Kick Off (Start)`, 2 instances; time base "checked against
+  both kickoffs"). The E10 closure allowed reopening with "a rule shaped from documents
+  alone".
+- **Rule (exact, generic):** for each graded half, let `k` be the earliest start frame of
+  a Smart Tagging `SET PIECES` instance whose `Type` is `Kick Off (Start)`
+  (case-insensitive) and whose start lies inside that half's graded span. If `k` exists,
+  frames from the half's first graded frame up to `k − 1` are labelled `D`, after
+  decoding, gating and min-dwell, before the X policy. No such tag → no-op. New key
+  `kickoff_rule` (bool). No frame numbers, no match identifiers.
+- **Verification (categorical PASS / FAIL only, `tuning/kickoff_check.py`):** exactly one
+  such tag inside each graded half; first-half span ≤ 250 frames; second-half span within
+  ±250 frames of the FAQ's 2,934. Any FAIL → the flag stays OFF.
+- **External gate:** none possible — IDSSE halves start at the kick-off and carry no
+  Smart Tagging, so the rule cannot fire there (the E10 firing-opportunity lesson). The
+  adoption rests on the two documents and today's operator instruction; expected effect
+  0 … +0.005 spellF1 plus the tie-break.
+
+#### B1 — baseline control (report only)
+
+- The organisers' nearest-player baseline (raw, ±25, ±50, ±125 frames) scored on every
+  stage-5 mask kind, both label sets, spellF1 and macroF1. No decision is taken from it.
+
+#### New organiser question
+
+5. May the published full-match baseline scores (EVALUATION.md) be used to sanity-check
+   an external test bed — i.e. to judge which simulated missingness regime resembles the
+   match — without counting as calibration on the ground truth?
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
