@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch report — ruiz-rtdetr-fot-v2-review</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#1b2333; --muted:#5b6579; --line:#e3e7f0;
+  --accent:#4457d6; --accent2:#7c4ddb; --ok:#1a9e6b; --warn:#c77716; --bad:#c2453f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:74px}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--mono);font-size:.92em}
+pre{background:#141a2a;color:#dfe6f5;padding:14px 16px;border-radius:10px;overflow-x:auto}
+code{background:#eef1f8;padding:1px 6px;border-radius:6px}
+pre code{background:none;padding:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+h2{font-size:1.65rem;margin-top:0}
+h3{font-size:1.15rem}
+p{margin:.5em 0}
+small{color:var(--muted)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:10px 20px;align-items:center}
+nav a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600;padding:6px 11px;border-radius:99px;white-space:nowrap}
+nav a:hover{background:#eef1f8;color:var(--ink)}
+nav a.active{background:var(--accent);color:#fff}
+nav .brand{font-weight:800;color:var(--ink);margin-right:8px}
+
+/* ---------- hero ---------- */
+header.hero{background:linear-gradient(135deg,#232c55 0%,#4457d6 55%,#7c4ddb 100%);color:#fff;padding:52px 0 44px}
+header.hero h1{font-size:2.3rem;letter-spacing:-.5px}
+header.hero .sub{opacity:.92;font-size:1.05rem;max-width:760px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:99px;font-size:.83rem;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:26px}
+.kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:14px 16px}
+.kpi .v{font-size:1.55rem;font-weight:800}
+.kpi .l{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:.4px}
+
+/* ---------- layout blocks ---------- */
+section{padding:44px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:16px 0;box-shadow:0 1px 3px rgba(20,26,42,.05)}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.b-done{background:#e2f6ed;color:var(--ok)} .b-run{background:#fff3df;color:var(--warn)}
+.b-next{background:#eef1f8;color:var(--muted)} .b-key{background:#eceefe;color:var(--accent)}
+.b-bad{background:#fdeceb;color:var(--bad)}
+.callout{border-left:4px solid var(--accent);background:#eef1f8;border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+.callout.warn{border-color:var(--warn);background:#fff7e8}
+.callout.ok{border-color:var(--ok);background:#eaf7f1}
+.callout.good{border-color:var(--accent2);background:#f3edfd}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-size:.8rem;text-transform:uppercase;letter-spacing:.3px}
+tr:nth-child(even) td{background:#fbfcff}
+.bar{position:relative;height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);background:#fff}
+.bar div{display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px}
+
+/* ---------- timeline ---------- */
+.timeline{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:3px solid var(--line)}
+.timeline li{position:relative;padding:0 0 22px 22px}
+.timeline li::before{content:"";position:absolute;left:-33px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.timeline li.todo::before{background:#c9cfdd}
+.timeline .t-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.timeline .t-title{font-weight:700}
+.timeline .t-body{color:var(--muted);font-size:.93rem}
+
+/* ---------- pipeline ---------- */
+.pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:18px 0}
+.pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;min-width:150px}
+.pipe .stage .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;align-items:center;justify-content:center;margin-bottom:6px}
+.pipe .stage .t{font-weight:700;font-size:.9rem}
+.pipe .stage .d{font-size:.76rem;color:var(--muted);margin-top:4px}
+.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;padding:0 6px}
+
+/* ---------- file docs ---------- */
+details.file{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+details.file summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
+details.file summary::-webkit-details-marker{display:none}
+details.file summary::before{content:"▸";color:var(--accent);transition:.15s}
+details.file[open] summary::before{transform:rotate(90deg)}
+details.file summary .role{font-weight:500;color:var(--muted);font-size:.85rem}
+details.file .body{padding:4px 18px 16px;border-top:1px solid var(--line);font-size:.93rem}
+.path{font-family:var(--mono);font-size:.85rem;background:#eef1f8;padding:2px 8px;border-radius:6px;color:#2b3557}
+.stage-label{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin:26px 0 6px}
+
+/* ---------- commits ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font-weight:600;font-size:.83rem;cursor:pointer;color:var(--muted)}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.commit{display:grid;grid-template-columns:96px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin:9px 0}
+.commit .hash{font-family:var(--mono);font-size:.82rem;color:var(--accent);font-weight:700}
+.commit .date{font-size:.74rem;color:var(--muted)}
+.commit .subj{font-weight:700;font-size:.95rem}
+.commit .why{font-size:.87rem;color:var(--muted);margin-top:3px}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle}
+.t-foundation{background:#eef1f8;color:#5b6579} .t-pipeline{background:#eceefe;color:#4457d6}
+.t-tuning{background:#f3edfd;color:#7c4ddb} .t-audit{background:#fff3df;color:#c77716}
+.t-docs{background:#e2f6ed;color:#1a9e6b} .t-vendor{background:#f0f1f4;color:#6b7280}
+
+footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;text-align:center}
+@media (max-width:640px){ header.hero h1{font-size:1.7rem} .commit{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <span class="brand">LA+AI</span>
+  <a href="#summary">Summary</a>
+  <a href="#jose">Jose's work</a>
+  <a href="#findings">Findings</a>
+  <a href="#changes">What we changed</a>
+  <a href="#evidence">Evidence</a>
+  <a href="#rules">Rules</a>
+  <a href="#rtx">RTX plan</a>
+  <a href="#questions">Questions for Jose</a>
+  <a href="#decide">Open decisions</a>
+  <a href="#reproduce">Reproduce</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div style="font-size:.85rem;letter-spacing:2px;text-transform:uppercase;opacity:.85">Branch report · MTAH 2027 · review of Jose's video ball detector</div>
+  <h1>Jose's ball detector: reviewed, hardened, ready to train on the RTX PC</h1>
+  <p class="sub">A multi-agent review of <b>RT-DETR-L-FoT-v2-adapter</b>, done on a separate local branch (Jose's branch untouched), with fixes that keep every output identical, a training toolkit that rebuilds what was missing, and a step-by-step SOP for the agent on the RTX 4060 Ti.</p>
+  <div class="chips">
+    <span class="chip">branch ruiz-rtdetr-fot-v2-review</span>
+    <span class="chip">baseline main @ de91a9f · Jose @ 0e7b9af</span>
+    <span class="chip">pushed to origin · Jose's branch untouched</span>
+    <span class="chip">2026-11-14</span>
+    <span class="chip">status: PROPOSED · verdict ITERATE</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">15 / 15</div><div class="l">Key findings held under skeptic review</div></div>
+    <div class="kpi"><div class="v">289</div><div class="l">Tests passing (was 119)</div></div>
+    <div class="kpi"><div class="v">0</div><div class="l">Output changes (md5 + original-vs-new identical)</div></div>
+    <div class="kpi"><div class="v">PENDING</div><div class="l">GPU timings · training data identity</div></div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+<section id="summary">
+  <div class="card">
+    <h2>🖥️ One-screen summary</h2>
+    <div class="grid c2">
+      <div>
+        <h3>What Jose built</h3>
+        <p>A clean adapter that runs his Kaggle-trained ball detector (RT-DETR-L on 320 px tiles) and a small "FoT v2" transformer over the match video, and plugs the result into our pipeline as an alternative ball stage. Well structured, honest about its gaps, 31 tests.</p>
+      </div>
+      <div>
+        <h3>The honest verdict</h3>
+        <p><b>Good engineering, not usable for the submission as it stands.</b> It only processes one 30-second clip (under 0.5 % of the graded frames), the way its evidence enters the pipeline is upside-down, and — the real blocker — <b>nobody can say what data the detector was trained on</b> or where its ~45 thresholds came from.</p>
+      </div>
+      <div>
+        <h3>What I did</h3>
+        <p>Fixed every defect that could be fixed without changing results (proven identical against Jose's original with the real models), added switches to measure the rest, and built a <code>training/</code> toolkit: external-data guard, tile builder, recovered training recipe, honest evaluation, FoT training, plus the RTX SOP.</p>
+      </div>
+      <div>
+        <h3>What happens next</h3>
+        <p>The branch is on GitHub; the RTX agent runs SOP phases 1–6b (setup, GPU checks, full-HD equivalence) with no dataset needed. Real training starts at phase 7 — and needs <b>Jose's answer on the dataset</b> (see the questions below).</p>
+      </div>
+    </div>
+    <div class="callout warn"><b>Verdict: ITERATE.</b> Keep the work, do not adopt it into the submission. Confidence: high on the code findings (each re-checked by an independent skeptic, most reproduced by running code); the GPU side is untested because this laptop has no GPU.</div>
+  </div>
+</section>
+
+<section id="jose">
+  <div class="card">
+    <h2>💡 Jose's work in one minute</h2>
+    <div class="pipe">
+      <div class="stage"><div class="n">1</div><div class="t">Tiles</div><div class="d">each frame cut into 32 tiles of 320 px</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">2</div><div class="t">RT-DETR-L</div><div class="d">finds ball candidates per tile</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">3</div><div class="t">Kinematic gate</div><div class="d">keeps one plausible ball per frame</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">4</div><div class="t">FoT v2 + smoothing</div><div class="d">bridges short gaps, smooths the path</div></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="n">5</div><div class="t">Merge</div><div class="d">fills ATD gaps; raw ATD never overwritten</div></div>
+    </div>
+    <p>What the committed detector itself recorded when it was trained (on Kaggle, two GPUs, 12 epochs, one validation game): <b>precision 0.73, recall 0.70, mAP50 0.65</b>, flat from epoch 5 on. On a synthetic test clip here it found the ball on every frame within about 2 px — so the model and the code work; the open questions are about data, coverage and integration.</p>
+  </div>
+</section>
+
+<section id="findings">
+  <div class="card">
+    <h2>🔎 What the review found</h2>
+    <p>Seven independent reviewers produced 95 raw findings (many overlapping). The 15 that drive decisions went to skeptics told to <i>refute</i> them: all 15 held, most at a lower severity than first claimed. The ones that matter:</p>
+    <table>
+      <tr><th>Finding</th><th>Why it matters</th><th>Status</th></tr>
+      <tr><td><b>Training data unknown.</b> Only "games 4 and 6, validated on game 9" — no dataset name, licence or code.</td><td>The technical report must name training data; the rules demand it is external. Blocks adoption and exact retraining.</td><td><span class="badge b-bad">needs Jose</span></td></tr>
+      <tr><td><b>~45 thresholds with no recorded origin.</b> The source notebook rendered overlays on our match.</td><td>If any was tuned by watching our video, that breaks the "tune on external data only" rule. Cannot be known without Jose.</td><td><span class="badge b-bad">needs Jose</span></td></tr>
+      <tr><td><b>CLI drew the detector over our match video by default</b> and dropped a per-frame CSV in the repo root.</td><td>Under our strict reading that is "checking output against the video"; the CSV is provided-match data that must never be committed or shown to an AI.</td><td><span class="badge b-done">fixed</span></td></tr>
+      <tr><td><b>Only a 30 s clip</b> is processed; no full-match pass.</td><td>As written it cannot change the submission.</td><td><span class="badge b-next">documented</span></td></tr>
+      <tr><td><b>Evidence enters upside-down:</b> real detections get zero team weight, interpolated frames get ~0.8.</td><td>A better detector would add <i>less</i> evidence.</td><td><span class="badge b-run">switch added</span></td></tr>
+      <tr><td><b>Gate can be captured</b> by a static ball look-alike near the track.</td><td>Can ignore a confident real ball elsewhere (reproduced on synthetic data).</td><td><span class="badge b-run">pinned, needs evidence</span></td></tr>
+      <tr><td><b>Licence:</b> the checkpoint declares AGPL-3.0 (ultralytics); the repo is MIT.</td><td>A team decision before the repo goes public — facts listed, no legal advice.</td><td><span class="badge b-bad">your call</span></td></tr>
+      <tr><td>Smaller defects: silent truncation on a bad video read, crashes on empty windows, typos silently picking the wrong profile, GPU index ignored, unsafe weight loading, duplicate tiles.</td><td>Wrong or confusing results on edge cases.</td><td><span class="badge b-done">fixed</span></td></tr>
+      <tr><td>Jose's tests ran only 47 % of the module; 54 of 69 injected bugs went unnoticed.</td><td>The tracker itself was untested.</td><td><span class="badge b-done">72 gap tests added</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="changes">
+  <div class="card">
+    <h2>🧱 What changed from Jose's branch</h2>
+    <table>
+      <tr><th>Area</th><th>Jose's branch</th><th>Review branch</th></tr>
+      <tr><td>Results</td><td>—</td><td><b>Identical</b> by default (checked with the real models against his original)</td></tr>
+      <tr><td>Video module</td><td>notebook port</td><td>bug fixes, provenance table for every threshold, weights/size overrides for retrained models, opt-in switches to measure each questionable part</td></tr>
+      <tr><td>CLI</td><td>renders overlay on our match by default</td><td>CSV only, into a git-ignored folder; overlay opt-in with a rules notice</td></tr>
+      <tr><td>Training</td><td>none in the repo</td><td><code>training/</code>: 14 modules — guard, dataset manifest, tile builder, recovered recipe + 6 single-change experiments, honest evaluation, FoT training, checkpoint audit, preflight, smoke and equivalence checks</td></tr>
+      <tr><td>SOP</td><td>—</td><td><code>training/SOP_RTX_AGENT.md</code>: gated phases 1–14 (plus 6b) for the RTX agent</td></tr>
+      <tr><td>Tests</td><td>31</td><td>31 + 72 gap tests + 106 training tests</td></tr>
+    </table>
+    <p><small>Two commits on top of Jose's head <code>0e7b9af</code>: <code>65628ad</code> (module review), <code>f62d8a3</code> (training package). 28 files, +9,022 lines versus main <code>de91a9f</code>. <code>config.py</code>, the pipeline framework and the default spec are untouched.</small></p>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="card">
+    <h2>📈 Evidence</h2>
+    <table>
+      <tr><th>Check</th><th>Before</th><th>After</th></tr>
+      <tr><td>Whole test suite (with the match bundle)</td><td>119 passed</td><td><b>289 passed</b>, 9 skipped, 3 expected failures*</td></tr>
+      <tr><td>Submission regenerated from the branch</td><td colspan="2">official validator: Valid · md5 <code>aeef0058…</code> = committed <code>LA+AI.csv</code></td></tr>
+      <tr><td>Reviewed vs original module, real models, synthetic clip</td><td colspan="2">0 differences in detections and fused output (CPU, 640×480, 8 frames; full HD handed to the RTX)</td></tr>
+      <tr><td>Training chain end to end (CPU, synthetic data)</td><td colspan="2">tiles → 1-epoch training → full-frame evaluation → FoT training: all ran</td></tr>
+      <tr><td>Checkpoint safety audit vs. crafted malicious files</td><td>2 of 3 crafted files passed as safe</td><td><b>0 of 3</b>; real checkpoints still pass</td></tr>
+      <tr><td>"B is better" false alarms when two detectors are equal</td><td>15–45 %</td><td><b>0–6 %</b>, and "insufficient data" when there is too little to decide</td></tr>
+    </table>
+    <p><small>* The 3 expected failures pin review findings deliberately left unchanged (they alter tracking and need external evidence first).</small></p>
+    <h3>Is it good? Three honest lenses</h3>
+    <div class="grid c3">
+      <div class="callout ok"><b>Code quality:</b> yes. Every fix is tested and provably output-neutral; the training tools were reviewed adversarially and the problems found in them fixed too.</div>
+      <div class="callout warn"><b>Usefulness for the 17 Nov submission:</b> low. Even a perfect detector would not change the file without a full-match pass, the evidence fix and a port onto the adopted pipeline — and the data question blocks adoption anyway.</div>
+      <div class="callout good"><b>Usefulness for a better detector:</b> high. The recipe was recovered from the checkpoint itself, every experiment is one declared change, and "better" is now measured the way the pipeline uses the detector.</div>
+    </div>
+  </div>
+</section>
+
+<section id="rules">
+  <div class="card">
+    <h2>✅ Rules &amp; compliance</h2>
+    <table>
+      <tr><th>Check</th><th>Result</th></tr>
+      <tr><td>Jose's branch untouched</td><td><span class="badge b-done">yes</span> <code>origin/RT-DETR-L-FoT-v2-adapter</code> still <code>0e7b9af</code></td></tr>
+      <tr><td>No provided-match data viewed, printed or sent anywhere</td><td><span class="badge b-done">yes</span> only pass/fail and md5 crossed; the video CLI was never run</td></tr>
+      <tr><td>Training tools cannot use the provided match</td><td><span class="badge b-done">guard</span> refuses provided paths, incl. symlink tricks; datasets need name, licence, source</td></tr>
+      <tr><td>Default output unchanged</td><td><span class="badge b-done">yes</span> md5 identical, frozen-output test green</td></tr>
+      <tr><td>Framework / config untouched</td><td><span class="badge b-done">yes</span></td></tr>
+      <tr><td>Origin of Jose's thresholds and training data</td><td><span class="badge b-bad">unknown</span> asked in the questions for Jose</td></tr>
+      <tr><td>Pushed / merged</td><td><span class="badge b-done">own branch only</span> pushed as <code>ruiz-rtdetr-fot-v2-review</code>; Jose's branch, <code>ruiz-work</code> and <code>main</code> checked unchanged before and after; nothing merged</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="rtx">
+  <div class="card">
+    <h2>🚀 The RTX plan (SOP v1.1)</h2>
+    <ul class="timeline">
+      <li><div class="t-head"><span class="t-title">Phases 1–4 · probe, code, environment, preflight</span><span class="badge b-next">no data needed</span></div><div class="t-body">Read-only machine probe (GPU, driver, memory variant 8 or 16 GB, sudo), clone/switch branch, pinned venv (torch 2.15 + ultralytics 8.4.212), preflight and tests. Driver install or reboot = stop and ask you.</div></li>
+      <li><div class="t-head"><span class="t-title">Phases 5–6b · prove it on the GPU</span><span class="badge b-next">handed over from this laptop</span></div><div class="t-body">Synthetic training smoke run, real-model acceptance test, and the full-HD check that the reviewed module equals Jose's original. First real throughput number.</div></li>
+      <li class="todo"><div class="t-head"><span class="t-title">Phase 7 · dataset gate</span><span class="badge b-bad">stops for you</span></div><div class="t-body">Needs the external dataset with name, licence and source — or Jose's prepared tiles (then the committed checkpoint must re-score ≈0.65 mAP50 on them as an integrity check).</div></li>
+      <li class="todo"><div class="t-head"><span class="t-title">Phases 8–11 · measure, reproduce, evaluate</span></div><div class="t-body">Time one probe epoch before planning; retrain the recovered recipe; compare with Jose's checkpoint on a held-out game — must come out "no evidence of a difference".</div></li>
+      <li class="todo"><div class="t-head"><span class="t-title">Phase 12 · experiments, one change each</span></div><div class="t-body">2× up-sampled tiles (the literature's strongest lever for tiny balls), no bias-warm-up spike, hard negatives, no mosaic, longer schedule, more games. Only a "B better" verdict on a held-out game counts.</div></li>
+      <li class="todo"><div class="t-head"><span class="t-title">Phases 13–14 · FoT (optional) and report</span></div><div class="t-body">FoT training is a documented reconstruction; the agent writes its own report, commits locally and asks you before pushing.</div></li>
+    </ul>
+  </div>
+</section>
+
+<section id="questions">
+  <div class="card">
+    <h2>❓ Questions for Jose</h2>
+    <p>Jose — great work on the adapter. To use it in the submission, and to retrain it on the RTX PC exactly as you did, we need the answers below. The first three are the most important: the technical report has to name the training data, and the rules say anything trained or tuned must use external data only. Short answers are fine; links or files are even better.</p>
+    <table>
+      <tr><th>#</th><th>Question</th><th>Why we ask</th></tr>
+      <tr><td>1</td><td><b>Training data.</b> Which dataset do games 4, 6 and 9 come from? Exact name and link (Kaggle slug, Hugging Face repo or other), its licence or terms of use, and whether it was a public dataset attached to the notebook or a private upload. How many games does it have, and what are the other folds?</td><td>Must be named and licensed in the technical report; needed to rebuild the data on the RTX PC.</td></tr>
+      <tr><td>2</td><td><b>Thresholds.</b> On which footage were the constants at the top of <code>src/fot_video.py</code> chosen — the confidence floors (0.07, 0.18), the profile thresholds (0.30 / 0.40 and FoT 0.45 / 0.72), the 0.68 and 0.72 cut-offs, the gate radius and speeds, the smoothing noise? Was any value changed after watching clips of our match (BAR-ATH)?</td><td>Tuning must use external data only; if a value came from our match, it has to be re-derived on external games.</td></tr>
+      <tr><td>3</td><td><b>Where it ran.</b> Did the notebook run locally or on Kaggle / another cloud service, and was our match video or homography ever uploaded there?</td><td>The rules forbid uploading the provided data to outside services; we need to state this correctly in the report.</td></tr>
+      <tr><td>4</td><td><b>The notebook(s).</b> Can you share the Kaggle notebook(s) — at least the tile-building code and the FoT v2 training loop — its "Input" list, and if possible the prepared tile set (<code>tmp_fold0_tiles</code>)? Which Python, torch and CUDA versions did it use?</td><td>Exact reproduction instead of our reconstruction; with your tiles the RTX agent can check the copy re-scores your recorded mAP50 of 0.65.</td></tr>
+      <tr><td>5</td><td><b>Tiles.</b> Were the 320 px tiles cut on a grid or centred on the ball? How many background tiles per ball tile? Were non-pitch pixels masked out (as at inference)? What box size did you use for the ball label? Does <code>frame_step 2</code> mean every second frame of a 25 fps sequence?</td><td>Our tile builder had to assume these; a mismatch between training and inference tiles costs accuracy.</td></tr>
+      <tr><td>6</td><td><b>Labels.</b> Where do the ball positions come from: hand-drawn boxes, interpolated tracks, projected tracking data, or another detector? Are occluded balls labelled? What camera, resolution and frame rate are the source videos?</td><td>Tells us how far the training footage is from our tactical camera and how much to trust the labels.</td></tr>
+      <tr><td>7</td><td><b>FoT v2 training.</b> What exactly is <code>hit5</code> (ball within 5 px of the prediction?), which losses did you use and how were they weighted, which detector and thresholds produced its training inputs, and what does <code>best_fot_loss 1.022</code> measure?</td><td>Our FoT trainer is a reconstruction based on five assumptions; your answer replaces them.</td></tr>
+      <tr><td>8</td><td><b>Smaller ones.</b> Was SoccerNet "H250" (mentioned in your earlier notes) used in this training? What does "FoT" stand for?</td><td>Completes the provenance record.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="decide">
+  <div class="card">
+    <h2>🙋 Open decisions</h2>
+    <ol>
+      <li><b>Answers from Jose</b> to the questions above — they unblock adoption and exact retraining.</li>
+      <li><b>Licence position</b> (team) on AGPL weights in an MIT repo before the repository goes public.</li>
+      <li><b>Scope before 17 Nov:</b> the video stage cannot change the submission as written; porting it onto <code>ruiz-work</code> is a separate, larger task.</li>
+    </ol>
+    <div class="callout">Not done, and why: nothing ran on a GPU (this laptop has none); no real dataset was available; part of the second self-review (evaluation tools) was interrupted by low RAM and finished by hand from that reviewer's experiments; 10 duplicate verification agents did not finish.</div>
+  </div>
+</section>
+
+<section id="reproduce">
+  <div class="card">
+    <h2>🔁 Reproduce it yourself</h2>
+<pre><code>git switch ruiz-rtdetr-fot-v2-review
+MTAH_DATA_DIR=&lt;bundle&gt; .venv/bin/python -m pytest -q          # 289 passed, 9 skipped, 3 xfailed
+.venv/bin/python -m src.submit --out /tmp/v.csv &amp;&amp; md5sum /tmp/v.csv   # aeef0058…</code></pre>
+    <p><small>Full detail, every command and the finding-by-finding table: <code>reports/ruiz-rtdetr-fot-v2-review_AI.md</code>.</small></p>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>
