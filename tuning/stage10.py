@@ -53,7 +53,7 @@ def run_task10(args) -> tuple[list[dict], list[dict]]:
     t0 = time.time()  # task clock, reported as runtime_s
     case = load_match(match_id)  # cached match data
     if case.info.get("speed_units") != "m/s":  # refuse a non-metric cache
-        raise ValueError(f"{match_id}: cache is not in m/s — run the loader once first")
+        raise ValueError(f"{match_id}: cache is not in m/s — run the loader once first")  # demand a metric cache
     masked, _ = build_mask(case, kind, run_lengths, load_tackle_rows(match_id))  # apply mask kind
 
     # ball track, decoder (needs CODE_D) + Viterbi/finish, emission builder
@@ -70,20 +70,20 @@ def run_task10(args) -> tuple[list[dict], list[dict]]:
 
     def scored(labels: np.ndarray) -> dict:  # score one cell's labels
         codes = pm.label_codes(_LETTERS[np.asarray(labels, dtype=np.int8) + 1])  # ints → letters → codes
-        row = {}
+        row = {}  # metrics accumulator
         for lab, gt_codes in gt.items():  # score against both ground truths
-            s = _score(gt_codes, codes)
+            s = _score(gt_codes, codes)  # official metric pair
             row[f"spell_f1_{lab}"] = s["spell_f1"]  # official spell-level F1
             row[f"macro_f1_{lab}"] = s["macro_f1"]  # official macro F1
         n_lat, lat = team_switch_latency(gt["aligned"], codes)  # switch latency, aligned GT
         row["lat_n"], row["lat_mean"] = n_lat, lat  # matched count, mean frame lag
-        return row
+        return row  # metrics for this cell
 
     def emit(cfg: dict, **kw):  # emission with this match's kinematic signals
-        return build_emission(track, case.players, case.players_s, case.slot_team, cfg,
+        return build_emission(track, case.players, case.players_s, case.slot_team, cfg,  # standard build
                               kin=kin, **kw)
 
-    rows = []
+    rows = []  # cell output rows
     labels_by_w = {}  # one decode per K weight
     for wd in kds:
         cfg = {**base, "kin_w_dead": wd}  # only the K weight changes
@@ -92,21 +92,21 @@ def run_task10(args) -> tuple[list[dict], list[dict]]:
                                        track.source, cfg).labels  # one Viterbi + finish
     ref_labels = labels_by_w[SHIPPED["kin_w_dead"]]  # reference = shipped 0.3 cell
     for wd in kds:
-        labels = labels_by_w[wd]
+        labels = labels_by_w[wd]  # reuse decoded labels
         rows.append({"match_id": match_id, "kind": kind, "kin_w_dead": wd, **scored(labels),
                      "pred_d_share": float((labels[in_match] == CODE_D).mean()),  # predicted D share
                      "changed_share": float((labels != ref_labels)[in_match].mean()),  # vs the 0.3 cell
                      "runtime_s": round(time.time() - t0, 1)})  # elapsed so far
 
-    record_rows = []
+    record_rows = []  # record-only output rows
     for name, (override, kw) in RECORD.items():  # (config override, emit kwargs)
-        cfg = {**base, **override}
+        cfg = {**base, **override}  # apply record override
         em_r = emit(cfg, **kw)  # extra emission flags
-        labels = finish_paths(viterbi_paths(em_r, case.half, cfg), em_r, track.source, cfg).labels
+        labels = finish_paths(viterbi_paths(em_r, case.half, cfg), em_r, track.source, cfg).labels  # fresh decode
         record_rows.append({"match_id": match_id, "kind": kind, "cell": name, **scored(labels),  # same metrics
                             "pred_d_share": float((labels[in_match] == CODE_D).mean()),
                             "changed_share": float((labels != ref_labels)[in_match].mean())})  # vs 0.3 cell
-    return rows, record_rows
+    return rows, record_rows  # hand results to main
 
 
 def main() -> int:
@@ -114,7 +114,7 @@ def main() -> int:
     parser.add_argument("--smoke", action="store_true",  # tiny plumbing run
                         help="1 match, a few cells, all four kinds, writes to /tmp")
     parser.add_argument("--workers", type=int, default=7)  # pool size
-    args = parser.parse_args()
+    args = parser.parse_args()  # read command line
 
     from src import data as D  # raw-array loader
 
@@ -126,10 +126,10 @@ def main() -> int:
     kds = [0.3, 0.5, 1.0] if args.smoke else list(K_WEIGHTS)  # smoke: 3 of the 6 weights
     for mid in MATCH_IDS:                             # warm caches BEFORE the pool
         load_match(mid)  # all seven, even in smoke (kin fit needs them)
-        load_tackle_rows(mid)
+        load_tackle_rows(mid)  # warm tackle cache too
     t0 = time.time()  # kin-fit timer
     kin, _ = kin_for_matches(matches)  # leave-one-out kinematic models
-    print(f"kinematic models (leave-one-out) ready at {time.time() - t0:.0f}s", flush=True)
+    print(f"kinematic models (leave-one-out) ready at {time.time() - t0:.0f}s", flush=True)  # fit progress line
     print(f"{len(matches)} matches x {len(KINDS)} kinds, {len(kds)} cells each", flush=True)  # run plan
 
     # one task per (match, mask kind), carrying only its match's degraded-track signals
@@ -137,7 +137,7 @@ def main() -> int:
     from multiprocessing import Pool  # local import
 
     by_kind: dict[str, list[dict]] = {k: [] for k in KINDS}  # rows bucketed by mask kind
-    record_rows: list[dict] = []
+    record_rows: list[dict] = []  # record rows sink
     with Pool(processes=min(args.workers, len(tasks))) as pool:  # never more workers than tasks
         for i, (rows, rrows) in enumerate(pool.imap_unordered(run_task10, tasks), 1):  # any order
             by_kind[rows[0]["kind"]].extend(rows)  # all rows share one kind
@@ -146,19 +146,19 @@ def main() -> int:
                   f"done at {time.time() - t0:.0f}s", flush=True)  # progress
 
     out_dir = Path("/tmp/stage10_smoke") if args.smoke else RESULTS  # smoke to /tmp, full to results/
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)  # create output folder
     order = {m: i for i, m in enumerate(MATCH_IDS)}  # canonical match order
     for kind, rows in by_kind.items():  # one matrix CSV per mask kind
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows)  # rows into one table
         df["_m"] = df["match_id"].map(order)  # temp sort key
         df = df.sort_values(P_PARAMS + ["_m"], kind="stable").drop(columns="_m")  # grid order, then match
-        df.to_csv(out_dir / f"stage10_{kind}.csv", index=False)
-        print(f"wrote stage10_{kind}.csv ({len(df)} rows)", flush=True)
+        df.to_csv(out_dir / f"stage10_{kind}.csv", index=False)  # write this kind's matrix
+        print(f"wrote stage10_{kind}.csv ({len(df)} rows)", flush=True)  # confirm write
     # record-only rows, one per cell
     pd.DataFrame(record_rows).sort_values(["kind", "cell", "match_id"]).to_csv(
         out_dir / "stage10_record.csv", index=False)
     print(f"total {time.time() - t0:.0f}s", flush=True)  # wall-clock total
-    return 0
+    return 0  # success exit code
 
 
 if __name__ == "__main__":
