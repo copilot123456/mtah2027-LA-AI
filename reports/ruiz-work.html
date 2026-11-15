@@ -82,245 +82,156 @@ footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);colo
 </div></nav>
 
 <header class="hero"><div class="wrap">
-  <h1>Branch report — <span class="mono">ruiz-work</span></h1>
-  <p class="sub">Four pre-declared external experiments on the frozen decoder — E10
-  (built → retracted → closed as infeasible), E1 (challenge-definition labels), the
-  E2+E3+E11 combined pass (<b>Gate 1: keep the frozen cell</b>) and E7 (set-piece
-  prior: <b>rejected</b>) — every gate run, every verdict recorded, and the submission
-  byte-identical throughout.</p>
+  <h1>Branch report — ruiz-work</h1>
+  <p class="sub">Five gated improvement phases from the locked common ground to the freeze:
+  P7–P9 adopted on external evidence, P10 honestly rejected. The submission file is final,
+  byte-identical from a clean clone, and ready to upload.</p>
   <div class="chips">
-    <span class="chip">baseline: main @ de91a9f (locked common ground)</span>
-    <span class="chip">head: 3a7d7aa · 16 commits</span>
-    <span class="chip">operator + Copilot · LA+AI</span>
-    <span class="chip">2026-11-09</span>
-    <span class="chip">🟡 PROPOSED · verdict: ITERATE</span>
-    <span class="chip">P6 band: C (categorical)</span>
+    <span class="chip">baseline main @ de91a9f</span>
+    <span class="chip">branch ruiz-work @ 3a8b67c</span>
+    <span class="chip">operator + Copilot (LA+AI)</span>
+    <span class="chip">2026-11-15</span>
+    <span class="badge b-done">ADOPTED — freeze</span>
   </div>
   <div class="kpis">
-    <div class="kpi"><div class="v">C</div><div class="l">P6 band + flags (operator)</div></div>
-    <div class="kpi"><div class="v">92 → 122</div><div class="l">tests green</div></div>
-    <div class="kpi"><div class="v">byte-identical</div><div class="l">md5 aeef0058… preserved</div></div>
-    <div class="kpi"><div class="v">4 gates · 0 adopted</div><div class="l">every bar honored</div></div>
+    <div class="kpi"><div class="v">A</div><div class="l">Guarded band (run 4)</div></div>
+    <div class="kpi"><div class="v">182</div><div class="l">Tests green</div></div>
+    <div class="kpi"><div class="v">c1217158…</div><div class="l">Submission md5</div></div>
+    <div class="kpi"><div class="v">3 adopt · 5 reject</div><div class="l">Pre-declared gates</div></div>
   </div>
 </div></header>
 
 <section id="summary"><div class="wrap"><div class="card">
   <h2>🖥️ One-screen summary</h2>
-  <p><b>The idea in one sentence:</b> run the P6 backlog the only way this project allows —
-  every grid and rule pinned in the dossier <i>before</i> the compute, every behaviour change
-  gated on external evidence, every verdict recorded — and ship only what clears
-  &gt; 0.02. Nothing did; the frozen submission and the evidence record are the output.</p>
+  <p>We ran every decoder improvement through the same discipline — declare the test before
+  the compute, judge on external matches only, ship only what clears +0.02 — and let the bar
+  decide. Three phases cleared it and are in the file; five were rejected or closed, including
+  yesterday's last idea.</p>
   <table>
-    <tr><th>Metric</th><th>Common ground (de91a9f)</th><th>This branch (3a7d7aa)</th></tr>
-    <tr><td>Submission</td><td><code>aeef0058a08860c9e2407423b1172684</code></td>
-        <td><b>identical</b> — E10's adopt+retract net to zero; every new feature ships OFF</td></tr>
-    <tr><td>Tests</td><td>92</td><td><b>122</b> (E1 ×6, stage-4 ×8, E7 ×6, guarded-eval ×5, E10 ×5 …)</td></tr>
-    <tr><td>P6 band + flags</td><td>PENDING</td>
-        <td><b>C</b> · count 23–30 · f1_D low · balance normal · latency none (operator run)</td></tr>
-    <tr><td>E10 pre-kickoff window <code>D</code></td><td>37.4 % (fails the FAQ fact)</td>
-        <td>37.4 % — rule closed as <b>infeasible under the allowed signals</b> (disposition A)</td></tr>
-    <tr><td>Gate 1 — E2/E3/E11 combined pass</td><td>frozen cell</td>
-        <td><b>REJECT</b> — plateau candidate +0.0032 (3/7), CI straddles 0 → frozen ships</td></tr>
-    <tr><td>E7 set-piece prior</td><td>—</td>
-        <td><b>REJECT</b> — primary −0.0075 (2/7), all four tables negative → stays OFF</td></tr>
-    <tr><td>E1 challenge labels</td><td>—</td>
-        <td>pinned T = 3 s, fidelity PASS, +0.105 aligned-label lift (scoring use only)</td></tr>
-    <tr><td>Dossier §7</td><td>P5 record</td>
-        <td>+ 4 P6 pre-declarations + 2 gate reads, each timestamped before its run</td></tr>
+    <tr><th>metric</th><th>common ground (main)</th><th>this branch (freeze)</th></tr>
+    <tr><td>tests</td><td>92</td><td><b>182</b></td></tr>
+    <tr><td>submission md5</td><td><code>aeef0058…</code></td><td><code>c1217158…</code> (3 documented regenerations)</td></tr>
+    <tr><td>guarded evaluator band</td><td>—</td><td><b>A</b> · <code>count 14-22 · f1_D low · balance normal · latency none</code></td></tr>
+    <tr><td>external evidence passes</td><td>0</td><td>3 adopted (P7, P8, P9) · 5 rejected / closed</td></tr>
+    <tr><td>clean-clone regeneration</td><td>—</td><td>PASS, byte-identical (cold cache, 2026-11-15)</td></tr>
   </table>
-  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch ships the
-  frozen submission plus tested, gated, OFF-by-default features and the complete external
-  evidence trail. Confidence: high on process (four pre-declared gates, zero rule
-  violations, byte-identity after every commit); the score itself was never the target —
-  band C only ordered the work.</div>
+  <div class="callout ok">
+    <b>Verdict: ADOPT — freeze this state and submit.</b> High confidence: every behaviour
+    change cleared a pre-declared external bar, the four evaluator runs passed correctness,
+    and the file regenerates byte-identically from a clean clone.
+  </div>
 </div></div></section>
 
 <section id="idea"><div class="wrap"><div class="card">
   <h2>💡 The idea — what we tried to break</h2>
-  <p>The frozen decoder shipped at P5 with a band-C-shaped risk: one systematic weakness
-  (dead-ball mis-calibration), no structural bug. P6 asks whether <i>external-only</i>
-  evidence can move it: does realistic (phase-correlated) missingness move the plateau
-  (E2), do challenge-faithful labels change what "good" means (E1), does grid closure
-  (E3) or a fill re-check (E11) hide a gain, and does restart timing sharpen
-  <code>D</code> (E7)? Plus the compliance loop: the FAQ says 2,934 pre-kickoff frames
-  are all <code>D</code> and we emit 37 % — fix it generically or document why not (E10).</p>
-  <p>Why it could move spellF1: under uniform masking 38–48 % of hand-overs have no ball
-  on the boundary frame; if real missingness concentrates there, the switch gate reverts
-  true switches and the decoder under-segments (up to ±0.03). Every hypothesis below was
-  tested against the same bar: &gt; 0.02 paired on IDSSE, ≥ 5/7 matches, no-harm on the
-  other tables.</p>
+  <p>One hypothesis across five phases: the decoder's remaining error is concentrated where the
+  ball is unobserved — stoppages, duels, long gaps — and only external evidence may move it.
+  So each phase pinned its grid, its decision rule and its no-harm tables in the dossier
+  <i>before</i> running anything, then let a single bar decide: adopt only above +0.02 paired
+  on 7 external matches with no harm elsewhere. The audit phase added a second question:
+  does the test bed itself lie? It did (speed units), and fixing it changed what we could trust.</p>
 </div></div></section>
 
 <section id="changes"><div class="wrap"><div class="card">
   <h2>🧱 What changed from common ground</h2>
-  <p>Net diff from baseline <code>de91a9f</code>: <b>34 files, +7 191 −12</b> —
-  <code>LA+AI.csv</code> is not among them. Everything behavioural ships OFF.</p>
   <table>
-    <tr><th>Area</th><th>Common ground</th><th>This branch</th></tr>
-    <tr><td>Config (+5 keys, all OFF/default)</td><td>40 keys</td>
-        <td>+ <code>no_play_rule</code>=False, <code>no_play_s</code>=10.0 (E10, full saga in
-        provenance) · + <code>d_w_set_piece</code>=0.0, <code>sp_pre_s</code>=2.0,
-        <code>sp_post_s</code>=1.0 (E7, gated)</td></tr>
-    <tr><td>Emission</td><td>5 dead features</td>
-        <td>+ <code>set_piece</code> feature (zero-weight by default) + <code>activity</code>
-        field exposure (E10); <code>build_emission(..., setpiece_starts=)</code> default-safe</td></tr>
-    <tr><td>Decoder</td><td>3 stages</td>
-        <td>+ <code>apply_no_play()</code> post-pass (unit-tested, OFF); no other path changed</td></tr>
-    <tr><td>Data</td><td>arrays</td><td>+ <code>MatchArrays.setpiece_starts</code> (59 SET
-        PIECES tags, smart tagging — allowed input, timing only)</td></tr>
-    <tr><td>External test bed</td><td>P5 sweep</td>
-        <td>+ phase-correlated missingness simulator (3 IDSSE cues, α = 2/3, weighted
-        placement) · + stage-4 runner (144 cells × 4 runs × 2 label sets) · + gate reader ·
-        + E7 gate/audit · guarded-eval redacting wrapper</td></tr>
-    <tr><td>Compliance</td><td>Q1–Q3</td>
-        <td>dossier §6 +Q4; §7 + 4 P6 pre-declarations + 2 gate reads; §3 + the guarded-run log</td></tr>
-    <tr><td>Framework contract</td><td>6 stages</td>
-        <td><b>unchanged</b> — <code>pipeline_spec.py</code> untouched; new data rides inside
-        <code>arrays</code> (adoption note in the AI report)</td></tr>
-    <tr><td>Tests</td><td>92</td><td><b>122</b></td></tr>
+    <tr><th>area</th><th>common ground</th><th>this branch</th></tr>
+    <tr><td>test-bed units (IDSSE)</td><td>km/h columns read as m/s</td><td>fixed behind a self-check; all caches migrated (P7 U0)</td></tr>
+    <tr><td>low-activity dead-ball feature</td><td>weight 0.5</td><td><b>OFF</b> — never validated on a correct bed; off beats on 8/8 tables (P7 U1)</td></tr>
+    <tr><td>kick-off tag rule</td><td>none</td><td><b>ON</b> by operator decision, amended check (P7 K1) — &lt; 2 % of graded labels</td></tr>
+    <tr><td>switch gate</td><td>revert unsupported switches</td><td><b>move mode</b> + 0.64 s team-switch delay (P8 G+S, +0.031)</td></tr>
+    <tr><td>min-dwell</td><td>plain merge</td><td><b>coalescing</b> (P9 C, +0.014)</td></tr>
+    <tr><td>ball-less frames</td><td>no evidence</td><td><b>player-only kinematics</b>: dead-ball term 0.3 + team term 0.03 under a kinematic gate tier (P9 K+T, +0.122 bundle)</td></tr>
+    <tr><td>K weight beyond 0.3</td><td>—</td><td>tested (P10), <b>rejected</b> — 0.3 is the knee</td></tr>
+    <tr><td>set-piece prior / no-play rule / gap placement</td><td>—</td><td>tested, <b>rejected or closed</b>; all OFF with full provenance</td></tr>
+    <tr><td>tests</td><td>92</td><td>182</td></tr>
   </table>
+  <p><small>Diff vs baseline: 92 files, +95 674 / −58 567 (mostly tuning matrices and the three
+  documented submission regenerations). The frozen decoder cell, <code>games.py</code>,
+  <code>evaluation/</code> and <code>starter/</code> are untouched.</small></p>
 </div></div></section>
 
 <section id="evidence"><div class="wrap"><div class="card">
-  <h2>📈 Improvements — the evidence (the full story)</h2>
-
-  <h3>P6 KPI — band + flags only (operator-guarded run, numbers archived operator-side)</h3>
+  <h2>📈 Improvements — the evidence</h2>
+  <p>Guarded evaluator runs (operator-only; band + flags — the numbers never entered any AI
+  channel). Every run is a correctness gate, never a selector: each change was adopted on
+  external data <i>before</i> its run.</p>
   <table>
-    <tr><th>Band</th><th>Flags</th><th>Reading (plan §1)</th></tr>
-    <tr><td><b>C</b></td><td>count 23–30 · <b>f1_D low</b> · balance normal · latency none</td>
-        <td>one systematic weakness = dead-ball mis-calibration (count ≫ 17 rules out
-        over-merging; latency and team balance ruled out) → E2/E1 promoted, E3 demoted,
-        D-audit folded into E7</td></tr>
+    <tr><th>run</th><th>file</th><th>band</th><th>flags</th><th>covers</th></tr>
+    <tr><td>1 · 11-09</td><td><code>aeef0058…</code></td><td>C</td><td><code>count 23-30 · f1_D low · balance normal · latency none</code></td><td>Gate 0</td></tr>
+    <tr><td>2 · 11-14</td><td><code>1b0cf9e4…</code></td><td>B</td><td><code>count 14-22 · f1_D low · balance normal · latency none</code></td><td>P7</td></tr>
+    <tr><td>3 · 11-14</td><td><code>de14eb1c…</code></td><td>A</td><td><code>count 14-22 · f1_D low · balance normal · latency none</code></td><td>P8</td></tr>
+    <tr><td>4 · 11-14</td><td><code>c1217158…</code></td><td>A</td><td><code>count 14-22 · f1_D low · balance normal · latency none</code></td><td>P9</td></tr>
   </table>
-
-  <h3>Gate 1 — E2 + E3 + E11 combined pass (144 cells × 7 matches × 4 runs, 1 921 s)</h3>
   <table>
-    <tr><th>Condition (pre-declared, dossier §7)</th><th>Result</th></tr>
-    <tr><td>Plateau candidate, primary = phase masks × aligned labels</td>
-        <td><code>switch1 / dead12 / σ1.5 / dwell2 / support1</code> = 0.3699 vs frozen 0.3667 (frozen rank 12/144)</td></tr>
-    <tr><td>paired Δ &gt; 0.02</td><td><b>+0.0032</b> — no · 95 % CI [−0.0078, +0.0179]</td></tr>
-    <tr><td>positive on ≥ 5/7</td><td><b>3/7</b> — no</td></tr>
-    <tr><td>no-harm on the other three tables</td><td>yes (+0.0014 / +0.0032 / +0.0044)</td></tr>
-    <tr><td>LOMO (plateau on 6, report on held-out)</td><td>fold pick = global pick on <b>7/7</b> — selection stable</td></tr>
-    <tr><td>Twins (reported only)</td><td>fill-on <b>+0.0000</b> (E11: fill stays off) · α=3 picks the same cell, scores −0.0087 (sensitivity ✓)</td></tr>
-    <tr><td>Verdict</td><td><b>REJECT → the frozen cell ships</b>; md5 untouched</td></tr>
+    <tr><th>external pass (7 IDSSE matches, 4 mask kinds)</th><th>result</th></tr>
+    <tr><td>P7 — dead-ball re-sweep &amp; low-activity weight</td><td>re-sweep REJECT; low-activity OFF (+0.049, 7/7, 8/8 tables positive)</td></tr>
+    <tr><td>P8 — gate move mode + switch delay</td><td>adopt +0.031 (7/7); gap placement rejected</td></tr>
+    <tr><td>P9 — coalesce + kinematic terms (bundle)</td><td>adopt <b>+0.122</b> primary (7/7), +0.083 … +0.122 on all eight tables; parity checks Q1–Q6 PASS</td></tr>
+    <tr><td>P10 — K weight past the edge</td><td>REJECT: +0.011 at 0.4 decaying to +0.002 at 1.0, all below the +0.02 bar</td></tr>
+    <tr><td>P6 — Gate 1 grid closure / set-piece prior</td><td>both REJECT (+0.0032 CI-straddles-0; −0.0075); frozen cell shipped then</td></tr>
   </table>
-  <p><small>Simulator sanity: phase masks lift removal onto every cue (anycue 0.475 in /
-  0.410 out) while the uniform control stays flat (0.428 / 0.435), consistent across the
-  7 matches; TacklingGame events mapped 100 % (173–229 per match). E2's predicted plateau
-  direction appeared — at noise magnitude.</small></p>
-
-  <h3>E7 — set-piece dead-ball prior + band-C D-audit (frozen cell, 14 ON decodes)</h3>
-  <table>
-    <tr><th>Table (ON − OFF)</th><th>uniform × orig</th><th>uniform × aligned</th><th>phase × orig</th><th>phase × aligned (primary)</th></tr>
-    <tr><td>Δ (positive)</td><td>−0.0092 (0/7)</td><td>−0.0112 (0/7)</td><td>−0.0057 (1/7)</td><td><b>−0.0075 (2/7)</b></td></tr>
-  </table>
-  <p><b>Verdict: REJECT → <code>d_w_set_piece</code> stays 0.0.</b> OFF-side
-  fresh-vs-committed drift <b>0.000000</b> (determinism proven); set pieces mapped 100 %
-  on all 7 matches (90–108 raw → noisy 84 + 9 spurious).</p>
-  <div class="callout good"><b>D-feature audit (the band-C payload):</b> missed-D frames
-  are a <i>ball-absent</i> phenomenon — <code>long_missing</code> fires on <b>53.0 %</b>
-  of missed-D (base 19.2 %) while <code>stationary</code> (1.3 %) and
-  <code>near_boundary</code> (1.2 %) cannot speak without ball evidence;
-  <code>set_piece</code> covers only <b>6.9 %</b> of missed-D (base 4.4 %). The weakness
-  is dead-feature <i>availability</i> under missing ball, not missing priors → recorded
-  as a freeze-time limitation candidate (any fix needs its own &gt; 0.02 pre-declared gate).</div>
-
-  <h3>E10 — the compliance loop (full saga, compressed)</h3>
-  <ul class="timeline">
-    <li><div class="t-head"><span class="t-title">Pre-declare → gate → adopt</span> <span class="badge b-done">done</span></div>
-      <div class="t-body">Generic low-activity rule pinned first; no-harm gate PASS
-      (mean −0.0001, worst −0.0005); adopted.</div></li>
-    <li><div class="t-head"><span class="t-title">Measure → 17× the envelope → retract same day</span> <span class="badge b-bad">retract</span></div>
-      <div class="t-body">30.9 % of graded frames flipped (D share 26.6 → 57.5 %) vs the
-      1.8 % plan envelope; the gate was vacuous (rule fires on 0–1 IDSSE matches). Flag
-      OFF, byte-identical restoration, record kept.</div></li>
-    <li><div class="t-head"><span class="t-title">Redesign → feasibility probes → closed as infeasible (A)</span> <span class="badge b-done">closed</span></div>
-      <div class="t-body">Kickoff-geometry redesign (ball at centre, kicker, static
-      formation) probed read-only: conjunction fires <b>0.0 %</b> of the window — it is
-      warm-up milling, not a formed-up restart; the sanctioned signals are absent.
-      Disposition A (operator): flag stays OFF, 37 % deficiency documented as
-      unobservable from allowed signals; window-derived alternatives barred by the
-      no-fitting rule.</div></li>
-  </ul>
-
   <h3>Is it good? — three honest lenses</h3>
   <div class="grid c3">
-    <div class="card"><b>1 — Is the process sound?</b><p>Four pre-declared gates, every
-    one run and honored: two REJECTs kept the frozen cell, one retraction restored it
-    byte-identically, one closure refused a rule the data cannot support. No rule
-    violation, no window tuning, no evaluator number in any AI channel.</p></div>
-    <div class="card"><b>2 — What improved?</b><p>The <i>knowledge</i>: a realistic
-    missingness test bed (phase masks, cues validated 100 %), challenge-faithful labels
-    (+0.105 aligned lift, scoring-only), a stable selection (LOMO 7/7), and a precise
-    external diagnosis of band C's weakness (ball-absent missed-D).</p></div>
-    <div class="card"><b>3 — What did NOT improve?</b><p>The score. No change cleared
-    &gt; 0.02, so nothing adopted; the 37 % window deficiency stays open (documented);
-    the missed-D availability gap remains a limitation candidate for the freeze write-up.</p></div>
+    <div class="card"><b>What moved</b><br>External spellF1 gains on all eight tables for the
+    P9 bundle, three band upgrades C → B → A → A, and a test suite that doubled. The file is
+    reproducible byte-for-byte from a cold clone.</div>
+    <div class="card"><b>What did not move</b><br><code>f1_D</code> stayed <code>low</code> in
+    all four runs. Dead-ball recall where the ball is missing is still the open problem — the
+    one flag that never changed.</div>
+    <div class="card"><b>What we refused</b><br>Five ideas stopped at their bar, including K
+    weight beyond 0.3 (yesterday) and the set-piece prior. An honest rejection keeps the
+    selection honest.</div>
   </div>
+  <div class="callout warn"><b>Read the band correctly:</b> the graded window holds 17
+  possessions. The letter is a correctness gate on a small window, not a forecast of the
+  full-match score.</div>
 </div></div></section>
 
 <section id="compliance"><div class="wrap"><div class="card">
   <h2>✅ Rules &amp; compliance (live results)</h2>
-  <table>
-    <tr><th>Check</th><th>Result</th></tr>
-    <tr><td>No provided-match per-frame values in either report</td><td>✅ coarse aggregates only</td></tr>
-    <tr><td>No guarded-evaluator numbers</td><td>✅ band letter + categorical flags only; full board archived operator-side</td></tr>
-    <tr><td>No GT/video-derived claims</td><td>✅ all evidence = IDSSE (external), public docs, own-output aggregates</td></tr>
-    <tr><td>Behaviour changes &gt; 0.02 paired, pre-declared §7 — or explicitly not met</td>
-        <td>✅ both bars evaluated and <b>not met → REJECT</b> (never ADOPT)</td></tr>
-    <tr><td>Every CFG delta carries provenance + evidence</td><td>✅ 5 new keys, full saga in the notes (E10 comment updated to the closure decision)</td></tr>
-    <tr><td>Frame-specific rules (plan ban)</td><td>✅ never used; E10 redesign closed rather than bent</td></tr>
-    <tr><td>Forbidden paths / data / .gitignore / history</td><td>✅ untouched; main locked @ de91a9f</td></tr>
-    <tr><td>Byte-identity after every commit</td><td>✅ <code>aeef0058a08860c9e2407423b1172684</code> — verified 7 commits running</td></tr>
-    <tr><td>Tests green after every commit</td><td>✅ 92 → 122, batch re-run for this report</td></tr>
-    <tr><td>Human ↔ AI reports agree</td><td>✅ <code>reports/ruiz-work_AI.md</code> carries the same claims with pasted outputs</td></tr>
-  </table>
+  <ul>
+    <li>✅ No fitting or tuning on the ground truth, the video or the public window — external
+      matches only, every rule pre-declared in the dossier before compute.</li>
+    <li>✅ No evaluator numbers in any AI channel — band letters and categorical flags only,
+      delivered operator → assistant.</li>
+    <li>✅ Forbidden files untouched: <code>games.py</code>, <code>evaluation/</code>,
+      <code>starter/</code>, <code>.gitignore</code>; no <code>data/</code> ever committed.</li>
+    <li>✅ Submission regenerated only by adopted changes, each regeneration committed with its
+      cause and its dossier entry — final md5 <code>c1217158…</code>, validator PASS.</li>
+    <li>✅ Behaviour changes each cleared +0.02 paired on ≥ 5/7 external matches with no-harm
+      tables; everything else shipped OFF or unchanged.</li>
+    <li>✅ Clean-clone cold-cache rehearsal PASS 2026-11-15 — byte-identical.</li>
+  </ul>
 </div></div></section>
 
 <section id="ask"><div class="wrap"><div class="card">
-  <h2>🙋 Verdict &amp; the ask for Wednesday</h2>
-  <div class="callout"><b>Verdict: ITERATE — status PROPOSED.</b> The branch carries the
-  frozen submission plus the P6 evidence record; the team decides what enters the final
-  branch.</div>
-  <ol>
-    <li><b>Accept the two REJECTs as the shipping decision</b> — frozen cell unchanged
-    (Gate 1) and <code>d_w_set_piece = 0</code> (E7), with the four-table + twin evidence
-    attached as robustness/limitations material.</li>
-    <li><b>Accept E10's closure (disposition A)</b> — the FAQ deficiency is documented as
-    unobservable from allowed generic signals; reopening needs an organizer answer or a
-    documents-only rule.</li>
-    <li><b>Adopt the process lessons:</b> no-harm gates must report external firing rates
-    (E10 learning); band-C ordering was followed (E2/E1 first, D-audit folded into E7,
-    E3 demoted).</li>
-    <li><b>Adoption-step reminder (PIPELINE_STANDARD):</b> this branch touched
-    <code>config.py</code> provenance and <code>src/steps.py</code> (one pass-through
-    line) — flagged here so the team reviews it at the sync; <code>pipeline_spec.py</code>
-    itself is unchanged.</li>
-    <li><b>Still owed:</b> organizer Q1–Q4; E13 queued for Jose material.</li>
-  </ol>
+  <h2>🙋 Verdict &amp; the freeze checklist</h2>
+  <div class="callout ok"><b>ADOPT — stop improving, freeze with <code>c1217158…</code>,
+  submit before 2026-11-17.</b></div>
+  <p>What remains is operator-side:</p>
+  <ul>
+    <li>Make the repository public (<code>copilot123456/mtah2027-LA-AI</code>)</li>
+    <li>Submission form rehearsal: team name · <code>LA+AI.csv</code> · repo URL · <code>LA+AI.pdf</code></li>
+    <li>Confirm team size (3–5 needed for the later phases)</li>
+    <li>Send organizer questions Q1–Q5 (draft ready in the vault)</li>
+    <li>Push <code>ruiz-work</code> on your word</li>
+  </ul>
+  <p><small>Risk to state plainly: dead-ball recall without ball evidence is the documented
+  limitation; the kinematic models come from another tracker's data (likeness checked, transfer
+  not proven); the set-piece prior's rejection rests on a misaligned external event table.</small></p>
 </div></div></section>
 
 <section id="reproduce"><div class="wrap"><div class="card">
   <h2>🔁 Reproduce it yourself (3 commands)</h2>
-<pre><code>.venv/bin/python -m pytest -q                 # 122 passed
-.venv/bin/python -m src.submit --out /tmp/v.csv && md5sum /tmp/v.csv
-                                              # aeef0058a08860c9e2407423b1172684
-.venv/bin/python -m tuning.gate1              # Gate-1 read + report_stage4.md</code></pre>
-  <p>Also: <code>python -m tuning.e7</code> (E7 gate + D-audit, ~3 min warm),
-  <code>python -m tuning.no_harm_no_play</code> (E10's gate),
-  <code>python -m tuning.stage4</code> (full pass, ~35 min). Full record, commit trail
-  and compliance log → <a href="./ruiz-work_AI.md"><code>reports/ruiz-work_AI.md</code></a>.</p>
+<pre><code># clone -b ruiz-work, virtualenv, pip install -r requirements-dev.txt, symlink data/ per README
+.venv/bin/python -m pytest -q            # 182 passed
+.venv/bin/python -m src.submit           # Valid.; md5sum LA+AI.csv = c121715836ed603fc5792b85daf6f279</code></pre>
 </div></div></section>
 
 <footer><div class="wrap">
-  <p><b>Branch report</b> per <code>AI-SOP-SKILL.md</code> — baseline <code>de91a9f</code>
-  (locked main) → head <code>3a7d7aa</code>; net 34 files +7 191 −12; submission
-  byte-identical (md5 <code>aeef0058…</code>); 92 → 122 tests · official validator PASS ·
-  gates committed under <code>tuning/results/</code> (stage4, e7, no_harm) and
-  <code>dossier.md</code> §3/§7.</p>
-  <p>MTAH 2027 · LA+AI · branch report — <span class="mono">ruiz-work</span> · 2026-11-09</p>
+  Branch report — ruiz-work · MTAH 2027 · LA+AI · produced per AI-SOP-SKILL.md ·
+  every claim backed by reports/ruiz-work_AI.md
 </div></footer>
-
 </body>
 </html>

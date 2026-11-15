@@ -1,4 +1,4 @@
-# Technical report — LA+AI (draft)
+# Technical report — LA+AI
 
 Frame-level team possession labeling (`H`/`A`/`D`/`X`) for FC Barcelona vs Athletic Club
 (BAR-ATH), More Than A Hack 2027 Initial Challenge. Ranking metric: `spellF1`.
