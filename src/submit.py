@@ -9,33 +9,33 @@ Format contract (SUBMISSION.md):
   * label in {H, A, D, X}, no blank cells, UTF-8, no index column
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postponed annotation evaluation
 
-import argparse
-import os
-import subprocess
-import sys
+import argparse  # CLI parsing
+import os  # path helpers
+import subprocess  # run the official validator
+import sys  # executable and stderr access
 
-import numpy as np
-import pandas as pd
+import numpy as np  # label arrays
+import pandas as pd  # submission table
 
-from config import CFG
-from src.data import N_FRAMES
-from src.decoder import CODE_A, CODE_D, CODE_H, CODE_X
+from config import CFG  # pipeline config
+from src.data import N_FRAMES  # required row count (199,319)
+from src.decoder import CODE_A, CODE_D, CODE_H, CODE_X  # integer label codes
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VALIDATOR = os.path.join(ROOT, "evaluation", "validate_submission.py")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root
+VALIDATOR = os.path.join(ROOT, "evaluation", "validate_submission.py")  # official scorer
 
-DEFAULT_OUT = "LA+AI.csv"
-_LETTER = {CODE_H: "H", CODE_A: "A", CODE_D: "D", CODE_X: "X"}
+DEFAULT_OUT = "LA+AI.csv"  # required submission filename
+_LETTER = {CODE_H: "H", CODE_A: "A", CODE_D: "D", CODE_X: "X"}  # code → output letter
 
 
 def labels_to_frame_table(labels: np.ndarray) -> pd.DataFrame:
-    if len(labels) != N_FRAMES:
+    if len(labels) != N_FRAMES:  # contract: exact row count
         raise ValueError(f"expected {N_FRAMES} labels, got {len(labels)}")
     codes = np.asarray(labels, dtype=np.int8)
     unknown = set(np.unique(codes)) - set(_LETTER)
-    if unknown:
+    if unknown:  # reject codes we cannot map to a letter
         raise ValueError(f"unknown label codes {sorted(unknown)}; expected {sorted(_LETTER)}")
     letters = np.array(["X", "H", "A", "D"], dtype="<U1")  # index by code+1 (CODE_X = -1)
     return pd.DataFrame({"frame": np.arange(len(codes), dtype=np.int64),
@@ -44,7 +44,7 @@ def labels_to_frame_table(labels: np.ndarray) -> pd.DataFrame:
 
 def write_submission(labels: np.ndarray, path: str) -> None:
     table = labels_to_frame_table(labels)
-    table.to_csv(path, index=False, lineterminator="\n")
+    table.to_csv(path, index=False, lineterminator="\n")  # no index column, LF endings
 
 
 def validate(path: str) -> int:
@@ -57,31 +57,31 @@ def validate(path: str) -> int:
         [sys.executable, VALIDATOR, os.path.abspath(path)],
         capture_output=True, text=True,
     )
-    print(result.stdout, end="")
+    print(result.stdout, end="")  # echo validator output
     if result.stderr:
-        print(result.stderr, file=sys.stderr, end="")
-    return result.returncode
+        print(result.stderr, file=sys.stderr, end="")  # surface errors
+    return result.returncode  # propagate validator exit code
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", default=DEFAULT_OUT)
-    parser.add_argument("--no-validate", action="store_true")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])  # help = docstring line 1
+    parser.add_argument("--out", default=DEFAULT_OUT)  # output CSV path
+    parser.add_argument("--no-validate", action="store_true")  # skip validator
     args = parser.parse_args()
 
-    from src.pipeline import run
+    from src.pipeline import run  # pipeline imported lazily
 
-    labels, summary = run(CFG)
+    labels, summary = run(CFG)  # decode the whole match
     write_submission(labels, args.out)
     print(f"wrote {args.out}")
-    print(f"  segments {summary['n_segments']} (possessions {summary['n_possessions']})"
+    print(f"  segments {summary['n_segments']} (possessions {summary['n_possessions']})"  # run stats
           f"  median {summary['median_len_s']:.1f}s  sub-second {100 * summary['subsecond_share']:.1f}%"
           f"  D share {100 * summary['d_share']:.1f}%  gated switches {summary['reverted_switches']}")
 
     if args.no_validate:
-        return 0
-    return validate(args.out)
+        return 0  # user opted out
+    return validate(args.out)  # score exactly like the official checker
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())  # exit with main's code

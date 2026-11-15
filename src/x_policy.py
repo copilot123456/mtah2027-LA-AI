@@ -23,12 +23,12 @@ and never on a whole half (a half the submission abstains on entirely has nothin
 carry and scores zero spells).
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postponed annotation evaluation
 
-import numpy as np
+import numpy as np  # array math
 
-from config import CFG
-from src.decoder import CODE_X
+from config import CFG  # default config (x_use off)
+from src.decoder import CODE_X  # integer code for abstain
 
 
 def _distance_to_nearest_boundary(t_len: int, switches: np.ndarray) -> np.ndarray:
@@ -40,37 +40,41 @@ def _distance_to_nearest_boundary(t_len: int, switches: np.ndarray) -> np.ndarra
     dormant under the shipped x_use=False, fixed in the 2026-11-07 audit).
     """
     switches = np.asarray(switches, dtype=np.int64)
-    pos = np.arange(t_len)
-    left_idx = np.searchsorted(switches, pos, side="right") - 1
-    right_idx = np.searchsorted(switches, pos, side="left")
-    dist = np.full(t_len, np.inf)
-    has_left = left_idx >= 0
-    has_right = right_idx < len(switches)
-    dist[has_left] = np.minimum(dist[has_left], pos[has_left] - switches[left_idx[has_left]])
-    dist[has_right] = np.minimum(dist[has_right], switches[right_idx[has_right]] - pos[has_right])
+    pos = np.arange(t_len)  # frame indices within the span
+    left_idx = np.searchsorted(switches, pos, side="right") - 1  # last switch ≤ each frame
+    right_idx = np.searchsorted(switches, pos, side="left")  # first switch ≥ each frame
+    dist = np.full(t_len, np.inf)  # no boundary found yet
+    has_left = left_idx >= 0  # a switch before this frame
+    has_right = right_idx < len(switches)  # a switch after this frame
+    dist[has_left] = np.minimum(dist[has_left], pos[has_left] - switches[left_idx[has_left]])  # back to switch
+    dist[has_right] = np.minimum(dist[has_right], switches[right_idx[has_right]] - pos[has_right])  # forward to switch
     # distance to the span edges
-    dist = np.minimum(dist, pos)
-    dist = np.minimum(dist, t_len - 1 - pos)
+    dist = np.minimum(dist, pos)  # frames from span start
+    dist = np.minimum(dist, t_len - 1 - pos)  # frames from span end
     return dist
 
 
 def apply_x_policy(labels: np.ndarray, conf: np.ndarray, half: np.ndarray,
                    cfg: dict = CFG) -> np.ndarray:
-    """Return labels with X applied per the module rule (no-op unless cfg['x_use'])."""
-    if not cfg.get("x_use", False):
-        return labels.copy()
+    """Return labels with X applied per the module rule (no-op unless cfg['x_use']).
 
-    out = labels.copy()
-    stable_frames = int(round(cfg["x_stable_s"] * cfg["fps"]))
-    for h in (1, 2):
-        idx = np.flatnonzero(half == h)
+    A frame gets X only if its confidence is low and it sits far from every switch
+    and span edge.
+    """
+    if not cfg.get("x_use", False):
+        return labels.copy()  # flag off: unchanged copy
+
+    out = labels.copy()  # work on a copy
+    stable_frames = int(round(cfg["x_stable_s"] * cfg["fps"]))  # stability seconds → frames
+    for h in (1, 2):  # each half independently
+        idx = np.flatnonzero(half == h)  # frames of this half
         if not len(idx):
-            continue
-        lab = out[idx]
-        switches = np.flatnonzero(lab[1:] != lab[:-1]) + 1
-        dist = _distance_to_nearest_boundary(len(lab), switches)
-        candidate = (conf[idx] <= cfg["x_conf_max"]) & (dist >= stable_frames)
+            continue  # half absent from data
+        lab = out[idx]  # labels within the half
+        switches = np.flatnonzero(lab[1:] != lab[:-1]) + 1  # positions where label changes
+        dist = _distance_to_nearest_boundary(len(lab), switches)  # frames to nearest boundary
+        candidate = (conf[idx] <= cfg["x_conf_max"]) & (dist >= stable_frames)  # low conf + far away
         if candidate.all():
             continue  # never abstain on an entire half
-        out[idx[candidate]] = CODE_X
+        out[idx[candidate]] = CODE_X  # mark candidates as abstain
     return out
