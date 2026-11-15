@@ -39,7 +39,7 @@ def _distance_to_nearest_boundary(t_len: int, switches: np.ndarray) -> np.ndarra
     edges, so a switch-free half abstained right up to its first and last frame —
     dormant under the shipped x_use=False, fixed in the 2026-11-07 audit).
     """
-    switches = np.asarray(switches, dtype=np.int64)
+    switches = np.asarray(switches, dtype=np.int64)  # int64 index array
     pos = np.arange(t_len)  # frame indices within the span
     left_idx = np.searchsorted(switches, pos, side="right") - 1  # last switch ≤ each frame
     right_idx = np.searchsorted(switches, pos, side="left")  # first switch ≥ each frame
@@ -51,7 +51,7 @@ def _distance_to_nearest_boundary(t_len: int, switches: np.ndarray) -> np.ndarra
     # distance to the span edges
     dist = np.minimum(dist, pos)  # frames from span start
     dist = np.minimum(dist, t_len - 1 - pos)  # frames from span end
-    return dist
+    return dist  # nearest-boundary distances
 
 
 def apply_x_policy(labels: np.ndarray, conf: np.ndarray, half: np.ndarray,
@@ -77,4 +77,4 @@ def apply_x_policy(labels: np.ndarray, conf: np.ndarray, half: np.ndarray,
         if candidate.all():
             continue  # never abstain on an entire half
         out[idx[candidate]] = CODE_X  # mark candidates as abstain
-    return out
+    return out  # labels with X applied

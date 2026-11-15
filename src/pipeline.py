@@ -62,20 +62,20 @@ def validate_spec(spec: list[Step]) -> list[str]:
     seen: set[str] = set()           # step names used so far
     for step in spec:
         if step.name in seen:        # names must be unique
-            problems.append(f"step {step.name!r}: duplicate step name")
-        seen.add(step.name)
+            problems.append(f"step {step.name!r}: duplicate step name")  # record the duplicate
+        seen.add(step.name)          # mark name seen
         if not (getattr(step.fn, "__doc__", "") or "").strip():  # fn must self-document
-            problems.append(
+            problems.append(           # record missing docstring
                 f"step {step.name!r}: fn {getattr(step.fn, '__name__', step.fn)!r} has no "
                 "docstring — every step must document itself"
             )
-        missing = [r for r in step.requires if r not in provided]
+        missing = [r for r in step.requires if r not in provided]  # unmet requirements
         if missing:                  # required field never provided earlier
-            problems.append(
+            problems.append(           # record unmet requires
                 f"step {step.name!r}: requires {missing} but no earlier step provides it"
             )
         provided.update(step.provides)  # publish this step's outputs
-    return problems
+    return problems                  # empty list means valid
 
 
 def run(cfg: dict = CFG, spec: list[Step] | None = None) -> tuple[np.ndarray, dict]:
@@ -86,17 +86,17 @@ def run(cfg: dict = CFG, spec: list[Step] | None = None) -> tuple[np.ndarray, di
     """
     if spec is None:
         from pipeline_spec import SPEC  # default spec; imported lazily (it imports this module)
-        spec = SPEC
-    problems = validate_spec(spec)
+        spec = SPEC                  # use the default spec
+    problems = validate_spec(spec)   # check spec before running
     if problems:                     # fail fast, before any step runs
-        raise ValueError("invalid pipeline spec:\n  - " + "\n  - ".join(problems))
+        raise ValueError("invalid pipeline spec:\n  - " + "\n  - ".join(problems))  # refuse bad spec
 
     ctx = Ctx()                      # fresh state for this run
     for step in spec:                # execute stages in declaration order
-        step.fn(ctx, cfg)
+        step.fn(ctx, cfg)            # run this stage
 
     if ctx.labels is None or ctx.summary is None:  # both outputs are mandatory
-        raise ValueError(
+        raise ValueError(            # outputs missing entirely
             "pipeline produced no labels/summary — steps must provide both "
             f"(labels={ctx.labels is not None}, summary={ctx.summary is not None})"
         )

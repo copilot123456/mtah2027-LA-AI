@@ -32,18 +32,18 @@ _LETTER = {CODE_H: "H", CODE_A: "A", CODE_D: "D", CODE_X: "X"}  # code → outpu
 
 def labels_to_frame_table(labels: np.ndarray) -> pd.DataFrame:
     if len(labels) != N_FRAMES:  # contract: exact row count
-        raise ValueError(f"expected {N_FRAMES} labels, got {len(labels)}")
-    codes = np.asarray(labels, dtype=np.int8)
-    unknown = set(np.unique(codes)) - set(_LETTER)
+        raise ValueError(f"expected {N_FRAMES} labels, got {len(labels)}")  # wrong length
+    codes = np.asarray(labels, dtype=np.int8)  # int8 code view
+    unknown = set(np.unique(codes)) - set(_LETTER)  # codes without letters
     if unknown:  # reject codes we cannot map to a letter
-        raise ValueError(f"unknown label codes {sorted(unknown)}; expected {sorted(_LETTER)}")
+        raise ValueError(f"unknown label codes {sorted(unknown)}; expected {sorted(_LETTER)}")  # unmapped codes
     letters = np.array(["X", "H", "A", "D"], dtype="<U1")  # index by code+1 (CODE_X = -1)
-    return pd.DataFrame({"frame": np.arange(len(codes), dtype=np.int64),
+    return pd.DataFrame({"frame": np.arange(len(codes), dtype=np.int64),  # frame,label output table
                          "label": letters[codes + 1]})
 
 
 def write_submission(labels: np.ndarray, path: str) -> None:
-    table = labels_to_frame_table(labels)
+    table = labels_to_frame_table(labels)  # build frame table
     table.to_csv(path, index=False, lineterminator="\n")  # no index column, LF endings
 
 
@@ -53,7 +53,7 @@ def validate(path: str) -> int:
     The validator is located relative to this file, not the current directory, so the
     call works from any cwd (pytest invoked from elsewhere, or an absolute --out path).
     """
-    result = subprocess.run(
+    result = subprocess.run(  # run official validator
         [sys.executable, VALIDATOR, os.path.abspath(path)],
         capture_output=True, text=True,
     )
@@ -67,13 +67,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])  # help = docstring line 1
     parser.add_argument("--out", default=DEFAULT_OUT)  # output CSV path
     parser.add_argument("--no-validate", action="store_true")  # skip validator
-    args = parser.parse_args()
+    args = parser.parse_args()  # parsed CLI values
 
     from src.pipeline import run  # pipeline imported lazily
 
     labels, summary = run(CFG)  # decode the whole match
-    write_submission(labels, args.out)
-    print(f"wrote {args.out}")
+    write_submission(labels, args.out)  # write the CSV
+    print(f"wrote {args.out}")  # confirm output path
     print(f"  segments {summary['n_segments']} (possessions {summary['n_possessions']})"  # run stats
           f"  median {summary['median_len_s']:.1f}s  sub-second {100 * summary['subsecond_share']:.1f}%"
           f"  D share {100 * summary['d_share']:.1f}%  gated switches {summary['reverted_switches']}")

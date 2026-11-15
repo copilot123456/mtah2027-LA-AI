@@ -24,8 +24,8 @@ def main() -> None:
     print(f"rows: {m.n_frames}  slots: {m.players.shape[1]}")  # basic shape
 
     ball_vis = ~np.isnan(m.ball).any(axis=1)  # ball visible when both coords present
-    print(f"ball missing overall: {100 * (~ball_vis).mean():.1f}%")
-    print(f"ball missing on graded frames: {100 * ((~ball_vis) & m.graded).mean() / m.graded.mean():.1f}%")
+    print(f"ball missing overall: {100 * (~ball_vis).mean():.1f}%")  # whole-match share
+    print(f"ball missing on graded frames: {100 * ((~ball_vis) & m.graded).mean() / m.graded.mean():.1f}%")  # graded-only share
 
     runs = missing_runs((~ball_vis) & m.graded)  # gaps in ball on graded frames
     if len(runs):
@@ -35,7 +35,7 @@ def main() -> None:
         )
         for lo, hi, label in [(1, 25, "<=1s"), (26, 125, "1-5s"), (126, 750, "5-30s"), (751, 10**9, ">30s")]:
             share = 100 * ((runs >= lo) & (runs <= hi)).mean()  # share of gaps in this bucket
-            print(f"  {label}: {share:.0f}% of runs")
+            print(f"  {label}: {share:.0f}% of runs")  # this bucket's share
 
     nvis = (~np.isnan(m.players)).sum(axis=1)  # visible players per frame
     g = nvis[m.graded]  # restrict to graded frames
@@ -57,9 +57,9 @@ def main() -> None:
     print(f"homography: rows {len(hg)}  valid {100 * hg['valid'].mean():.1f}%")  # validity share
 
     tags = D.load_smart_tagging()  # smart-tag instances
-    print(f"smart tagging: {len(tags)} instances  SET PIECES {int((tags['code'] == 'SET PIECES').sum())}")
+    print(f"smart tagging: {len(tags)} instances  SET PIECES {int((tags['code'] == 'SET PIECES').sum())}")  # instance totals
 
-    print(f"graded frames: {int(m.graded.sum())}  half1 {int((m.half == 1).sum())}  half2 {int((m.half == 2).sum())}")
+    print(f"graded frames: {int(m.graded.sum())}  half1 {int((m.half == 1).sum())}  half2 {int((m.half == 2).sum())}")  # graded/half split
 
     from src.ball_fill import build_ball_track, describe  # ball-track builders
     from src.emission import build_emission  # evidence builder

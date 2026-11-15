@@ -23,8 +23,8 @@ import pandas as pd  # result table and CSV output
 
 ROOT = Path(__file__).resolve().parents[1]   # repo root
 for p in (str(ROOT), str(ROOT / "evaluation")):   # both dirs must be importable
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    if p not in sys.path:   # skip if already on path
+        sys.path.insert(0, p)   # add this directory to path
 
 # project imports (placed after the path setup, hence noqa)
 import possession_metrics as pm  # noqa: E402
@@ -41,7 +41,7 @@ MATCH_TOL = -0.02   # pre-declared (dossier §7): standard per-match harm bound
 def main() -> int:
     from src import data as D   # array loading
 
-    arrays = D.load_arrays()
+    arrays = D.load_arrays()   # load frame arrays
     run_lengths = empirical_run_lengths(   # missing-ball runs to replay when masking
         np.isnan(arrays.ball).any(axis=1) & arrays.graded
     )
@@ -54,24 +54,24 @@ def main() -> int:
 
     rows = []   # one scored row per (match, rule flag)
     for mid in MATCH_IDS:   # all 7 IDSSE matches
-        case = load_match(mid)
+        case = load_match(mid)   # this match's data
         rng = np.random.default_rng(20261107 + sum(ord(c) for c in mid))   # per-match seed
         masked, _ = mask_ball(case.ball, run_lengths, rng)   # frozen masking
         track = build_ball_track(masked, case.half, dict(CFG))   # ball track from masked input
         gt = pm.label_codes(case.letters)   # ground-truth codes
         for flag in (False, True):   # paired off/on runs, same seed and data
             cfg = {**CFG, "no_play_rule": flag}   # toggle only the rule under test
-            em = build_emission(track, case.players, case.players_s, case.slot_team, cfg)
-            decoded = decode(em, track.source, case.half, cfg)
-            labels = apply_x_policy(decoded.labels, em.conf, case.half, cfg)
+            em = build_emission(track, case.players, case.players_s, case.slot_team, cfg)   # emission from the ball track
+            decoded = decode(em, track.source, case.half, cfg)   # decode emissions into labels
+            labels = apply_x_policy(decoded.labels, em.conf, case.half, cfg)   # apply X-policy to labels
             pred = pm.label_codes(_LETTERS[np.asarray(labels, dtype=np.int8) + 1])   # labels -> letters -> codes
             scores = _score(gt, pred)   # official scoring semantics
-            rows.append({"match_id": mid, "no_play_rule": flag, **scores})
+            rows.append({"match_id": mid, "no_play_rule": flag, **scores})   # record this run's scores
             print(f"  {mid} rule={'on ' if flag else 'off'}: "   # progress line
                   f"spell {scores['spell_f1']:.4f}  macro {scores['macro_f1']:.4f}",
                   flush=True)
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows)   # table of all rows
     df.to_csv(OUT, index=False)   # write the committed CSV
 
     off = df[~df.no_play_rule].set_index("match_id")["spell_f1"]   # rule-off scores
@@ -84,20 +84,20 @@ def main() -> int:
         ref = pd.read_csv(ROOT / "tuning" / "results" / "post_checks_final.csv")   # committed baseline
         ref_base = ref[(ref.d_bias_tag == "prior") & (~ref.x_use)].set_index("match_id")["spell_f1"]   # shipped cell rows
         drift = float((off.sort_index() - ref_base.sort_index()).abs().max())   # biggest gap vs baseline
-        print(f"\nharness sanity: max |rule-off - committed post_checks_final baseline| "
+        print(f"\nharness sanity: max |rule-off - committed post_checks_final baseline| "   # report drift from baseline
               f"= {drift:.6f} (expect 0.000000)")
     except Exception as exc:  # pragma: no cover - reference file always ships
-        print(f"\nharness sanity skipped: {exc}")
+        print(f"\nharness sanity skipped: {exc}")   # note why the check skipped
 
-    print("\npaired Δ (rule on − off), spellF1:")
+    print("\npaired Δ (rule on − off), spellF1:")   # header for paired changes
     for mid in delta.index:
         print(f"  {mid}: {delta[mid]:+.4f}")   # one line per match
     print(f"mean {mean_d:+.4f} | worst {min_d:+.4f}")   # the two gate numbers again
     print(f"gate (mean ≥ {MEAN_TOL}, no match < {MATCH_TOL}): "
           f"{'PASS' if passed else 'FAIL'}")   # final verdict line
-    print(f"wrote {OUT}")
+    print(f"wrote {OUT}")   # confirm CSV written
     return 0 if passed else 1   # exit code = PASS/FAIL
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__":   # run only as a script
+    raise SystemExit(main())   # exit with the gate result

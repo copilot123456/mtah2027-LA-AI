@@ -38,9 +38,9 @@ def _cache_path(name: str) -> str:
 
 
 def _read_cache(name: str):
-    path = _cache_path(name)
-    if os.path.exists(path):
-        return pd.read_pickle(path)
+    path = _cache_path(name)  # resolve cache path
+    if os.path.exists(path):  # cache file present
+        return pd.read_pickle(path)  # load cached object
     # cache miss: falls through returning None
 
 
@@ -52,7 +52,7 @@ def _write_cache(name: str, obj) -> None:
 def load_tracking(force: bool = False) -> pd.DataFrame:
     """Tactical ATD as a DataFrame, one row per video frame (cached)."""
     if not force:
-        cached = _read_cache("atd_tactical.pkl")
+        cached = _read_cache("atd_tactical.pkl")  # try cache first
         if cached is not None:
             return cached  # reuse pickled ATD
     from kloppy import metrica  # ATD parser, imported lazily
@@ -61,14 +61,14 @@ def load_tracking(force: bool = False) -> pd.DataFrame:
     ds = metrica.load_tracking_epts(meta_data=paths["atd_meta"], raw_data=paths["atd_raw"])  # parse feed
     df = ds.to_df()  # flatten to DataFrame
     _write_cache("atd_tactical.pkl", df)  # cache for reloads
-    return df
+    return df  # parsed tracking table
 
 
 def load_slot_teams() -> np.ndarray:
     """(46,) int8: 0 = home slot, 1 = away slot. Slots are tracklets, not players."""
     import xml.etree.ElementTree as ET  # meta XML parser
 
-    cached = _read_cache("slot_teams.pkl")
+    cached = _read_cache("slot_teams.pkl")  # try cache first
     if cached is not None:
         return cached.to_numpy()  # reuse cached team map
     root = ET.parse(asset_paths()["atd_meta"]).getroot()  # read ATD meta XML
@@ -80,23 +80,23 @@ def load_slot_teams() -> np.ndarray:
         raise ValueError(f"expected {N_SLOTS} track slots, found {len(slots)}")  # contract check
     out = np.array([0 if tid == team_ids[0] else 1 for tid in slots], dtype=np.int8)  # first team = home
     _write_cache("slot_teams.pkl", pd.Series(out))  # cache result
-    return out
+    return out  # home/away per slot
 
 
 def load_homography(force: bool = False) -> pd.DataFrame:
     if not force:
-        cached = _read_cache("homography.pkl")
+        cached = _read_cache("homography.pkl")  # try cache first
         if cached is not None:
             return cached  # reuse pickled homography
     df = pd.read_csv(asset_paths()["homography"])  # one row per frame
     _write_cache("homography.pkl", df)  # cache for reloads
-    return df
+    return df  # homography table
 
 
 def load_smart_tagging(force: bool = False) -> pd.DataFrame:
     """638 instances with start_frame/end_frame = round(seconds * 25)."""
     if not force:
-        cached = _read_cache("smart_tagging.pkl")
+        cached = _read_cache("smart_tagging.pkl")  # try cache first
         if cached is not None:
             return cached  # reuse pickled tags
     from kloppy import sportscode  # smart-tagging parser, lazy
@@ -108,7 +108,7 @@ def load_smart_tagging(force: bool = False) -> pd.DataFrame:
     df["start_frame"] = (start_s * FPS).round().astype(np.int64)  # seconds → frame index
     df["end_frame"] = (end_s * FPS).round().astype(np.int64)  # seconds → frame index
     _write_cache("smart_tagging.pkl", df)  # cache result
-    return df
+    return df  # tags with frame columns
 
 
 def graded_mask(n: int = N_FRAMES) -> np.ndarray:
@@ -116,7 +116,7 @@ def graded_mask(n: int = N_FRAMES) -> np.ndarray:
     mask = np.zeros(n, dtype=bool)  # start all ungraded
     for _half, first, last in half_video_blocks(GAME):
         mask[first : last + 1] = True  # mark half's graded block (inclusive)
-    return mask
+    return mask  # graded-frame mask
 
 
 def half_labels(n: int = N_FRAMES) -> np.ndarray:
@@ -124,7 +124,7 @@ def half_labels(n: int = N_FRAMES) -> np.ndarray:
     out = np.zeros(n, dtype=np.int8)  # 0 = ungraded by default
     for half, first, last in half_video_blocks(GAME):
         out[first : last + 1] = half  # stamp half number on its block
-    return out
+    return out  # half number per frame
 
 
 @dataclass(frozen=True)

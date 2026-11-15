@@ -223,17 +223,17 @@ def provenance_problems():
     """
     problems = []                  # collected error messages
     for key in CFG:                # every parameter must be documented
-        if key not in PROVENANCE:
-            problems.append(f"{key}: missing provenance")
+        if key not in PROVENANCE:      # key never documented
+            problems.append(f"{key}: missing provenance")   # report the missing entry
             continue               # nothing to check without an entry
         origin, note = PROVENANCE[key]  # unpack origin and justification
         if origin not in VALID_ORIGINS:  # only the three allowed origins
-            problems.append(f"{key}: invalid origin {origin!r}")
+            problems.append(f"{key}: invalid origin {origin!r}")  # report the bad origin
         if origin == "external_fit" and not note:  # fitted values need evidence text
-            problems.append(f"{key}: external_fit requires IDSSE evidence in the note")
+            problems.append(f"{key}: external_fit requires IDSSE evidence in the note")  # evidence note required
         if str(origin).startswith("provided"):  # never fit on the provided match
-            problems.append(f"{key}: provided_* origins are forbidden")
+            problems.append(f"{key}: provided_* origins are forbidden")  # provided origins banned
     for key in PROVENANCE:         # stale entries for removed CFG keys
-        if key not in CFG:
-            problems.append(f"{key}: provenance for unknown CFG key")
+        if key not in CFG:           # entry points at nothing
+            problems.append(f"{key}: provenance for unknown CFG key")  # report the orphan entry
     return problems                # empty list = clean

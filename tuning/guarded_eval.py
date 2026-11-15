@@ -35,14 +35,14 @@ def count_bucket(poss: int) -> str:
     """Plan §1 count bucket: ≤10 / 11–13 / 14–22 / 23–30 / >30 (17 true on the window)."""
     # walk the upper bounds lowest first; the first match wins
     if poss <= 10:
-        return "<=10"
-    if poss <= 13:
-        return "11-13"
-    if poss <= 22:
-        return "14-22"
-    if poss <= 30:
-        return "23-30"
-    return ">30"
+        return "<=10"   # bucket for ten or fewer
+    if poss <= 13:   # bound at thirteen
+        return "11-13"   # bucket for eleven to thirteen
+    if poss <= 22:   # bound at twenty-two
+        return "14-22"   # bucket for fourteen to twenty-two
+    if poss <= 30:   # bound at thirty
+        return "23-30"   # bucket for twenty-three to thirty
+    return ">30"   # bucket above thirty
 
 
 def band_and_flags(report: dict) -> tuple[str, dict[str, str]]:
@@ -58,7 +58,7 @@ def band_and_flags(report: dict) -> tuple[str, dict[str, str]]:
     else:
         latency = "late" if mean_lat > 0 else "early"   # sign of the shift
 
-    per_class = report["per_class"]
+    per_class = report["per_class"]   # per-class scores from the report
     flags = {   # the four categorical flags of plan §1
         "count": count_bucket(report["n_pred_spells"]),   # predicted spell count
         "f1_D": "normal" if per_class["D"]["f1"] >= 0.3 else "low",   # dead-class floor
@@ -67,30 +67,30 @@ def band_and_flags(report: dict) -> tuple[str, dict[str, str]]:
                     else "collapsed"),               # both team floors must hold
         "latency": latency,
     }
-    return band, flags
+    return band, flags   # band letter plus four flags
 
 
 def main() -> int:
     if not os.path.isfile(_SUBMISSION):
-        print("BAND: D (frozen LA+AI.csv missing)")
+        print("BAND: D (frozen LA+AI.csv missing)")   # missing file reported as band D
         return 2   # distinct code: submission missing
     os.makedirs(_RESULTS, exist_ok=True)   # both output dirs must exist
-    os.makedirs(_REPORTS, exist_ok=True)
+    os.makedirs(_REPORTS, exist_ok=True)   # same for the reports directory
     shutil.copy2(_SUBMISSION, os.path.join(_RESULTS, _NAME + ".csv"))   # stage submission
-    report_path = os.path.join(_REPORTS, _NAME + ".json")
+    report_path = os.path.join(_REPORTS, _NAME + ".json")   # path of the JSON report
     if os.path.exists(report_path):
         # never let a stale report masquerade as this run's result
         os.remove(report_path)
 
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")   # unique per run
-    archive = os.path.join(_REPORTS, "guarded_board_{}.txt".format(stamp))
+    archive = os.path.join(_REPORTS, "guarded_board_{}.txt".format(stamp))   # unique archive file path
     proc = subprocess.run(   # official evaluator, full output captured
         [sys.executable, os.path.join(_EVAL, "run_evaluation.py"), "--bootstrap", "1000"],
         cwd=_ROOT, capture_output=True, text=True)
     with open(archive, "w", encoding="utf-8") as handle:
         handle.write(proc.stdout)          # evaluator stdout goes to the archive,
         handle.write("\n--- stderr ---\n")  # never to the console
-        handle.write(proc.stderr)
+        handle.write(proc.stderr)   # append captured stderr
 
     with open(_SUBMISSION, "rb") as handle:
         md5 = hashlib.md5(handle.read()).hexdigest()   # log fingerprint of the file
@@ -98,8 +98,8 @@ def main() -> int:
     if not os.path.isfile(report_path):
         # skipped submission or a crashed run: band D either way; the reason is in the archive
         print("BAND: D (validator failure or evaluator error — reason in archive)")
-        print("submission md5: {}".format(md5))
-        print("archive (operator eyes only): {}".format(archive))
+        print("submission md5: {}".format(md5))   # fingerprint for the failure log
+        print("archive (operator eyes only): {}".format(archive))   # archive location for the operator
         return 1   # failure code
 
     with open(report_path, encoding="utf-8") as handle:
@@ -108,10 +108,10 @@ def main() -> int:
     print("BAND: {}".format(band))   # the only performance output: a letter
     print("flags: count={}  f1_D={}  balance={}  latency={}".format(   # four categorical flags
         flags["count"], flags["f1_D"], flags["balance"], flags["latency"]))
-    print("submission md5: {}".format(md5))
+    print("submission md5: {}".format(md5))   # fingerprint for the run log
     print("archive (operator eyes only): {}".format(archive))   # full output stays there
-    return 0
+    return 0   # success exit code
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == "__main__":   # run only as a script
+    sys.exit(main())   # exit with main's code

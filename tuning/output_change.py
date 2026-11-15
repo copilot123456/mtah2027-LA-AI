@@ -15,7 +15,7 @@ import pandas as pd   # reading submission CSVs
 
 ROOT = Path(__file__).resolve().parents[1]   # repo root
 if str(ROOT) not in sys.path:                # make the repo importable
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT))   # repo root enters the import path
 
 from tuning.kickoff_check import bucket  # noqa: E402   # shared bucket formatting
 
@@ -36,8 +36,8 @@ def main() -> int:
         print(__doc__)       # show usage
         return 2             # usage-error exit code
     print(f"graded frames changing label: {bucket(changed_share(sys.argv[1], sys.argv[2]))}")   # bucket only
-    return 0
+    return 0   # report clean completion
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__":   # run only as a script
+    raise SystemExit(main())   # exit with main's code

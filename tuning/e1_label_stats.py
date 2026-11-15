@@ -21,7 +21,7 @@ import pandas as pd  # result table and CSV output
 
 ROOT = Path(__file__).resolve().parents[1]   # repo root
 if str(ROOT) not in sys.path:                # make the repo importable
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT))   # repo root enters the import path
 
 from tuning.idsse import MATCH_IDS, load_match, derive_letters_controlled  # noqa: E402
 
@@ -36,16 +36,16 @@ def alive_runs(letters: np.ndarray) -> np.ndarray:
     definition (a maximal run of H OR of A; team flips split runs; D/X are stops)."""
     runs, i, n = [], 0, len(letters)   # lengths found, scan pointer, total frames
     while i < n:
-        lab = letters[i]
+        lab = letters[i]   # label at the scan position
         if lab not in ("H", "A"):   # D/X are stops: no possession run
-            i += 1
-            continue
-        j = i
+            i += 1   # step past a stop frame
+            continue   # restart the scan loop
+        j = i   # run starts here
         while j < n and letters[j] == lab:   # extend while the same team holds
-            j += 1
+            j += 1   # extend the run one frame
         runs.append((j - i) / FPS)   # run length in seconds
         i = j   # resume after this run
-    return np.asarray(runs)
+    return np.asarray(runs)   # run lengths as an array
 
 
 def stats_for(letters: np.ndarray, tag: str, match_id: str) -> dict:
@@ -67,31 +67,31 @@ def stats_for(letters: np.ndarray, tag: str, match_id: str) -> dict:
 def main() -> int:
     rows = []   # one stats row per (match, variant)
     for mid in MATCH_IDS:   # all 7 IDSSE matches
-        case = load_match(mid)
+        case = load_match(mid)   # this match's labels
         rows.append(stats_for(case.letters, "original", mid))   # original labels
         for t in T_GRID:   # each sensitivity threshold
             ctl = derive_letters_controlled(case.letters, FPS, hold_s=t)   # re-derive at T
-            rows.append(stats_for(ctl, f"T={t:g}s", mid))
-        print(f"  {mid} done", flush=True)
+            rows.append(stats_for(ctl, f"T={t:g}s", mid))   # stats for this threshold
+        print(f"  {mid} done", flush=True)   # per-match progress line
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows)   # table of all rows
     df.to_csv(OUT, index=False)   # write the stats CSV
 
     means = df.groupby("variant")[["poss_per_min", "mean_len_s", "under2_share", "dead_share"]].mean()   # per-variant means
     order = ["original"] + [f"T={t:g}s" for t in T_GRID]   # display order
-    print("\nmeans over 7 matches:")
-    print(means.loc[order].round(4).to_string())
+    print("\nmeans over 7 matches:")   # header for the means table
+    print(means.loc[order].round(4).to_string())   # print means in display order
 
     t3 = means.loc["T=3s"]   # pinned primary variant
-    print("\nfidelity probe vs plan §0 (T=3):")
+    print("\nfidelity probe vs plan §0 (T=3):")   # header for the fidelity probe
     for k, target in PROBE_T3.items():
         print(f"  {k}: measured {t3[k]:.3f}  | probe {target:.3f}")   # measured vs audited target
-    orig = means.loc["original"]
+    orig = means.loc["original"]   # original-label means row
     print(f"dead share invariance: original {orig['dead_share']:.4f} -> "   # dead share should not move with T
           + ", ".join(f"{v}: {means.loc[v, 'dead_share']:.4f}" for v in order[1:]))
-    print(f"wrote {OUT}")
-    return 0
+    print(f"wrote {OUT}")   # confirm CSV written
+    return 0   # report clean completion
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__":   # run only as a script
+    raise SystemExit(main())   # exit with main's code

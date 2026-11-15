@@ -16,7 +16,7 @@ import numpy as np                   # array math over frame labels
 
 ROOT = Path(__file__).resolve().parents[1]   # repo root (one level above tuning/)
 if str(ROOT) not in sys.path:                # make the repo importable as a package
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT))   # repo root enters the import path
 
 FAQ_SECOND_HALF_PREKICKOFF = 2_934   # reference-docs/FAQ.md ("those 2,934 frames ...")
 TOLERANCE = 250                      # 10 s at 25 fps
@@ -26,7 +26,7 @@ def bucket(share: float) -> str:
     # map a share to the five report buckets, smallest ceiling first
     for edge, name in ((0.02, "< 2 %"), (0.05, "2-5 %"), (0.10, "5-10 %"), (0.20, "10-20 %")):
         if share < edge:   # first ceiling the share stays under
-            return name
+            return name   # first bucket that fits
     return "> 20 %"   # larger than every listed ceiling
 
 
@@ -37,7 +37,7 @@ def spans(half: np.ndarray, starts: np.ndarray) -> dict[int, list[int]]:
         idx = np.flatnonzero(half == h)   # frames labelled as half h
         first, last = int(idx[0]), int(idx[-1])   # graded span of that half
         out[h] = [int(s - first) for s in starts if first <= s <= last]   # in-span tags, measured from span start
-    return out
+    return out   # collected offsets per half
 
 
 def verdicts(per_half: dict[int, list[int]]) -> dict[str, bool]:
@@ -81,15 +81,15 @@ def main() -> int:
 
     arrays = D.load_arrays()   # halves and kick-off tag positions
     checks = verdicts(spans(arrays.half, arrays.kickoff_starts))   # pinned verdicts
-    print("pinned checks (dossier §7 P7 K1):")
+    print("pinned checks (dossier §7 P7 K1):")   # pinned section header
     for name, ok in checks.items():
         print(f"  {'PASS' if ok else 'FAIL'}  {name}")   # one line per check
     amended = amended_verdicts(spans(arrays.half, arrays.kickoff_starts))   # deciding verdicts
-    print("amended checks (operator decision 2026-11-14 — these decide):")
-    for name, ok in amended.items():
-        print(f"  {'PASS' if ok else 'FAIL'}  {name}")
+    print("amended checks (operator decision 2026-11-14 — these decide):")   # deciding section header
+    for name, ok in amended.items():   # loop over deciding checks
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}")   # print each deciding verdict
     all_ok = all(amended.values())   # overall = amended checks only
-    print("diagnosis (not part of the pinned verdict):")
+    print("diagnosis (not part of the pinned verdict):")   # diagnostic section header
     for name, ok in diagnosis(arrays.half, arrays.kickoff_starts).items():
         print(f"  {'yes' if ok else 'no '}  {name}")   # yes/no clues, not verdicts
 
@@ -101,5 +101,5 @@ def main() -> int:
     return 0 if all_ok else 1   # exit code = PASS/FAIL
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__":   # run only as a script
+    raise SystemExit(main())   # exit with main's code
