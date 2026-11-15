@@ -32,12 +32,14 @@ kinematic fill tier (implemented, ships **off**) is the third tier that experime
 `build_emission()` ([src/emission.py:173](../src/emission.py#L173)) computes, per frame,
 log-scores for each label. The shape of it:
 
-$$e_H = \mathrm{conf}\cdot\log p_{\mathrm{team},H} + \log(1-p_d),\quad
-e_A = \mathrm{conf}\cdot\log p_{\mathrm{team},A} + \log(1-p_d),\quad
-e_D = \log p_d$$
+```text
+e_H = conf · log p_team_H + log(1 − p_d)
+e_A = conf · log p_team_A + log(1 − p_d)
+e_D = log p_d
+```
 
-where $p_{\mathrm{team}}$ is the (tempered) team kernel and $p_d$ a dead-ball sigmoid over
-weighted features. The ingredients:
+where `p_team` is the (tempered) team kernel and `p_d` a dead-ball sigmoid over weighted
+features. The ingredients:
 
 | Term | What it measures | Where |
 |---|---|---|
