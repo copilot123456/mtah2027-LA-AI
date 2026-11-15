@@ -38,6 +38,8 @@ Any future evaluator run on the provided match: operator only, via the guard, re
 
 2026-11-14, after the third run: no run is owed for the current file (md5 `de14eb1c…`). Operator ruling the same evening: from here on only the band letter and the flags reach the assistant; the idea-2 change (dropping the dead-ball detectors) stays rejected because its only evidence is the public window.
 
+2026-11-14 (P9, §7): no evaluator run by the assistant. The emission, the gate and four config values changed after the third run (md5 now `c1217158…`), so a fourth guarded run is owed before submission — operator only, band + flags, correctness gate only.
+
 2026-11-14 (P8, §7): no evaluator run by the assistant. The decoder gate and one config value changed after the second run, so a third guarded run is owed before submission — operator only, band + flags, correctness gate only.
 
 Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no video inspection — checked by grep over the code and by the local `evaluation/scoreboard.csv`, which still lists the four baselines only.
@@ -979,8 +981,17 @@ the operator, per the guard protocol.
   is above 20 %, so by the pinned parity hold **the adoption is HELD for the operator.**
   Nothing was adopted: `config.py` keeps every P9 key OFF, `LA+AI.csv` is unchanged (md5
   `de14eb1ccb75d9cd713789da4abde664`), no evaluator run is owed.
-- **If the operator releases the hold:** set the four keys, regenerate, validator, tests,
-  documents, then a fourth guarded run (operator only, band + flags, correctness gate).
+- **Hold released by the operator 2026-11-14** ("Yes, adopt it", after reading the tables,
+  the parity verdicts and the limits below). **Adoption record:** `config.py`
+  (`dwell_coalesce = True`, `kin_w_dead = 0.3`, `kin_w_team = 0.03`,
+  `gate_kin_support = True`, origin `external_fit`; delay and slope unchanged);
+  `LA+AI.csv` regenerated, md5 `de14eb1ccb75d9cd713789da4abde664` →
+  **`c121715836ed603fc5792b85daf6f279`**; official validator PASS; 182 tests green; the
+  byte-identity test passes on the new file. Own-output summary (sanity only, never used
+  to select): 389 possessions of mean 10.6 s.
+- **Evaluator:** not run. Code paths and four config values changed, so a **fourth guarded
+  run is owed** (operator only, band + flags; correctness gate, never a selector between
+  this file and the previous one).
 - **Limits to state with it:** the models are fitted on seven Bundesliga matches tracked by
   a different system; the parity checks say the provided match looks alike to the model on
   six coarse statistics, not that the gain transfers. `kin_w_dead` sits at the grid edge.

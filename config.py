@@ -41,11 +41,14 @@ CFG = dict(
                                   # the middle of that gap — NOT adopted (pinned maximin rule)
     switch_delay_s=0.64,          # P8 S (was 0): seconds a ball-placed H<->A boundary moves later
     d_min_dwell_s=0.0,            # P8 M: 0 = off (D uses min_dwell_s) — step dropped, no gain
-    dwell_coalesce=False,         # P9 C: join equal neighbours after every min-dwell merge (OFF)
-    kin_w_dead=0.0,               # P9 K: weight of the player-only dead-ball term on ball-less
-                                  # frames (0 = off; src/kinematics.py, src/kin_model.json)
-    kin_w_team=0.0,               # P9 T: weight of the player-only team term on ball-less frames
-    gate_kin_support=False,       # P9: kinematic frames count as support in the switch gate
+    dwell_coalesce=True,          # P9 C (was False): join equal neighbours after every min-dwell
+                                  # merge (dossier §7 P9, adopted 2026-11-14)
+    kin_w_dead=0.3,               # P9 K (was 0): weight of the player-only dead-ball term on
+                                  # ball-less frames (src/kinematics.py, src/kin_model.json)
+    kin_w_team=0.03,              # P9 T (was 0): weight of the player-only team term on ball-less
+                                  # frames
+    gate_kin_support=True,        # P9 (was False): a ball-less frame carrying a kinematic term
+                                  # counts as support in the switch gate
     switch_delay_slope=0.0,       # P9 S: extra delay in s per m/s of ball speed (0 = constant)
     switch_delay_ref_ms=9.5,      # P9 S: ball speed (m/s) at which the delay equals switch_delay_s
     switch_delay_max_s=1.6,       # P9 S: upper clip of a speed-scaled delay
@@ -138,15 +141,24 @@ PROVENANCE = {
                        "pinned tie rule (smallest delay within 0.005 of the best)"),
     "d_min_dwell_s": ("prior", "P8 M: OFF. Stage 8: +0.0001 on the primary table for 3 s, negative "
                       "under uniform masks for 4-5 s — step dropped (dossier §7 P8)"),
-    "dwell_coalesce": ("prior", "P9 C: OFF. The min-dwell pass leaves equal neighbours un-joined "
-                       "after a merge; joining them is the intended behaviour (dossier §7 P9)"),
-    "kin_w_dead": ("prior", "P9 K: OFF. Weight of the player-only dead log-likelihood ratio on "
-                   "ball-less frames; grid {0, 0.03, 0.1, 0.3} pre-declared in dossier §7 P9"),
-    "kin_w_team": ("prior", "P9 T: OFF. Weight of the player-only team log-odds on ball-less "
-                   "frames; grid {0, 0.03, 0.1, 0.3} pre-declared in dossier §7 P9"),
-    "gate_kin_support": ("prior", "P9: OFF = no switch without ball evidence (the standing tier "
-                         "rule); True lets a kinematic frame support a boundary (dossier §7 P9)"),
-    "switch_delay_slope": ("prior", "P9 S: OFF. On IDSSE the team-switch latency grows with ball "
+    "dwell_coalesce": ("external_fit", "P9 C: True (was False). The min-dwell pass left equal "
+                       "neighbours un-joined after a merge. Stage 9: +0.0143 spellF1 on the primary "
+                       "table, 7/7, positive on all 8 tables (+0.008 ... +0.018); dossier §7 P9"),
+    "kin_w_dead": ("external_fit", "P9 K: 0.3 (was 0). Player-only dead log-likelihood ratio on "
+                   "ball-less frames, model fitted on IDSSE (leave-one-match-out in the pass). "
+                   "Stage 9 on top of C: +0.0167 on the primary table, 7/7, all 8 tables positive "
+                   "(+0.012 ... +0.095); gain still rising at the grid edge 0.3"),
+    "kin_w_team": ("external_fit", "P9 T: 0.03 (was 0). Player-only team log-odds on ball-less "
+                   "frames, IDSSE model. Stage 9 on top of C + K: +0.0910 on the primary table, 7/7; "
+                   "+0.019 ... +0.091 on six tables, -0.009 / -0.014 on the two cover_q90 tables "
+                   "(inside the pinned no-harm bound); smallest weight by the pinned tie rule"),
+    "gate_kin_support": ("external_fit", "P9: True (was False). Without it the gate reverts what "
+                         "the kinematic terms propose (K 0.3: +0.004 instead of +0.017 on the "
+                         "primary table; T negative). Bundle C + K + T with this tier: +0.1220, "
+                         "7/7, +0.083 ... +0.122 on all 8 tables; released by operator decision "
+                         "2026-11-14 after the pinned own-output hold (> 20 % of graded labels)"),
+    "switch_delay_slope": ("prior", "P9 S: OFF (step dropped: best cell +0.004 on the primary "
+                           "table, below the step bar). On IDSSE the team-switch latency grows with ball "
                            "speed (-6 / -14 / -22 frames by tercile at delay 0); grid {0, 0.03, "
                            "0.06} s per m/s pre-declared in dossier §7 P9"),
     "switch_delay_ref_ms": ("external_fit", "P9 S: 9.5 m/s, the middle of the IDSSE ball-speed "

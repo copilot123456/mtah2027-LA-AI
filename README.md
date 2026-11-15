@@ -62,9 +62,9 @@ python3 -m virtualenv .venv              # or: python3 -m venv .venv
 #    (or export MTAH_DATA_DIR=/path/to/bundle — see data/README.md)
 
 # 3. verify, then regenerate the submission
-.venv/bin/python -m pytest -q            # 156 tests, ~30 s with a warm cache
+.venv/bin/python -m pytest -q            # 182 tests, ~30 s with a warm cache
 .venv/bin/python -m src.submit           # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                         # de14eb1ccb75d9cd713789da4abde664
+md5sum LA+AI.csv                         # c121715836ed603fc5792b85daf6f279
 ```
 
 The first run parses the ATD with kloppy and caches it under `data/.cache/` (about 1m40s and
@@ -96,6 +96,10 @@ gitignored; missing files are fetched from the HF mirror `pysport/idsse-data` on
 .venv/bin/python -m tuning.stage5                # units-corrected dead-ball pass + baselines (~15 min)
 .venv/bin/python -m tuning.gate5                 # applies the pre-declared rules, writes report_stage5.md
 .venv/bin/python -m tuning.kickoff_check         # kick-off tag rule: categorical PASS/FAIL only
+.venv/bin/python -m tuning.stage8 && .venv/bin/python -m tuning.gate8   # switch gate + delay (~3 min)
+.venv/bin/python -m tuning.kin_fit               # player-only kinematic model -> src/kin_model.json
+.venv/bin/python -m tuning.stage9 && .venv/bin/python -m tuning.gate9   # kinematic terms (~25 min)
+.venv/bin/python -m tuning.kin_parity            # provided-match parity checks: PASS/FAIL only
 ```
 
 The IDSSE speed column is km/h and is converted to m/s on load (dossier §7 P7). Matrices

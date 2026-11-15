@@ -12,6 +12,9 @@ from src.kinematics import (DEAD_FEATURES, TEAM_FEATURES, Kinematics, apply_mode
                             dead_features, rolling_nanmean, team_features)
 
 H, A, D = CODE_H, CODE_A, CODE_D
+# The P9 keys at their OFF values (the shipped config has them ON since the adoption).
+OFF = {**CFG, "dwell_coalesce": False, "kin_w_dead": 0.0, "kin_w_team": 0.0,
+       "gate_kin_support": False, "switch_delay_slope": 0.0}
 
 
 def _log_e(winners):
@@ -59,7 +62,7 @@ def _dead_gap_case():
 
 def test_gate_without_kin_support_reverts_a_dead_segment_the_ball_never_showed():
     labels, source, log_e, kin = _dead_gap_case()
-    out, reverted = apply_gating(labels, source, log_e, {**CFG, "gate_mode": "move"},
+    out, reverted = apply_gating(labels, source, log_e, {**OFF, "gate_mode": "move"},
                                  kin_dead=kin)
     assert reverted == 1 and (out == H).all()           # flag off: the mask is ignored
 
@@ -84,7 +87,7 @@ def test_kin_team_support_lets_a_team_switch_stand_inside_a_gap():
     source[60:140] = SOURCE_NONE
     log_e = _log_e(np.array([H] * 60 + [A] * 80 + [H] * 60))
     kin = source == SOURCE_NONE
-    cfg = {**CFG, "gate_mode": "move"}
+    cfg = {**OFF, "gate_mode": "move"}
     off, _ = apply_gating(labels, source, log_e, cfg, kin_team=kin)
     on, _ = apply_gating(labels, source, log_e, {**cfg, "gate_kin_support": True}, kin_team=kin)
     assert (off == H).all() and (on == labels).all()
@@ -156,16 +159,16 @@ def _emission_case(n=60):
 
 def test_zero_weights_ignore_the_kinematics():
     track, players, speeds, teams, kin = _emission_case()
-    a = build_emission(track, players, speeds, teams, CFG)
-    b = build_emission(track, players, speeds, teams, CFG, kin=kin)
+    a = build_emission(track, players, speeds, teams, OFF)
+    b = build_emission(track, players, speeds, teams, OFF, kin=kin)
     assert (a.log_e == b.log_e).all() and b.kin_dead is None and b.kin_team is None
 
 
 def test_kinematic_terms_touch_ball_less_frames_only():
     track, players, speeds, teams, kin = _emission_case()
-    a = build_emission(track, players, speeds, teams, CFG)
+    a = build_emission(track, players, speeds, teams, OFF)
     b = build_emission(track, players, speeds, teams,
-                       {**CFG, "kin_w_dead": 0.3, "kin_w_team": 0.3}, kin=kin)
+                       {**OFF, "kin_w_dead": 0.3, "kin_w_team": 0.3}, kin=kin)
     seen = track.source == SOURCE_ATD
     assert (a.log_e[seen] == b.log_e[seen]).all()
     assert (a.log_e[~seen] != b.log_e[~seen]).any()
@@ -178,8 +181,8 @@ def test_dead_term_raises_d_where_the_players_say_dead():
     track, players, speeds, teams, kin = _emission_case()
     strong = Kinematics(dead_llr=np.full(60, 4.0), team_logit=np.zeros(60),
                         dead_ok=kin.dead_ok, team_ok=kin.team_ok)
-    a = build_emission(track, players, speeds, teams, CFG)
-    b = build_emission(track, players, speeds, teams, {**CFG, "kin_w_dead": 0.3}, kin=strong)
+    a = build_emission(track, players, speeds, teams, OFF)
+    b = build_emission(track, players, speeds, teams, {**OFF, "kin_w_dead": 0.3}, kin=strong)
     gap = track.source == SOURCE_NONE
     assert (b.log_e[gap, CLASS_D] > a.log_e[gap, CLASS_D]).all()
     assert (b.log_e[gap, CLASS_H] < a.log_e[gap, CLASS_H]).all()
@@ -187,7 +190,7 @@ def test_dead_term_raises_d_where_the_players_say_dead():
 
 def test_team_term_mirrors_exactly_under_a_team_swap():
     track, players, speeds, teams, kin = _emission_case()
-    cfg = {**CFG, "kin_w_team": 0.3, "kin_w_dead": 0.1}
+    cfg = {**OFF, "kin_w_team": 0.3, "kin_w_dead": 0.1}
     swapped = Kinematics(dead_llr=kin.dead_llr, team_logit=-kin.team_logit,
                          dead_ok=kin.dead_ok, team_ok=kin.team_ok)
     a = build_emission(track, players, speeds, teams, cfg, kin=kin)
@@ -202,9 +205,9 @@ def test_frames_without_finite_features_carry_no_kinematic_evidence():
     track, players, speeds, teams, kin = _emission_case()
     blind = Kinematics(dead_llr=kin.dead_llr, team_logit=kin.team_logit,
                        dead_ok=np.zeros(60, dtype=bool), team_ok=np.zeros(60, dtype=bool))
-    a = build_emission(track, players, speeds, teams, CFG)
+    a = build_emission(track, players, speeds, teams, OFF)
     b = build_emission(track, players, speeds, teams,
-                       {**CFG, "kin_w_dead": 0.3, "kin_w_team": 0.3}, kin=blind)
+                       {**OFF, "kin_w_dead": 0.3, "kin_w_team": 0.3}, kin=blind)
     assert (a.log_e == b.log_e).all()
 
 
@@ -380,9 +383,8 @@ def test_gate9_hold_switches_a_component_off_and_re_reads():
 
 
 def test_committed_stage9_read():
-    """The recorded read: C, K, T kept, S dropped, bundle passes the bar on all 8 tables.
-    The adoption itself is HELD for the operator (own-output bucket > 20 %, dossier §7 P9),
-    so the shipped config still has every P9 key OFF."""
+    """The recorded read: C, K, T kept, S dropped, bundle passes the bar on all 8 tables —
+    and the shipped config is exactly that bundle (hold released by the operator)."""
     from pathlib import Path
 
     import pytest
@@ -401,3 +403,5 @@ def test_committed_stage9_read():
             bundle["gate_kin_support"]) == (True, 0.3, 0.03, True)
     assert rule["adopt"] and rule["bundle_primary"] > 0.02 and rule["bundle_wins"] == 7
     assert all(v[0] > 0.08 and v[1] == 7 for v in rule["bundle_deltas"].values())
+    for key in gate9.P_PARAMS:
+        assert CFG[key] == bundle[key], key

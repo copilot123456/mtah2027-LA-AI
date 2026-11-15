@@ -28,7 +28,14 @@ external data (IDSSE), with every parameter carrying an explicit provenance
    - a dead-ball term `p_d = sigmoid(bias + Σ wᵢfᵢ)` over four active features: ball
      outside the pitch margin, ball at rest (< 1 m/s), ball near a boundary, long no-ball
      run. A fifth, low team activity, is implemented and **switched off by external
-     evidence** (see *Layer decisions*). The bias is an a-priori logit(≈1/3) — an external
+     evidence** (see *Layer decisions*).
+   - **player-only kinematic terms** (`src/kinematics.py`), active only on frames with
+     no ball observation: a dead-ball log-likelihood ratio from how the players move
+     (median speed, share of slow and fast players, collective drift) is added to the
+     dead logit, and a team log-odds from four home-minus-away features (collective
+     direction of movement, territory, difference of the teams' length and width) is added
+     to the H / A columns. Both are logistic regressions fitted on the external matches;
+     the team model has no intercept, so swapping the teams mirrors it exactly. The bias is an a-priori logit(≈1/3) — an external
      re-fit to the IDSSE dead share was tried and **rejected** (it collapsed performance;
      see dossier).
 
@@ -38,7 +45,9 @@ external data (IDSSE), with every parameter carrying an explicit provenance
      previous label holds until the first raw-ATD frame that supports the new one, and a
      segment with no such frame is merged away. Evidence from an estimated or absent ball
      alone never switches a possession;
-   - **min-dwell**: segments shorter than the dwell merge into the longer neighbour;
+     On ball-less frames a frame carrying a kinematic term counts as support too;
+   - **min-dwell**: segments shorter than the dwell merge into the longer neighbour, and
+     equal neighbours are joined after every merge;
    - **team-switch delay**: a change of team that the ball evidence placed is moved 0.64 s
      later. The kernel hands the ball over as soon as it is nearer to the receiving team —
      in mid-flight — while a change of possession is the moment the receiver controls it.
@@ -60,7 +69,7 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 |---|---|
 | Tactical ATD tracking | primary input (positions, speeds, slot teams from the EPTS metadata) |
 | Tactical homography | available; unused so far (positions already pitch-normalized; video not needed) |
-| Smart Tagging | inspected; **not used** — phase intervals are not possessions, and no external labels exist to calibrate a weight (weak prior, default off) |
+| Smart Tagging | the `Kick Off (Start)` tag only (dead ball before a half's kick-off); phase and set-piece tags **not used** — phase intervals are not possessions, and no external tagging exists to calibrate a weight |
 | Broadcast ATD/video | **dropped** — separate timeline with cuts/replays and no mapping to the submission index; solving alignment was not worth the risk |
 | Kinematic ball fill | implemented, ablated externally, **dropped** (see above) |
 | Official evaluator | format validation + one frozen final check (guarded, logged) |
@@ -109,10 +118,14 @@ external data (IDSSE), with every parameter carrying an explicit provenance
 | Team-switch delay, 0.64 s | external team switches are 11–15 frames early on 7/7 matches; **+0.012** on top of the gate change, 7/7; positive on all 8 tables. Both together: **+0.031**, 7/7, +0.026 … +0.033 on all 8 tables | **on** (2026-11-14) |
 | Mid-gap placement of a switch the ball cannot time | +0.026 … +0.033 under three ball-loss models, +0.002 (4/7) under the strongly dead-tied one | kept off (worst-case rule) |
 | Longer minimum duration for dead-ball segments (3–5 s) | +0.0001 on the primary table | kept off |
+| Min-dwell: join equal neighbours after a merge | without it a short segment could be merged into the other team although its twin made it long enough; **+0.014** on the primary table, 7/7; positive on all 8 tables | **on** (2026-11-14) |
+| Player-only dead-ball term on ball-less frames (weight 0.3) | leave-one-match-out model, player tracks degraded by 7 % dropout; **+0.017** on the primary table, 7/7; all 8 tables positive, up to +0.095 when ball loss is tied to dead ball | **on** (2026-11-14) |
+| Player-only team term on ball-less frames (weight 0.03) | **+0.091** on the primary table, 7/7; +0.019 … +0.091 on six tables, −0.009 / −0.014 on the two strongly dead-tied tables (inside the no-harm bound). All three together: **+0.122**, 7/7, +0.083 … +0.122 on all 8 tables | **on** (2026-11-14) |
+| Longer or ball-speed-scaled team-switch delay | best cell +0.004 on the primary table once the kinematic terms are in | kept off |
 | Kick-off tag rule (`D` before a half's kick-off tag) | documents-only rule (FAQ + Smart Tagging `Kick Off (Start)`); no external test possible; second-half tag within 10 s of the documented kick-off; changes < 2 % of graded labels | **on** (2026-11-14, check amended by team decision — see dossier) |
 
 (`tuning/results/post_checks.csv`, `post_checks_final.csv`, `report_stage4.md`,
-`report_e7.md`, `report_stage5.md`, `report_stage8.md`, scored with the official forward-fill semantics;
+`report_e7.md`, `report_stage5.md`, `report_stage8.md`, `report_stage9.md`, scored with the official forward-fill semantics;
 adoption rule: paired gain > 0.02 on at least 5 of 7 matches.)
 
 **Units correction (2026-11-14).** The external tracking reports player speed in km/h and
@@ -129,12 +142,14 @@ configuration to within 0.0015 spellF1 at the shipped cell.
   run-length distribution and four placement models: uniform, weighted towards duels and
   possession changes, and two that tie ball loss to dead ball (moderate and strong). How
   strongly the real tracker's ball loss is tied to dead ball is not measured here.
-- **Dead ball without a ball.** With the ball absent the decoder has no dead-ball
-  evidence and carries the last team. When ball loss is strongly tied to dead ball the
-  external bed puts the pipeline level with the organisers' `smooth50` baseline on
-  `spellF1` and well below it on `macroF1`. A stronger "no ball → dead" term gains
-  +0.05 … +0.09 in that regime and loses about 0.03 when ball loss is unrelated to dead
-  ball; without a way to tell which regime the match is in, it was not adopted.
+- **Player-only terms are fitted on another league and another tracker.** The kinematic
+  models come from seven Bundesliga matches. Six coarse checks on the provided match
+  (player speed scale, share of frames the model calls dead, team balance, agreement with
+  the ball-based output where the ball is visible, visible players, ball speed scale) all
+  passed, as PASS / FAIL only; they show the match looks alike to the model, not that the
+  external gain transfers. The terms change more than 20 % of the graded labels. The
+  dead-ball weight sits at the edge of the tested range, and the team term costs about
+  0.01 on the bed when the ball is lost almost only during stoppages.
 - **Frozen ball on the test bed.** On the external matches the ball position is frozen
   while play is stopped (speed exactly 0 on every dead frame, under 1.1 % of live frames).
   The "ball at rest" feature therefore finds dead ball almost perfectly there whenever
@@ -143,11 +158,9 @@ configuration to within 0.0015 spellF1 at the shipped cell.
   visible during a stoppage; the strongly dead-tied placement is the least affected. For
   the same reason the bed cannot say whether the ball-at-rest feature helps on real
   tracking, and no delay was fitted for stoppage onsets.
-- The gain from the team-switch delay was still rising at the edge of the tested range
-  (0.8 s); the tie rule kept the smaller 0.64 s, which leaves the external switches
-  3–6 frames early.
-- Swapping the two teams does not exactly mirror the output: boundaries inside ball gaps
-  are tie-breaks. On the masked external bed 3.6–11.5 % of frames differ.
+- Swapping the two teams does not exactly mirror the output where neither the ball nor the
+  players decide; the team term removes most of it on the external bed (3.6–11.4 % of
+  frames before; 0.3–0.5 % at the largest tested weight, not measured at the shipped one).
 - Broadcast footage is unused (alignment cost); a video-based ball detector tier was
   scoped as stretch and is not in the shipped pipeline.
 - The provider's dead-ball share on external matches (41–52 %) differs from what the
@@ -165,9 +178,9 @@ produced the committed file):
 ```bash
 python3 -m virtualenv .venv && .venv/bin/pip install -r requirements-dev.txt
 # match data in data/tactical + data/broadcast (organiser bundle; gitignored) or MTAH_DATA_DIR
-.venv/bin/python -m pytest -q           # 156 tests: alignment, invariants, format, byte-identity
+.venv/bin/python -m pytest -q           # 182 tests: alignment, invariants, format, byte-identity
 .venv/bin/python -m src.submit          # writes LA+AI.csv and runs the official validator
-md5sum LA+AI.csv                        # de14eb1ccb75d9cd713789da4abde664
+md5sum LA+AI.csv                        # c121715836ed603fc5792b85daf6f279
 ```
 
 The first run builds a local cache from the raw ATD (about 1m40s); a clean clone with a cold
@@ -189,9 +202,12 @@ ships in `tuning/results/` (matrices + reports); `tuning/sweep.py` and
 | `d_bias` | −0.70 | `prior` (re-fit tried, rejected) |
 | `d_w_low_activity` | 0 (feature off) | `external_fit` (units-corrected bed) |
 | `kickoff_rule` | True | `prior` (documents-only rule) |
+| `gate_mode` / `switch_delay_s` | move / 0.64 | `external_fit` (IDSSE) |
+| `dwell_coalesce` | True | `external_fit` (IDSSE) |
+| `kin_w_dead` / `kin_w_team` / `gate_kin_support` | 0.3 / 0.03 / True | `external_fit` (IDSSE; coefficients in `src/kin_model.json`) |
 
 External selection: 930-cell union × 7 matches, mean spellF1 **0.2759** (95 % CI
 [0.2578, 0.2932]) on the provider's per-touch labels and uniform masks, LOMO optimism
-−0.0026; **0.366** on challenge-style labels with phase-weighted masks, and 0.35 when ball
-loss is tied to dead ball. The submission regenerates byte-identically (md5-verified) and
+−0.0026; with the 2026-11-14 changes **0.52** on challenge-style labels with
+phase-weighted masks and 0.47 when ball loss is strongly tied to dead ball. The submission regenerates byte-identically (md5-verified) and
 passes the official validator.
