@@ -27,8 +27,8 @@ import pandas as pd  # CSV read/write, timestamps
 
 ROOT = Path(__file__).resolve().parents[1]  # repo root
 for p in (str(ROOT), str(ROOT / "evaluation")):  # expose repo + evaluation to imports
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    if p not in sys.path:  # avoid duplicate entries
+        sys.path.insert(0, p)  # make path importable
 
 import possession_metrics as pm  # noqa: E402  # official scoring helpers
 from config import CFG  # noqa: E402  # pitch and decoder config
@@ -72,19 +72,19 @@ def _event_anchors_and_epochs(xml_path: Path, tags: tuple[str, ...]
     anchors: list[tuple[float, int]] = []  # (epoch_s, provider frame) pairs
     epochs: list[float] = []  # event times carrying one of our tags
     for ev in tree.getroot().iter("Event"):
-        attrs = ev.attrib
+        attrs = ev.attrib  # this event's attributes
         if any(c.tag in tags for c in ev):  # child tag matches what we want
             epochs.append(pd.Timestamp(attrs["EventTime"]).timestamp())  # epoch seconds
         if "StartFrame" in attrs:  # event pins a provider frame
             anchors.append((pd.Timestamp(attrs["EventTime"]).timestamp(),
                             int(attrs["StartFrame"])))  # alignment anchor pair
-    return anchors, epochs
+    return anchors, epochs  # both lists for mapping
 
 
 def load_event_rows(match_id: str, tags: tuple[str, ...], cache_name: str) -> np.ndarray:
     """Rows for one IDSSE event type; kloppy+XML once, then a local npy cache."""
     CACHE.mkdir(parents=True, exist_ok=True)  # make sure the cache dir exists
-    cache = CACHE / f"{cache_name}_{match_id}.npy"
+    cache = CACHE / f"{cache_name}_{match_id}.npy"  # cache file for this match
     if cache.exists():
         return np.load(cache)  # reuse a previous mapping
     xmls = sorted(IDSSE_DIR.glob(f"*events_raw*{match_id}.xml"))  # find this match's events XML
@@ -107,7 +107,7 @@ def load_event_rows(match_id: str, tags: tuple[str, ...], cache_name: str) -> np
     print(f"{match_id}: {cache_name} {len(kept)}/{len(epochs)} mapped, "  # mapping quality
           f"{len(anchors)} anchors", flush=True)
     np.save(cache, kept)  # cache for the worker processes
-    return kept
+    return kept  # mapped rows only
 
 
 def load_tackle_rows(match_id: str) -> np.ndarray:
@@ -140,7 +140,7 @@ def run_task4(args) -> tuple[list[dict], dict]:
         masked, mask_stats = mask_ball(case.ball, run_lengths, rng,
                                        weights=phase_weights(cues, alpha))  # phase-weighted
 
-    base = dict(CFG)
+    base = dict(CFG)  # copy of the config
     if kind != "phase_a2_fill":                       # fill on only for the E11 twin
         base["fill_long_gap_s"] = 0.0  # keep fill off for the other kinds
 
@@ -153,27 +153,27 @@ def run_task4(args) -> tuple[list[dict], dict]:
     gt_aligned = pm.label_codes(derive_letters_controlled(case.letters, hold_s=3.0))  # aligned (E1, T=3 s)
     runs_orig, runs_aligned = pm.valid_runs(gt_orig), pm.valid_runs(gt_aligned)  # valid runs per set
     n_gt_orig = len(pm.possession_spells(gt_orig, runs_orig))  # GT spell counts for the row
-    n_gt_aligned = len(pm.possession_spells(gt_aligned, runs_aligned))
+    n_gt_aligned = len(pm.possession_spells(gt_aligned, runs_aligned))  # same, aligned set
 
     # pre-registered mask statistics (§7): NaN share and newly-removed share, in/out cues
     was_finite = ~np.isnan(case.ball).any(axis=1)  # ball present before masking
     now_nan = np.isnan(masked).any(axis=1)  # ball missing after masking
     removed = was_finite & now_nan  # frames this mask newly removed
     any_cue = cues[0] | cues[1] | cues[2]  # union of the three cues
-    mask_row = {"match_id": match_id, "kind": kind, **mask_stats,
+    mask_row = {"match_id": match_id, "kind": kind, **mask_stats,  # mask-stats row for this task
                 "nan_share": float(now_nan.mean()),
                 "removed_share": float(removed.mean())}
     # per-cue NaN / removed shares inside and outside the cue, plus the cue's frame share
     for i, cue in enumerate(cues, start=1):
-        mask_row[f"cue{i}_nan_in"] = float(now_nan[cue].mean()) if cue.any() else np.nan
-        mask_row[f"cue{i}_nan_out"] = float(now_nan[~cue].mean()) if (~cue).any() else np.nan
-        mask_row[f"cue{i}_removed_in"] = float(removed[cue].mean()) if cue.any() else np.nan
-        mask_row[f"cue{i}_removed_out"] = float(removed[~cue].mean()) if (~cue).any() else np.nan
+        mask_row[f"cue{i}_nan_in"] = float(now_nan[cue].mean()) if cue.any() else np.nan  # NaN share inside cue
+        mask_row[f"cue{i}_nan_out"] = float(now_nan[~cue].mean()) if (~cue).any() else np.nan  # NaN share outside
+        mask_row[f"cue{i}_removed_in"] = float(removed[cue].mean()) if cue.any() else np.nan  # removed share inside
+        mask_row[f"cue{i}_removed_out"] = float(removed[~cue].mean()) if (~cue).any() else np.nan  # outside share
         mask_row[f"cue{i}_frame_share"] = float(cue.mean())  # how often the cue fires
     mask_row["anycue_removed_in"] = float(removed[any_cue].mean()) if any_cue.any() else np.nan  # inside any cue
     mask_row["anycue_removed_out"] = float(removed[~any_cue].mean()) if (~any_cue).any() else np.nan  # outside all cues
 
-    rows: list[dict] = []
+    rows: list[dict] = []  # cell rows accumulate here
     sigmas = sorted({float(c["sigma_m"]) for c in grid})  # unique sigma values to build for
     for sigma in sigmas:
         em = build_emission(track, case.players, case.players_s, case.slot_team,
@@ -196,7 +196,7 @@ def run_task4(args) -> tuple[list[dict], dict]:
                 "masked_fraction": round(mask_stats["masked_fraction"], 4),
                 "runtime_s": round(time.time() - t0, 1),
             })
-    return rows, mask_row
+    return rows, mask_row  # cell rows plus mask stats
 
 
 def main() -> int:
@@ -204,14 +204,14 @@ def main() -> int:
     parser.add_argument("--smoke", action="store_true",  # small plumbing run
                         help="1 match, 6 strided cells, all four kinds, writes to /tmp")
     parser.add_argument("--workers", type=int, default=7)  # pool size
-    args = parser.parse_args()
+    args = parser.parse_args()  # parsed command-line flags
 
     from src import data as D  # deferred: heavy import
 
     arrays = D.load_arrays()  # provided arrays, only for run lengths here
     missing_graded = np.isnan(arrays.ball).any(axis=1) & arrays.graded  # graded missing frames
     run_lengths = empirical_run_lengths(missing_graded)  # empirical missing-run lengths
-    print(f"empirical missing runs: n={len(run_lengths)} "
+    print(f"empirical missing runs: n={len(run_lengths)} "  # show run-length summary
           f"median={int(np.median(run_lengths))} max={int(run_lengths.max())}", flush=True)
 
     matches = [MATCH_IDS[0]] if args.smoke else MATCH_IDS  # 1 match in smoke, all 7 otherwise
@@ -219,7 +219,7 @@ def main() -> int:
     for mid in matches:                               # warm caches BEFORE the pool
         load_match(mid)  # preload match arrays
         load_tackle_rows(mid)  # preload tackle rows
-    print(f"{len(matches)} matches x {len(KINDS)} kinds, {len(grid)} cells each",
+    print(f"{len(matches)} matches x {len(KINDS)} kinds, {len(grid)} cells each",  # show workload
           flush=True)
 
     tasks = [(m, k, grid, run_lengths) for m in matches for k in KINDS]  # one task per pair
@@ -232,21 +232,21 @@ def main() -> int:
         for i, (rows, mask_row) in enumerate(pool.imap_unordered(run_task4, tasks), 1):
             by_kind[rows[0]["kind"]].extend(rows)  # collect this task's cell rows
             mask_rows.append(mask_row)  # collect this task's mask stats
-            print(f"[{i}/{len(tasks)}] {mask_row['match_id']} {mask_row['kind']} "
+            print(f"[{i}/{len(tasks)}] {mask_row['match_id']} {mask_row['kind']} "  # progress counter
                   f"done at {time.time() - t0:.0f}s", flush=True)
 
     out_dir = Path("/tmp/stage4_smoke") if args.smoke else RESULTS  # smoke stays out of results/
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)  # create the output dir
     for kind, rows in by_kind.items():
-        path = out_dir / f"stage4_{kind}.csv"
+        path = out_dir / f"stage4_{kind}.csv"  # this kind's output file
         pd.DataFrame(rows).to_csv(path, index=False)  # write this kind's matrix
-        print(f"wrote {path} ({len(rows)} rows)", flush=True)
-    masks_path = out_dir / "stage4_masks.csv"
+        print(f"wrote {path} ({len(rows)} rows)", flush=True)  # confirm file written
+    masks_path = out_dir / "stage4_masks.csv"  # mask-stats output file
     pd.DataFrame(mask_rows).to_csv(masks_path, index=False)  # write mask statistics
-    print(f"wrote {masks_path} ({len(mask_rows)} rows)", flush=True)
-    print(f"total {time.time() - t0:.0f}s", flush=True)
-    return 0
+    print(f"wrote {masks_path} ({len(mask_rows)} rows)", flush=True)  # confirm file written
+    print(f"total {time.time() - t0:.0f}s", flush=True)  # total runtime
+    return 0  # zero means success
 
 
 if __name__ == "__main__":  # module entry point
-    sys.exit(main())
+    sys.exit(main())  # run as a script

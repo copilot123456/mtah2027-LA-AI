@@ -56,14 +56,14 @@ def key(cell: dict) -> tuple:
 
 
 def load_tables(res: Path = RES) -> dict[str, pd.DataFrame]:
-    tables = {}
+    tables = {}  # one entry per mask kind
     for kind in KINDS:
         df = pd.read_csv(res / f"stage9_{kind}.csv")  # one matrix per mask kind
         n_cells = df.groupby(P_PARAMS).ngroups  # distinct grid cells
         if len(df) != n_cells * 7:  # every cell must cover all 7 matches
-            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")
+            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")  # reject a malformed matrix
         tables[kind] = df.set_index(P_PARAMS + ["match_id"]).sort_index()  # key = cell + match
-    return tables
+    return tables  # return the four matrices
 
 
 def cell_col(df: pd.DataFrame, cell: dict, col: str) -> pd.Series:
@@ -72,27 +72,27 @@ def cell_col(df: pd.DataFrame, cell: dict, col: str) -> pd.Series:
 
 def deltas(tables: dict, a: dict, b: dict) -> dict:
     """{(kind, label set): (mean paired spellF1 difference a − b, matches positive)}."""
-    out = {}
+    out = {}  # deltas keyed by table
     for kind, lab in TABLES:
         d = (cell_col(tables[kind], a, f"spell_f1_{lab}")  # paired a − b per match
              - cell_col(tables[kind], b, f"spell_f1_{lab}"))
         out[(kind, lab)] = (float(d.mean()), int((d > 0).sum()))  # mean Δ, wins/7
-    return out
+    return out  # return means and wins
 
 
 def harness_pin(tables: dict, res: Path = RES) -> float:
     """Largest |reference − stage-8 shipped cell| over both spellF1 columns and all rows."""
-    worst = 0.0
+    worst = 0.0  # running worst drift
     for kind in KINDS:
         old = pd.read_csv(res / f"stage8_{kind}.csv")  # stage-8 shipped rows
         for p, v in S8_SHIPPED.items():
             old = old[old[p] == v]  # keep only the shipped cell
-        old = old.set_index("match_id")
-        if len(old) != 7:
-            raise ValueError(f"{kind}: stage-8 shipped cell has {len(old)} rows")
+        old = old.set_index("match_id")  # index rows by match
+        if len(old) != 7:  # need all seven matches
+            raise ValueError(f"{kind}: stage-8 shipped cell has {len(old)} rows")  # shipped cell is incomplete
         for lab in ("orig", "aligned"):
             new = cell_col(tables[kind], REFERENCE, f"spell_f1_{lab}")  # stage-9 reference
-            worst = max(worst, float((new - old[f"spell_f1_{lab}"].reindex(new.index)).abs().max()))
+            worst = max(worst, float((new - old[f"spell_f1_{lab}"].reindex(new.index)).abs().max()))  # keep the largest drift
     return worst  # 0.0 means the harness still pins
 
 
@@ -103,11 +103,11 @@ def candidates(step: str, start: dict, hold: frozenset) -> list[dict]:
     if step in ("K", "T"):
         if step in hold:
             return []  # held by parity → nothing to consider
-        param = "kin_w_dead" if step == "K" else "kin_w_team"
+        param = "kin_w_dead" if step == "K" else "kin_w_team"  # pick the weight to move
         return [{**start, param: w, "gate_kin_support": tier}
                 for tier in (False, True) for w in WEIGHTS[1:]]  # nonzero weights × both tiers
     slopes = [0.0] if "slope" in hold else SLOPES  # held slope → zero only
-    cells = sorted(((slope > 0, delay, slope) for delay in DELAYS for slope in slopes))
+    cells = sorted(((slope > 0, delay, slope) for delay in DELAYS for slope in slopes))  # sort into pinned order
     # smallest (delay, slope) first — the pinned tie-break; skip the starting cell
     return [{**start, "switch_delay_s": d, "switch_delay_slope": s} for _, d, s in cells
             if (d, s) != (start["switch_delay_s"], start["switch_delay_slope"])]
@@ -115,17 +115,17 @@ def candidates(step: str, start: dict, hold: frozenset) -> list[dict]:
 
 def run_step(tables: dict, start: dict, cands: list[dict]) -> dict:
     """One pinned step: maximin candidate (ties -> list order = smallest change), keep-test."""
-    if not cands:
-        return {"rows": [], "candidate": None, "keep": False, "cell": start, "held": True}
-    rows = []
+    if not cands:  # held or no candidates
+        return {"rows": [], "candidate": None, "keep": False, "cell": start, "held": True}  # report the step as held
+    rows = []  # candidate result rows
     for cand in cands:
         d = deltas(tables, cand, start)  # candidate vs the cell it starts from
         rows.append({"cell": cand, "deltas": d,
                      "g": min(d[(k, "aligned")][0] for k in KINDS)})  # worst-kind gain
-    best = max(r["g"] for r in rows)
+    best = max(r["g"] for r in rows)  # best worst-case gain
     cand = next(r for r in rows if r["g"] >= best - TIE)  # ties → list order
     primary, wins = cand["deltas"][PRIMARY]  # deciding table's Δ and wins
-    harm_ok = all(v[0] >= HARM for t, v in cand["deltas"].items() if t != PRIMARY)
+    harm_ok = all(v[0] >= HARM for t, v in cand["deltas"].items() if t != PRIMARY)  # no table loses too much
     keep = bool(primary > STEP_BAR and wins >= MIN_WINS and harm_ok)  # pinned keep-test
     return {"rows": rows, "candidate": cand, "best_g": best, "primary": primary,
             "wins": wins, "harm_ok": harm_ok, "keep": keep, "held": False,
@@ -134,23 +134,23 @@ def run_step(tables: dict, start: dict, cands: list[dict]) -> dict:
 
 def apply_rule(tables: dict, hold: frozenset = frozenset()) -> dict:
     ref = dict(REFERENCE)  # shipped reference cell
-    out: dict = {}
+    out: dict = {}  # one entry per step
     cell = ref  # each step starts from the previous step's result
     for step in STEPS:
-        out[step] = run_step(tables, cell, candidates(step, cell, hold))
+        out[step] = run_step(tables, cell, candidates(step, cell, hold))  # apply the pinned step
         out[step]["start"] = cell  # record where the step began
         cell = out[step]["cell"]  # kept value, or unchanged
     out["bundle"] = cell  # cell that would ship
     if key(cell) == key(ref):  # no step was kept
-        out.update(bundle_deltas=None, adopt=False)
-        return out
+        out.update(bundle_deltas=None, adopt=False)  # record: nothing to bundle
+        return out  # return without a bundle
     d = deltas(tables, cell, ref)  # bundle vs reference
-    primary, wins = d[PRIMARY]
+    primary, wins = d[PRIMARY]  # bundle headline numbers
     harm_ok = all(v[0] >= HARM for t, v in d.items() if t != PRIMARY)  # no-harm check
-    out.update(bundle_deltas=d, bundle_primary=primary, bundle_wins=wins,
+    out.update(bundle_deltas=d, bundle_primary=primary, bundle_wins=wins,  # store the bundle verdict
                bundle_harm_ok=harm_ok,
                adopt=bool(primary > BUNDLE_BAR and wins >= MIN_WINS and harm_ok))
-    return out
+    return out  # the full rule result
 
 
 # parameter → short report wording
@@ -163,25 +163,25 @@ _LABELS = {"dwell_coalesce": lambda v: "coalesce on" if v else "coalesce off",
 
 def cell_str(cell: dict, start: dict | None = None) -> str:
     """The cell in words; with `start`, only the parameters that differ from it."""
-    parts = [_LABELS[p](cell[p]) for p in P_PARAMS if start is None or cell[p] != start[p]]
+    parts = [_LABELS[p](cell[p]) for p in P_PARAMS if start is None or cell[p] != start[p]]  # label only changed params
     return " · ".join(parts) if parts else "reference"  # nothing differs
 
 
 def step_alone(rule: dict, step: str) -> dict:
     """The reference with only this step's kept values (the parity reference of the hold)."""
-    kept = rule[step]["cell"]
+    kept = rule[step]["cell"]  # cell this step kept
     params = {"C": ("dwell_coalesce",), "K": ("kin_w_dead", "gate_kin_support"),
               "T": ("kin_w_team", "gate_kin_support"),
               "S": ("switch_delay_s", "switch_delay_slope")}[step]  # params this step owns
     cell = {**REFERENCE, **{p: kept[p] for p in params}}  # reference + only this step
     if step == "K" and not rule["K"]["keep"]:
         cell["gate_kin_support"] = False  # a dropped K resets the tier
-    return canon(cell)
+    return canon(cell)  # normalized single-step cell
 
 
 def _header(first: str = "cell") -> list[str]:
     cols = [f"{k} × {lab}" for k, lab in TABLES]  # one column per kind × label set
-    return [f"| {first} | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
+    return [f"| {first} | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]  # markdown header rows
 
 
 def _row(name: str, d: dict) -> str:
@@ -196,10 +196,10 @@ def _mean(tables: dict, cell: dict, col: str) -> list[float]:
 def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, dict]:
     tables = load_tables(res)  # stage-9 matrices
     pin = harness_pin(tables, res)  # reference vs stage-8 shipped rows
-    if pin > PIN_TOL:
-        raise ValueError(f"harness pin failed: reference drifts {pin:.2e} from stage 8 — pass void")
+    if pin > PIN_TOL:  # drift fails the pin
+        raise ValueError(f"harness pin failed: reference drifts {pin:.2e} from stage 8 — pass void")  # void the pass
     rule = apply_rule(tables, hold)  # run the pinned gate rule
-    ref = dict(REFERENCE)
+    ref = dict(REFERENCE)  # copy of the reference
     record = pd.read_csv(res / "stage9_record.csv")  # record-only rows
     diag = pd.read_csv(res / "stage9_diag.csv")  # per-match diagnostics
 
@@ -216,16 +216,16 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
         L += [f"**Held components (target parity check failed, OFF in this read): "
               f"{', '.join(sorted(hold))}.**", ""]
     for step in STEPS:  # one report section per step
-        r = rule[step]
-        start = r["start"]
+        r = rule[step]  # fetch this step's result
+        start = r["start"]  # cell it starts from
         L += [f"## {NAMES[step]} (against: {cell_str(start)})", ""]  # heading + start cell
         if r["held"]:
             L += ["Held — the step keeps its current value.", ""]  # no table, no verdict
-            continue
+            continue  # skip to next step
         L += _header()  # full candidate table
         for row in r["rows"]:
             L.append(_row(cell_str(row["cell"], start), row["deltas"]))  # one row per candidate
-        c = r["candidate"]
+        c = r["candidate"]  # the picked candidate
         # candidate, primary gain, keep-test inputs, verdict
         L += ["", f"- candidate (maximin over the four mask kinds, aligned labels): "
               f"**{cell_str(c['cell'], start)}** — g = {c['g']:+.4f} (best {r['best_g']:+.4f})",
@@ -237,7 +237,7 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
 
     L += ["## Bundle (the cell that would ship) against the reference", ""]
     if rule["bundle_deltas"] is None:
-        L += ["No step was kept — nothing to adopt.", ""]
+        L += ["No step was kept — nothing to adopt.", ""]  # note the empty bundle
     else:
         # bundle row, bundle keep-test, ADOPT/REJECT verdict
         L += _header() + [_row(cell_str(rule["bundle"]), rule["bundle_deltas"]), "",
@@ -252,12 +252,12 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
           + " | ".join(f"{k} D share" for k in KINDS) + " | "
           + " | ".join(f"{k} changed" for k in KINDS) + " |",
           "|---|" + "---|" * (3 * len(KINDS))]
-    shown = [("reference", ref)]
+    shown = [("reference", ref)]  # start with the reference
     for step in STEPS:
         if rule[step]["keep"]:
             shown.append((f"after {step}", rule[step]["cell"]))  # one row per kept step
     for name, cell in shown:  # one table row per shown cell
-        L.append(f"| {name} | " + " | ".join(f"{v:.4f}" for v in _mean(tables, cell, "spell_f1_aligned"))
+        L.append(f"| {name} | " + " | ".join(f"{v:.4f}" for v in _mean(tables, cell, "spell_f1_aligned"))  # F1, dead share, changed
                  + " | " + " | ".join(f"{v:.3f}" for v in _mean(tables, cell, "pred_d_share"))
                  + " | " + " | ".join(f"{v:.1%}" for v in _mean(tables, cell, "changed_share")) + " |")
     # firing: how much each kept step changes on its own, vs the pinned hold reference
@@ -267,14 +267,14 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
     for step in STEPS:
         if rule[step]["keep"]:
             cell = step_alone(rule, step)  # reference + this step only
-            vals = [cell_col(tables[k], cell, "changed_share") for k in KINDS]
+            vals = [cell_col(tables[k], cell, "changed_share") for k in KINDS]  # changed share per kind
             firing[step] = max(float(v.max()) for v in vals)  # largest per-match value
-            lo = min(float(v.min()) for v in vals)
-            L.append(f"- {step} alone ({cell_str(cell)}): {lo:.1%} … {firing[step]:.1%}")
+            lo = min(float(v.min()) for v in vals)  # smallest per-match value
+            L.append(f"- {step} alone ({cell_str(cell)}): {lo:.1%} … {firing[step]:.1%}")  # step-alone range line
     if rule["bundle_deltas"] is not None:  # same range for the whole bundle
-        vals = [cell_col(tables[k], rule["bundle"], "changed_share") for k in KINDS]
-        firing["bundle"] = max(float(v.max()) for v in vals)
-        L.append(f"- bundle: {min(float(v.min()) for v in vals):.1%} … {firing['bundle']:.1%}")
+        vals = [cell_col(tables[k], rule["bundle"], "changed_share") for k in KINDS]  # bundle changed share per kind
+        firing["bundle"] = max(float(v.max()) for v in vals)  # record bundle's largest
+        L.append(f"- bundle: {min(float(v.min()) for v in vals):.1%} … {firing['bundle']:.1%}")  # bundle range line
 
     base = rule["T"]["cell"]  # cell as kept through T; the S grid is varied on top
     # team-switch latency table: predicted − true frames over the S grid
@@ -282,7 +282,7 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
           "", "| delay · slope | " + " | ".join(KINDS) + " |", "|---|" + "---|" * len(KINDS)]
     for slope in SLOPES:  # full pinned S grid
         for d in DELAYS:
-            cell = {**base, "switch_delay_s": d, "switch_delay_slope": slope}
+            cell = {**base, "switch_delay_s": d, "switch_delay_slope": slope}  # base cell plus this S
             L.append(f"| {d:g} s · {slope:g} | "  # mean latency per mask kind
                      + " | ".join(f"{v:+.1f}" for v in _mean(tables, cell, "lat_mean")) + " |")
 
@@ -292,21 +292,21 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
     for col, name in (("equiv_mismatch_ref", "reference"),
                       (f"equiv_mismatch_T{WEIGHTS[-1]:g}_tier0", f"T {WEIGHTS[-1]:g} · tier ball"),
                       (f"equiv_mismatch_T{WEIGHTS[-1]:g}_tier1", f"T {WEIGHTS[-1]:g} · tier kin")):
-        L.append(f"| {name} | "
+        L.append(f"| {name} | "  # append equivariance row
                  + " | ".join(f"{diag[diag['kind'] == k][col].mean():.2%}" for k in KINDS) + " |")
 
     # record-only section: rows that can never be adopted, and why
     L += ["", "## Record-only cell (never adopted in P9)", "",
           "The IDSSE ball is frozen while dead, so on ball-visible frames the ball-at-rest feature "
           "already reads the dead-ball label; this row cannot judge a kinematic term there.", ""]
-    L += _header()
+    L += _header()  # record table header
     for name in RECORD:  # one row per record-only cell
-        d = {}
+        d = {}  # deltas for this cell
         for kind, lab in TABLES:
-            r = record[(record["kind"] == kind) & (record["cell"] == name)].set_index("match_id")
-            diff = r[f"spell_f1_{lab}"] - cell_col(tables[kind], ref, f"spell_f1_{lab}")
+            r = record[(record["kind"] == kind) & (record["cell"] == name)].set_index("match_id")  # record rows for this kind
+            diff = r[f"spell_f1_{lab}"] - cell_col(tables[kind], ref, f"spell_f1_{lab}")  # record minus reference
             d[(kind, lab)] = (float(diff.mean()), int((diff > 0).sum()))  # mean Δ, wins/7
-        L.append(_row(name, d))
+        L.append(_row(name, d))  # append the record row
 
     q = diag[diag["kind"] == KINDS[0]]  # rows of the first mask kind
     # Q1–Q6 thresholds the target parity checks compare the provided match against
@@ -328,22 +328,22 @@ def build_report(res: Path = RES, hold: frozenset = frozenset()) -> tuple[str, d
           ".venv/bin/python -m tuning.kin_parity      # target parity checks, PASS / FAIL only",
           "```", ""]
     rule["firing"] = firing  # attach extras for main()
-    rule["pin"] = pin
+    rule["pin"] = pin  # attach pin for caller
     return "\n".join(L), rule  # report text + rule dict
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])  # doc first line
-    parser.add_argument("--hold", default="", help="comma list of K, T, slope")
-    args = parser.parse_args()
+    parser.add_argument("--hold", default="", help="comma list of K, T, slope")  # declare the hold flag
+    args = parser.parse_args()  # parse the command line
     hold = frozenset(h.strip() for h in args.hold.split(",") if h.strip())  # "K,T" → set
     if not hold <= {"K", "T", "slope"}:
         parser.error("--hold takes K, T and/or slope")  # only these may be held
-    text, rule = build_report(hold=hold)
+    text, rule = build_report(hold=hold)  # generate report with holds
     (RES / "report_stage9.md").write_text(text)  # write the report
-    rows = []
+    rows = []  # rows for the verdict CSV
     for step in STEPS:
-        r = rule[step]
+        r = rule[step]  # this step's verdict
         rows.append({"gate": step,  # one verdict row per step
                      "verdict": "HELD" if r["held"] else ("KEEP" if r["keep"] else "DROP"),
                      "cell": "" if r["held"] else cell_str(r["candidate"]["cell"], r["start"]),
@@ -353,8 +353,8 @@ def main() -> int:
                  "gain": round(rule.get("bundle_primary", 0.0), 4)})
     pd.DataFrame(rows).to_csv(RES / "stage9_verdicts.csv", index=False)  # machine-readable
     print(text)  # echo the report
-    return 0
+    return 0  # success
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == "__main__":  # run as script
+    sys.exit(main())  # exit with status

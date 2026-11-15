@@ -53,8 +53,8 @@ def run_checks(res: Path = RES) -> dict[str, bool]:
 
     ref = pd.read_csv(res / "stage9_diag.csv")  # IDSSE side of every threshold
     ref = ref[ref["q4_team_agreement"].notna()]  # keep matches with a Q4 value
-    if len(ref) != 7:
-        raise ValueError("stage9_diag.csv must carry the IDSSE side for seven matches")
+    if len(ref) != 7:  # all seven matches required
+        raise ValueError("stage9_diag.csv must carry the IDSSE side for seven matches")  # incomplete IDSSE reference
 
     arrays = D.load_arrays()  # provided match data
     graded = arrays.graded  # graded-frame mask
@@ -62,29 +62,29 @@ def run_checks(res: Path = RES) -> dict[str, bool]:
     base = base_series(arrays.players, arrays.players_s, arrays.slot_team, arrays.half, CFG)  # clean features
     kin = apply_model(dead_features(base, CFG), team_features(base, CFG), model)  # logits
 
-    ball_only = {**CFG, "kin_w_dead": 0.0, "kin_w_team": 0.0, "gate_kin_support": False}
+    ball_only = {**CFG, "kin_w_dead": 0.0, "kin_w_team": 0.0, "gate_kin_support": False}  # config with kinematics off
     labels, _ = run(ball_only)  # kinematic terms forced OFF
     alive = np.isin(labels, (CODE_H, CODE_A)) & graded  # graded H/A frames
 
-    out: dict[str, bool] = {}
+    out: dict[str, bool] = {}  # verdicts keyed by check
     speed = float(np.nanmedian(base["speed_med"][graded]))  # Q1: median player speed
-    out["Q1"] = 0.5 * ref["speed_med_p50"].min() <= speed <= 2.0 * ref["speed_med_p50"].max()
+    out["Q1"] = 0.5 * ref["speed_med_p50"].min() <= speed <= 2.0 * ref["speed_med_p50"].max()  # Q1 window check
 
     d_ok = graded & kin.dead_ok  # frames the dead model judges
-    dead_share = float((kin.dead_llr[d_ok] + float(model["dead"]["prior_logit"]) > 0).mean())
+    dead_share = float((kin.dead_llr[d_ok] + float(model["dead"]["prior_logit"]) > 0).mean())  # fraction with positive logit
     out["Q2"] = 0.20 <= dead_share <= 0.65  # Q2: positive-dead-logit share
 
     t_ok = graded & kin.team_ok  # frames the team model judges
     out["Q3"] = 0.30 <= float((kin.team_logit[t_ok] > 0).mean()) <= 0.70  # Q3: home share
 
     seen = alive & t_ok & np.isfinite(arrays.ball).all(axis=1)  # ball-visible judged frames
-    agree = float(((kin.team_logit[seen] > 0) == (labels[seen] == CODE_H)).mean())
+    agree = float(((kin.team_logit[seen] > 0) == (labels[seen] == CODE_H)).mean())  # match rate with ball-only
     out["Q4"] = agree >= ref["q4_team_agreement"].min() - 0.05  # Q4: weakest IDSSE − slack
 
     out["Q5"] = float(np.nanmean(base["n_vis"][graded])) >= 18.0  # Q5: visible slots
 
     track = build_ball_track(arrays.ball, arrays.half, CFG)  # ball-only track
-    ball_speed = _ball_speed_ms(track, CFG)
+    ball_speed = _ball_speed_ms(track, CFG)  # speed series for Q6
     sel = alive & np.isfinite(ball_speed)  # frames with a finite ball speed
     v = float(np.median(ball_speed[sel]))  # Q6: median ball speed
     out["Q6"] = (0.5 * ref["q6_ball_speed_p50"].min() <= v
@@ -94,21 +94,21 @@ def run_checks(res: Path = RES) -> dict[str, bool]:
 
 def held_components(verdicts: dict[str, bool]) -> list[str]:
     held = {c for q, ok in verdicts.items() if not ok for c in HOLDS[q]}  # failed checks
-    return sorted(held)
+    return sorted(held)  # sorted for stable reporting
 
 
 def main() -> int:
-    verdicts = run_checks()
+    verdicts = run_checks()  # execute all six checks
     for q in sorted(verdicts):
         print(f"{q} {NAMES[q]}: {'PASS' if verdicts[q] else 'FAIL'}")  # one line per check
-    held = held_components(verdicts)
+    held = held_components(verdicts)  # components to hold back
     print("held components: " + (", ".join(held) if held else "none"))  # for the operator
     pd.DataFrame([{"check": q, "name": NAMES[q],  # verdict table
                    "verdict": "PASS" if verdicts[q] else "FAIL",
                    "holds": "+".join(HOLDS[q])} for q in sorted(verdicts)]
                  ).to_csv(RES / "kin_parity.csv", index=False)
-    return 0
+    return 0  # success
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == "__main__":  # run as script
+    sys.exit(main())  # exit with status

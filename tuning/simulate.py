@@ -49,7 +49,7 @@ def mask_ball(ball: np.ndarray, run_lengths: np.ndarray, rng: np.random.Generato
     attempts = 0  # loop iterations used
     max_attempts = 200_000  # budget so an unreachable target can't hang
     while n_masked < target and attempts < max_attempts:  # fill until target or budget spent
-        attempts += 1
+        attempts += 1  # count this attempt
         length = int(rng.choice(run_lengths))  # sample one run length (with replacement)
         if length <= 1:
             continue  # skip trivial runs
@@ -63,10 +63,10 @@ def mask_ball(ball: np.ndarray, run_lengths: np.ndarray, rng: np.random.Generato
         blocked[start:start + length] = True  # claim these frames
         masked[start:start + length] = np.nan  # hide the ball there
         n_masked += length  # frames are non-overlapping, so count them fully
-        n_runs += 1
+        n_runs += 1  # one more run placed
     stats = {"masked_frames": n_masked, "masked_fraction": n_masked / n,  # summary of the mask
              "n_runs": n_runs, "attempts": attempts}
-    return masked, stats
+    return masked, stats  # masked ball plus its stats
 
 
 # ---------------- stage-4 phase cues (E2, dossier §7 pre-declared 2026-11-09) ----------------
@@ -119,7 +119,7 @@ def crowding_cue(players: np.ndarray, ball: np.ndarray, *, length_m: float,
     dist = np.hypot(dx, dy)  # player-to-ball distance in metres
     close = np.isfinite(dist) & (dist <= radius_m)  # players inside the radius
     cue[idx] = close.sum(axis=1) >= min_players  # crowding = enough close players
-    return cue
+    return cue  # crowding flags for this match
 
 
 def event_cue(rows: np.ndarray, n_frames: int, *, half_s: float = 2.0,
@@ -176,7 +176,7 @@ def map_event_rows(ts_us: np.ndarray, frame_id: np.ndarray, period: np.ndarray,
                     if d < best_d:
                         best_d, best_row = d, int(period_rows[p][cand])  # keep the closer row
         out[k] = best_row  # store nearest row (or -1)
-    return out
+    return out  # row per event, -1 if none
 
 
 # ---------------- stage-5 dead-cover placement (dossier §7 P7, pre-declared 2026-11-14) -----
@@ -205,12 +205,12 @@ def mask_ball_dead_cover(ball: np.ndarray, letters: np.ndarray, run_lengths: np.
     for start, stop in zip(starts, stops):
         if stop - start >= min_dead_frames and rng.random() < q:  # long enough and drawn
             blocked[start:stop] = True  # cover the whole dead run
-            covered_runs += 1
+            covered_runs += 1  # one more covered run
     goal = int(target_fraction * int(in_match.sum()))  # in-match frames left to hide
     n_masked = int((blocked & in_match).sum())  # already covered by dead runs
     attempts = 0  # loop iterations used
     while n_masked < goal and attempts < max_attempts:  # fill until goal or budget spent
-        attempts += 1
+        attempts += 1  # count this attempt
         length = int(rng.choice(run_lengths))  # sample a P5 run length
         if length <= 1:
             continue  # skip trivial runs
@@ -224,4 +224,4 @@ def mask_ball_dead_cover(ball: np.ndarray, letters: np.ndarray, run_lengths: np.
     stats = {"masked_frames": int(blocked.sum()),  # all blocked frames
              "masked_fraction": float(blocked[in_match].mean()) if in_match.any() else 0.0,  # in-match share
              "n_runs": covered_runs, "attempts": attempts}  # dead runs covered, attempts used
-    return masked, stats
+    return masked, stats  # masked ball plus its stats

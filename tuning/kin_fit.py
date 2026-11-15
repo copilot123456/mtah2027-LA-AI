@@ -43,15 +43,15 @@ def degrade_players(players: np.ndarray, players_s: np.ndarray, rng: np.random.G
                     ) -> tuple[np.ndarray, np.ndarray]:
     """Copies with every slot hidden in exponential runs so ~`share` of its frames vanish."""
     p, s = players.copy(), players_s.copy()  # copies; caller's arrays untouched
-    n, k = s.shape
+    n, k = s.shape  # frame and slot counts
     mean_gap = mean_run * (1.0 - share) / share  # visible gap mean hitting the target share
     for j in range(k):  # each player slot hidden independently
-        t = 0
+        t = 0  # cursor at first frame
         while t < n:
             t += int(rng.exponential(mean_gap)) + 1  # frames visible before the next run
             run = int(rng.exponential(mean_run)) + 1  # hidden run length
             p[t:t + run, j] = np.nan  # hide this slot for the run
-            s[t:t + run, j] = np.nan
+            s[t:t + run, j] = np.nan  # hide the speed too
             t += run  # continue after the run
     return p, s  # dropout-degraded copies
 
@@ -59,7 +59,7 @@ def degrade_players(players: np.ndarray, players_s: np.ndarray, rng: np.random.G
 def match_features(case, players=None, players_s=None) -> dict:
     """Feature matrices and training targets for one IDSSE match."""
     players = case.players if players is None else players  # clean tracks by default
-    players_s = case.players_s if players_s is None else players_s
+    players_s = case.players_s if players_s is None else players_s  # speeds follow the same default
     base = base_series(players, players_s, case.slot_team, case.half, CFG)  # per-frame features
     aligned = derive_letters_controlled(case.letters, hold_s=3.0)  # challenge letters, 3 s hold
     return {"x_dead": dead_features(base, CFG), "x_team": team_features(base, CFG),  # features
@@ -84,9 +84,9 @@ def fit_logistic(x: np.ndarray, y: np.ndarray, intercept: bool, l2: float = L2,
     for _ in range(iters):
         p = 1.0 / (1.0 + np.exp(-np.clip(z @ w, -30.0, 30.0)))  # sigmoid, clipped logits
         grad = z.T @ (p - y) / len(y) + l2 * w  # mean gradient + L2
-        hess = (z * (p * (1.0 - p))[:, None]).T @ z / len(y) + l2 * np.eye(len(w))
+        hess = (z * (p * (1.0 - p))[:, None]).T @ z / len(y) + l2 * np.eye(len(w))  # Gauss-Newton Hessian plus L2
         step = np.linalg.solve(hess, grad)  # Newton step
-        w = w - step
+        w = w - step  # apply the Newton step
         if np.abs(step).max() < 1e-10:
             break  # converged
     return w, mu, sd  # weights (bias last), scaling used
@@ -95,18 +95,18 @@ def fit_logistic(x: np.ndarray, y: np.ndarray, intercept: bool, l2: float = L2,
 def fit_models(feats: dict[str, dict], exclude: str | None = None) -> dict:
     """The model dict `src.kinematics.apply_model` reads, fitted on every match but `exclude`."""
     used = [m for m in feats if m != exclude]  # leave-one-match-out pool
-    xd, yd, xt, yt = [], [], [], []
+    xd, yd, xt, yt = [], [], [], []  # accumulators for both models
     for m in used:
-        f = feats[m]
+        f = feats[m]  # features of this match
         sel = np.flatnonzero(f["in_match"])[::STRIDE]  # every STRIDE-th in-match frame
         ok = np.isfinite(f["x_dead"][sel]).all(axis=1)  # drop NaN feature rows
-        xd.append(f["x_dead"][sel][ok])
-        yd.append(f["dead"][sel][ok].astype(np.float64))
+        xd.append(f["x_dead"][sel][ok])  # dead feature rows
+        yd.append(f["dead"][sel][ok].astype(np.float64))  # dead target rows
         sel = np.flatnonzero(f["alive"])[::STRIDE]  # alive frames for the team model
-        ok = np.isfinite(f["x_team"][sel]).all(axis=1)
-        xt.append(f["x_team"][sel][ok])
-        yt.append(f["home"][sel][ok].astype(np.float64))
-    xd, yd, xt, yt = np.vstack(xd), np.concatenate(yd), np.vstack(xt), np.concatenate(yt)
+        ok = np.isfinite(f["x_team"][sel]).all(axis=1)  # drop NaN feature rows
+        xt.append(f["x_team"][sel][ok])  # team feature rows
+        yt.append(f["home"][sel][ok].astype(np.float64))  # team target rows
+    xd, yd, xt, yt = np.vstack(xd), np.concatenate(yd), np.vstack(xt), np.concatenate(yt)  # pool all matches together
     wd, mud, sdd = fit_logistic(xd, yd, intercept=True)  # dead model with bias
     wt, _, sdt = fit_logistic(xt, yt, intercept=False)  # team model, no bias (antisymmetric)
     share = float(yd.mean())  # dead base rate → prior logit
@@ -124,19 +124,19 @@ def fit_models(feats: dict[str, dict], exclude: str | None = None) -> dict:
 
 
 def main() -> int:
-    feats = {}
+    feats = {}  # one entry per match
     for mid in MATCH_IDS:  # all 7 external matches
-        feats[mid] = match_features(load_match(mid))
-        print(f"{mid}: features ready", flush=True)
+        feats[mid] = match_features(load_match(mid))  # load match and build features
+        print(f"{mid}: features ready", flush=True)  # progress message
     model = fit_models(feats)  # fit on every match (no exclude)
     MODEL_PATH.write_text(json.dumps(model, indent=2) + "\n", encoding="utf-8")  # ship model
-    print(f"wrote {MODEL_PATH.relative_to(ROOT)}: dead rows {model['fit']['n_dead_rows']}, "
+    print(f"wrote {MODEL_PATH.relative_to(ROOT)}: dead rows {model['fit']['n_dead_rows']}, "  # report fitted row counts
           f"team rows {model['fit']['n_team_rows']}")
     for name in ("dead", "team"):
         print(f"  {name}: " + ", ".join(f"{f} {w:+.3f}" for f, w in  # coefficient readout
                                          zip(model[name]["features"], model[name]["w"])))
-    return 0
+    return 0  # success
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__ == "__main__":  # run as script
+    sys.exit(main())  # exit with status

@@ -26,8 +26,8 @@ import pandas as pd  # CSV read/write
 
 ROOT = Path(__file__).resolve().parents[1]  # repo root
 for p in (str(ROOT), str(ROOT / "evaluation")):  # expose repo + evaluation to imports
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    if p not in sys.path:  # avoid duplicate entries
+        sys.path.insert(0, p)  # make path importable
 
 import possession_metrics as pm  # noqa: E402  # official scoring helpers
 from config import CFG  # noqa: E402  # pitch and decoder config
@@ -99,10 +99,10 @@ def run_task(args) -> tuple[dict, list[dict], dict]:
     gate_row: dict = {"match_id": match_id, "kind": kind}  # one gate row per task
     for label, gt in (("orig", gt_orig), ("aligned", gt_aligned)):  # both label sets
         s_off, s_on = _score(gt, po), _score(gt, pn)  # score OFF and ON
-        gate_row[f"spell_f1_{label}_off"] = s_off["spell_f1"]
-        gate_row[f"spell_f1_{label}_on"] = s_on["spell_f1"]
-        gate_row[f"macro_f1_{label}_off"] = s_off["macro_f1"]
-        gate_row[f"macro_f1_{label}_on"] = s_on["macro_f1"]
+        gate_row[f"spell_f1_{label}_off"] = s_off["spell_f1"]  # OFF spell F1
+        gate_row[f"spell_f1_{label}_on"] = s_on["spell_f1"]  # ON spell F1
+        gate_row[f"macro_f1_{label}_off"] = s_off["macro_f1"]  # OFF macro F1
+        gate_row[f"macro_f1_{label}_on"] = s_on["macro_f1"]  # ON macro F1
     for p, v in FROZEN.items():
         gate_row[p] = v  # record the frozen cell in the row
 
@@ -117,7 +117,7 @@ def run_task(args) -> tuple[dict, list[dict], dict]:
         "base_all": np.ones(n, dtype=bool),  # every frame (baseline rate)
         "base_gt_d": gt_l == "D",  # all truly-D frames (baseline rate)
     }
-    audit_rows = []
+    audit_rows = []  # audit rows accumulate here
     for bucket, mask in buckets.items():
         if not mask.any():
             continue  # empty bucket -> nothing to record
@@ -130,7 +130,7 @@ def run_task(args) -> tuple[dict, list[dict], dict]:
 
     noise = {"match_id": match_id, "kind": kind, "raw": int(len(raw_sp)),  # real set-piece rows
              "noisy": int(len(sp)), "spurious": int(round(0.10 * len(raw_sp)))}  # after corruption
-    return gate_row, audit_rows, noise
+    return gate_row, audit_rows, noise  # all three task outputs
 
 
 def load_stage4_frozen(kind: str) -> pd.DataFrame:
@@ -152,10 +152,10 @@ def main() -> int:
     for mid in MATCH_IDS:  # 7 matches x 2 kinds = 14 ON decodes
         for kind in KINDS:
             g, a, nz = run_task((mid, kind, run_lengths))  # one task per pair
-            gate_rows.append(g)
-            audit_rows.extend(a)
-            noise_rows.append(nz)
-            print(f"[{len(gate_rows):2d}/14] {mid} {kind} "
+            gate_rows.append(g)  # store gate row
+            audit_rows.extend(a)  # store audit rows
+            noise_rows.append(nz)  # store noise counts
+            print(f"[{len(gate_rows):2d}/14] {mid} {kind} "  # progress counter
                   f"({time.time() - t0:.0f}s)", flush=True)
 
     on = pd.DataFrame(gate_rows)  # ON-side matrix
@@ -248,7 +248,7 @@ def main() -> int:
     ]
     for feat in FEATURES:
         row = summary.loc[feat]  # this feature's rates per bucket
-        cells = []
+        cells = []  # formatted bucket values
         for b in ("d_correct", "missed_d", "false_d", "base_all", "base_gt_d"):
             v = row[b] if b in summary.columns else np.nan  # missing bucket -> NaN
             cells.append(f"{v:.3f}" if np.isfinite(v) else "—")  # format or em-dash
@@ -267,17 +267,17 @@ def main() -> int:
         "```",
         "",
     ]
-    report = RES / "report_e7.md"
+    report = RES / "report_e7.md"  # report output path
     report.write_text("\n".join(lines), encoding="utf-8")  # write the markdown report
 
-    print("\n=== E7 GATE ===")
+    print("\n=== E7 GATE ===")  # gate section header
     for name, dm, n_pos, drift in table_lines:
         print(f"  {name:24s} {dm:+.4f}  ({n_pos}/7)  drift {drift:.6f}")  # one console line per table
-    print(f"VERDICT: {verdict}   (primary {primary_delta:+.4f}, {primary_pos}/7)")
-    print(f"wrote {RES / 'e7_gate.csv'}, e7_audit.csv, e7_noise.csv")
-    print(f"wrote {report}  ({time.time() - t0:.0f}s)")
-    return 0
+    print(f"VERDICT: {verdict}   (primary {primary_delta:+.4f}, {primary_pos}/7)")  # print the verdict
+    print(f"wrote {RES / 'e7_gate.csv'}, e7_audit.csv, e7_noise.csv")  # list written matrices
+    print(f"wrote {report}  ({time.time() - t0:.0f}s)")  # report path and runtime
+    return 0  # zero means success
 
 
 if __name__ == "__main__":  # module entry point
-    sys.exit(main())
+    sys.exit(main())  # run as a script
