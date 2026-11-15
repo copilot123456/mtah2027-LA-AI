@@ -17,16 +17,16 @@ computed from IDSSE itself (possession changes, crowded ball, TacklingGame event
 weights. The uniform path is unchanged and still reproduces the P5 masks bit-for-bit.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postponed annotation evaluation (PEP 563)
 
-import numpy as np
+import numpy as np  # array maths for masks and phase cues
 
 
 def empirical_run_lengths(graded_missing: np.ndarray) -> np.ndarray:
     """Lengths (frames) of True runs in a missing-ball mask."""
-    edges = np.diff(np.concatenate(([0], graded_missing.astype(np.int8), [0])))
-    starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
-    return stops - starts
+    edges = np.diff(np.concatenate(([0], graded_missing.astype(np.int8), [0])))  # +1 start, -1 end
+    starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)  # boundary frame indices
+    return stops - starts  # each run's length in frames
 
 
 def mask_ball(ball: np.ndarray, run_lengths: np.ndarray, rng: np.random.Generator,
@@ -40,31 +40,31 @@ def mask_ball(ball: np.ndarray, run_lengths: np.ndarray, rng: np.random.Generato
     dossier §7) the start frame is sampled ∝ `weights` instead of uniformly; the default
     `None` keeps the P5 behaviour byte-identical.
     """
-    n = len(ball)
-    masked = ball.copy()
-    blocked = np.zeros(n, dtype=bool)
-    n_masked = 0
-    n_runs = 0
-    target = int(target_fraction * n)
-    attempts = 0
-    max_attempts = 200_000
-    while n_masked < target and attempts < max_attempts:
+    n = len(ball)  # frames in this match
+    masked = ball.copy()  # work on a copy; input stays untouched
+    blocked = np.zeros(n, dtype=bool)  # frames already taken by a run
+    n_masked = 0  # frames hidden so far
+    n_runs = 0  # runs placed so far
+    target = int(target_fraction * n)  # frames to hide before stopping
+    attempts = 0  # loop iterations used
+    max_attempts = 200_000  # budget so an unreachable target can't hang
+    while n_masked < target and attempts < max_attempts:  # fill until target or budget spent
         attempts += 1
-        length = int(rng.choice(run_lengths))
+        length = int(rng.choice(run_lengths))  # sample one run length (with replacement)
         if length <= 1:
-            continue
+            continue  # skip trivial runs
         if weights is None:
-            start = int(rng.integers(0, n - length))
+            start = int(rng.integers(0, n - length))  # uniform start (P5 behaviour)
         else:
-            seg = np.asarray(weights, dtype=np.float64)[: n - length]
-            start = int(rng.choice(n - length, p=seg / seg.sum()))
+            seg = np.asarray(weights, dtype=np.float64)[: n - length]  # legal starts for this length
+            start = int(rng.choice(n - length, p=seg / seg.sum()))  # start sampled ∝ weight
         if blocked[start:start + length].any():
-            continue
-        blocked[start:start + length] = True
-        masked[start:start + length] = np.nan
-        n_masked += length
+            continue  # reject overlaps with earlier runs
+        blocked[start:start + length] = True  # claim these frames
+        masked[start:start + length] = np.nan  # hide the ball there
+        n_masked += length  # frames are non-overlapping, so count them fully
         n_runs += 1
-    stats = {"masked_frames": n_masked, "masked_fraction": n_masked / n,
+    stats = {"masked_frames": n_masked, "masked_fraction": n_masked / n,  # summary of the mask
              "n_runs": n_runs, "attempts": attempts}
     return masked, stats
 
@@ -73,11 +73,11 @@ def mask_ball(ball: np.ndarray, run_lengths: np.ndarray, rng: np.random.Generato
 
 def _dilate(mask: np.ndarray, radius: int) -> np.ndarray:
     """True where `mask` is true within ±radius frames."""
-    out = mask.copy()
-    for k in range(1, max(int(radius), 0) + 1):
-        out[k:] |= mask[:-k]
-        out[:-k] |= mask[k:]
-    return out
+    out = mask.copy()  # start from the input flags
+    for k in range(1, max(int(radius), 0) + 1):  # offsets 1..radius frames
+        out[k:] |= mask[:-k]  # spread each hit k frames forward
+        out[:-k] |= mask[k:]  # spread each hit k frames backward
+    return out  # widened flag array
 
 
 def possession_change_cue(letters: np.ndarray, *, half_s: float = 2.0,
@@ -88,14 +88,14 @@ def possession_change_cue(letters: np.ndarray, *, half_s: float = 2.0,
     or directly follows the other team. Original letters are used on purpose: they are
     the provider-faithful change points; E1's aligned set is a scoring interpretation.
     """
-    letters = np.asarray(letters, dtype=object)
-    alive = np.isin(letters, ("H", "A"))
-    change = np.zeros(len(letters), dtype=bool)
+    letters = np.asarray(letters, dtype=object)  # normalise letter array
+    alive = np.isin(letters, ("H", "A"))  # frames with a live team
+    change = np.zeros(len(letters), dtype=bool)  # raw change points, before widening
     if len(letters):
-        change[0] = alive[0]
+        change[0] = alive[0]  # a live first frame starts a spell
         if len(letters) > 1:
-            change[1:] = alive[1:] & (~alive[:-1] | (letters[1:] != letters[:-1]))
-    return _dilate(change, int(round(half_s * fps)))
+            change[1:] = alive[1:] & (~alive[:-1] | (letters[1:] != letters[:-1]))  # alive after dead, or team flip
+    return _dilate(change, int(round(half_s * fps)))  # widen to a ±half_s window
 
 
 def crowding_cue(players: np.ndarray, ball: np.ndarray, *, length_m: float,
@@ -106,38 +106,38 @@ def crowding_cue(players: np.ndarray, ball: np.ndarray, *, length_m: float,
     Metres use the CFG pitch dimensions — the same convention `emission._team_evidence`
     already applies to IDSSE. Ball missing -> false (the cue is a ball-anchored state).
     """
-    n = len(ball)
-    cue = np.zeros(n, dtype=bool)
-    has_ball = ~np.isnan(ball).any(axis=1)
+    n = len(ball)  # frames in the match
+    cue = np.zeros(n, dtype=bool)  # default: no crowding
+    has_ball = ~np.isnan(ball).any(axis=1)  # frames where a ball position exists
     if not has_ball.any():
-        return cue
-    idx = np.flatnonzero(has_ball)
-    b = ball[idx]
-    p = players[idx]
-    dx = (p[..., 0] - b[:, None, 0]) * length_m
-    dy = (p[..., 1] - b[:, None, 1]) * width_m
-    dist = np.hypot(dx, dy)
-    close = np.isfinite(dist) & (dist <= radius_m)
-    cue[idx] = close.sum(axis=1) >= min_players
+        return cue  # no ball anywhere -> cue stays all-False
+    idx = np.flatnonzero(has_ball)  # indices of those frames
+    b = ball[idx]  # ball positions there
+    p = players[idx]  # player positions there
+    dx = (p[..., 0] - b[:, None, 0]) * length_m  # x gap scaled to metres
+    dy = (p[..., 1] - b[:, None, 1]) * width_m  # y gap scaled to metres
+    dist = np.hypot(dx, dy)  # player-to-ball distance in metres
+    close = np.isfinite(dist) & (dist <= radius_m)  # players inside the radius
+    cue[idx] = close.sum(axis=1) >= min_players  # crowding = enough close players
     return cue
 
 
 def event_cue(rows: np.ndarray, n_frames: int, *, half_s: float = 2.0,
               fps: float = 25.0) -> np.ndarray:
     """cue 3: ±half_s around external event rows (TacklingGame; same a-priori window)."""
-    base = np.zeros(n_frames, dtype=bool)
-    r = np.asarray(rows, dtype=np.int64)
-    r = r[(r >= 0) & (r < n_frames)]
-    base[r] = True
-    return _dilate(base, int(round(half_s * fps)))
+    base = np.zeros(n_frames, dtype=bool)  # no events by default
+    r = np.asarray(rows, dtype=np.int64)  # event rows as integers
+    r = r[(r >= 0) & (r < n_frames)]  # drop rows outside the match
+    base[r] = True  # flag the event frames
+    return _dilate(base, int(round(half_s * fps)))  # widen to a ±half_s window
 
 
 def phase_weights(cues: list[np.ndarray], alpha: float) -> np.ndarray:
     """w_t = 1 + α·cue_t with cue_t = sum of the three indicators (α = 2 primary, 3 sensitivity)."""
-    cue = np.zeros(len(cues[0]), dtype=np.int64)
+    cue = np.zeros(len(cues[0]), dtype=np.int64)  # accumulator over frames
     for c in cues:
-        cue += np.asarray(c, dtype=np.int64)
-    return 1.0 + float(alpha) * cue.astype(np.float64)
+        cue += np.asarray(c, dtype=np.int64)  # sum the three indicators
+    return 1.0 + float(alpha) * cue.astype(np.float64)  # w_t = 1 + α·cue_t
 
 
 def map_event_rows(ts_us: np.ndarray, frame_id: np.ndarray, period: np.ndarray,
@@ -150,32 +150,32 @@ def map_event_rows(ts_us: np.ndarray, frame_id: np.ndarray, period: np.ndarray,
     `StartFrame`. Per-period median offset; nearest in-period timestamp; -1 when no
     anchor exists for an event's period. J03WPY anchor residual std ≈ 1.3 s (dossier §7).
     """
-    ts_us = np.asarray(ts_us, dtype=np.float64)
-    frame_id = np.asarray(frame_id)
-    period = np.asarray(period)
-    offsets: dict[int, list[float]] = {}
+    ts_us = np.asarray(ts_us, dtype=np.float64)  # timestamps as float µs
+    frame_id = np.asarray(frame_id)  # provider frame numbers
+    period = np.asarray(period)  # period id per row
+    offsets: dict[int, list[float]] = {}  # per-period epoch-minus-timestamp offsets
     for epoch_s, provider_frame in anchors:
-        i = int(np.searchsorted(frame_id, provider_frame))
+        i = int(np.searchsorted(frame_id, provider_frame))  # row of this anchor frame
         if i >= len(frame_id) or frame_id[i] != provider_frame:
-            continue
-        offsets.setdefault(int(period[i]), []).append(float(epoch_s) - ts_us[i] / 1e6)
-    out = np.full(len(event_epochs), -1, dtype=np.int64)
+            continue  # anchor frame not present -> skip it
+        offsets.setdefault(int(period[i]), []).append(float(epoch_s) - ts_us[i] / 1e6)  # record offset
+    out = np.full(len(event_epochs), -1, dtype=np.int64)  # default: unmapped (-1)
     if not offsets:
-        return out
-    median = {p: float(np.median(v)) for p, v in offsets.items()}
-    period_rows = {p: np.flatnonzero(period == p) for p in median}
-    period_ts = {p: ts_us[rows] for p, rows in period_rows.items()}
+        return out  # no anchors at all -> nothing maps
+    median = {p: float(np.median(v)) for p, v in offsets.items()}  # robust offset per period
+    period_rows = {p: np.flatnonzero(period == p) for p in median}  # row indices per period
+    period_ts = {p: ts_us[rows] for p, rows in period_rows.items()}  # their timestamps
     for k, epoch_s in enumerate(event_epochs):
-        best_d, best_row = np.inf, -1
+        best_d, best_row = np.inf, -1  # nearest row found so far
         for p, off in median.items():
-            t_rel = (float(epoch_s) - off) * 1e6
-            j = int(np.searchsorted(period_ts[p], t_rel))
+            t_rel = (float(epoch_s) - off) * 1e6  # event time on this period's clock
+            j = int(np.searchsorted(period_ts[p], t_rel))  # insertion point
             for cand in (j - 1, j):                # true nearest, robust to float noise
                 if 0 <= cand < len(period_rows[p]):
-                    d = abs(float(period_ts[p][cand]) - t_rel)
+                    d = abs(float(period_ts[p][cand]) - t_rel)  # gap to that row
                     if d < best_d:
-                        best_d, best_row = d, int(period_rows[p][cand])
-        out[k] = best_row
+                        best_d, best_row = d, int(period_rows[p][cand])  # keep the closer row
+        out[k] = best_row  # store nearest row (or -1)
     return out
 
 
@@ -194,34 +194,34 @@ def mask_ball_dead_cover(ball: np.ndarray, letters: np.ndarray, run_lengths: np.
     (0.5 moderate, 0.9 strong); it models a tracker that loses the ball when it leaves
     play, which the uniform and phase-weighted placements do not.
     """
-    letters = np.asarray(letters, dtype=object)
-    n = len(ball)
-    dead = letters == "D"
-    in_match = letters != "X"
-    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))
-    starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
-    blocked = np.zeros(n, dtype=bool)
-    covered_runs = 0
+    letters = np.asarray(letters, dtype=object)  # normalise letter array
+    n = len(ball)  # frames in the match
+    dead = letters == "D"  # dead-ball frames
+    in_match = letters != "X"  # frames that count toward the target
+    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))  # dead-run boundaries
+    starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)  # run start/stop frames
+    blocked = np.zeros(n, dtype=bool)  # every frame to hide (covers + P5 runs)
+    covered_runs = 0  # dead runs actually covered
     for start, stop in zip(starts, stops):
-        if stop - start >= min_dead_frames and rng.random() < q:
-            blocked[start:stop] = True
+        if stop - start >= min_dead_frames and rng.random() < q:  # long enough and drawn
+            blocked[start:stop] = True  # cover the whole dead run
             covered_runs += 1
-    goal = int(target_fraction * int(in_match.sum()))
-    n_masked = int((blocked & in_match).sum())
-    attempts = 0
-    while n_masked < goal and attempts < max_attempts:
+    goal = int(target_fraction * int(in_match.sum()))  # in-match frames left to hide
+    n_masked = int((blocked & in_match).sum())  # already covered by dead runs
+    attempts = 0  # loop iterations used
+    while n_masked < goal and attempts < max_attempts:  # fill until goal or budget spent
         attempts += 1
-        length = int(rng.choice(run_lengths))
+        length = int(rng.choice(run_lengths))  # sample a P5 run length
         if length <= 1:
-            continue
-        start = int(rng.integers(0, n - length))
+            continue  # skip trivial runs
+        start = int(rng.integers(0, n - length))  # uniform start (P5 placement)
         if blocked[start:start + length].any():
-            continue
-        blocked[start:start + length] = True
-        n_masked += int(in_match[start:start + length].sum())
-    masked = ball.copy()
-    masked[blocked] = np.nan
-    stats = {"masked_frames": int(blocked.sum()),
-             "masked_fraction": float(blocked[in_match].mean()) if in_match.any() else 0.0,
-             "n_runs": covered_runs, "attempts": attempts}
+            continue  # reject overlaps with existing coverage
+        blocked[start:start + length] = True  # claim these frames
+        n_masked += int(in_match[start:start + length].sum())  # count in-match frames only
+    masked = ball.copy()  # work on a copy
+    masked[blocked] = np.nan  # hide the ball on every blocked frame
+    stats = {"masked_frames": int(blocked.sum()),  # all blocked frames
+             "masked_fraction": float(blocked[in_match].mean()) if in_match.any() else 0.0,  # in-match share
+             "n_runs": covered_runs, "attempts": attempts}  # dead runs covered, attempts used
     return masked, stats
