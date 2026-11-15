@@ -937,6 +937,55 @@ the operator, per the guard protocol.
 - **Evaluator:** not run by the assistant. An adoption changes a code path, so a fourth
   guarded run is owed (operator only, band + flags, correctness gate, never a selector).
 
+##### P9 read (2026-11-14, same night — `stage9_*.csv`, `stage9_verdicts.csv`, `report_stage9.md`, `kin_parity.csv`)
+
+- **Run:** 1,210 s wall, 7 workers; 744 cells × 7 matches × 4 mask kinds, both label sets,
+  plus the record-only cell. **Harness pin: exact** — the reference cell reproduces the
+  stage-8 shipped rows with max |Δ| = 0. A one-match smoke run (eleven cells) preceded the
+  pass, after the pin; it selected nothing.
+- **C — KEEP `dwell_coalesce = True`.** Primary **+0.0143**, 7/7; positive on all eight
+  tables (+0.008 … +0.018).
+- **K — KEEP `kin_w_dead = 0.3`, gate tier kin.** Primary **+0.0167**, 7/7; all eight tables
+  positive (+0.012 … +0.095, largest where ball loss is tied to dead ball). Without the
+  gate tier the same weight gains +0.001 … +0.024: the gate reverts dead segments the ball
+  never showed. The gain is still rising at the grid edge (0.3); the grid is not extended
+  after the read.
+- **T — KEEP `kin_w_team = 0.03`, gate tier kin.** Primary **+0.0910**, 7/7; +0.019 … +0.091
+  on six tables, **−0.009 / −0.014 (1/7) on the two `cover_q90` tables** — inside the
+  pinned no-harm bound (−0.02), and the three weights are tied within 0.005 on the
+  worst case, so the smallest is kept. Reading: when the ball is lost almost only during
+  stoppages there is little live play without a ball for a team prior to help.
+- **S — DROP.** Maximin candidate 0.80 s constant: primary +0.0007 (3/7). After K and T the
+  mean team-switch latency is already +2.6 / +1.9 / +0.1 / −3.1 frames; sloped cells gain
+  up to +0.004 on the primary table, below the step bar. `switch_delay_s` stays 0.64,
+  slope 0.
+- **Bundle (C + K 0.3 + T 0.03, tier kin) vs the reference — passes the bar.** Primary
+  **+0.1220**, 7/7; all eight tables +0.083 … +0.122, 7/7 on each. Levels (aligned,
+  7-match mean): uniform 0.4095 → 0.5204, phase_a2 0.3971 → 0.5191, cover_q50 0.3810 →
+  0.4960, cover_q90 0.3821 → 0.4744. Predicted dead share 0.47 / 0.44 / 0.25 / 0.07 →
+  0.42 / 0.42 / 0.39 / 0.35 (true ≈ 0.45).
+- **External firing:** share of in-match frames changed per match — C alone 1.3 … 2.6 %,
+  K alone 4.3 … 38.4 %, T alone 10.6 … 33.1 %, bundle 17.4 … 41.6 %.
+- **Team-swap mismatch:** reference 3.6–11.4 %; T 0.3 with tier kin 0.3–0.5 %.
+- **Record-only `R_kin_all`:** −0.002 under uniform / phase_a2, +0.007 / +0.012 under the
+  cover masks — the bed cannot judge the term on ball-visible frames, as pinned.
+- **Shipped model:** `src/kin_model.json`, fitted on all seven matches (200,427 dead rows,
+  110,624 team rows).
+- **Target parity checks (PASS / FAIL only):** Q1 speed scale PASS · Q2 dead share PASS ·
+  Q3 team balance PASS · Q4 team agreement PASS · Q5 visible players PASS · Q6 ball speed
+  scale PASS. No component held by a check.
+- **Own-output checks (buckets only):** C alone "< 2 %", K alone "> 20 %", T alone
+  "10–20 %", bundle "> 20 %". No step exceeds 3× its external firing rate, but the bundle
+  is above 20 %, so by the pinned parity hold **the adoption is HELD for the operator.**
+  Nothing was adopted: `config.py` keeps every P9 key OFF, `LA+AI.csv` is unchanged (md5
+  `de14eb1ccb75d9cd713789da4abde664`), no evaluator run is owed.
+- **If the operator releases the hold:** set the four keys, regenerate, validator, tests,
+  documents, then a fourth guarded run (operator only, band + flags, correctness gate).
+- **Limits to state with it:** the models are fitted on seven Bundesliga matches tracked by
+  a different system; the parity checks say the provided match looks alike to the model on
+  six coarse statistics, not that the gain transfers. `kin_w_dead` sits at the grid edge.
+  T costs about 0.01 if ball loss is almost entirely dead-ball loss.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state

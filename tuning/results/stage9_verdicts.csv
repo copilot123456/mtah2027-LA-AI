@@ -1,0 +1,6 @@
+gate,verdict,cell,gain
+C,KEEP,coalesce on,0.0143
+K,KEEP,K 0.3 · tier kin,0.0167
+T,KEEP,T 0.03,0.091
+S,DROP,delay 0.8 s,0.0007
+bundle,ADOPT,coalesce on · K 0.3 · T 0.03 · tier kin,0.122

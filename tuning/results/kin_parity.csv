@@ -1,0 +1,7 @@
+check,name,verdict,holds
+Q1,speed scale,PASS,K+T
+Q2,dead share,PASS,K
+Q3,team balance,PASS,T
+Q4,team agreement,PASS,T
+Q5,visible players,PASS,K+T
+Q6,ball speed scale,PASS,slope

@@ -311,3 +311,93 @@ def test_stage9_grid_is_the_pinned_factorial():
     assert DELAYS == [0.64, 0.80, 0.96, 1.12] and SLOPES == [0.0, 0.03, 0.06]
     assert not any(c["gate_kin_support"] and c["kin_w_dead"] == 0 and c["kin_w_team"] == 0
                    for c in cells)
+
+
+def test_shipped_model_is_the_pinned_shape():
+    from src.kinematics import load_model
+
+    model = load_model()
+    assert tuple(model["dead"]["features"]) == DEAD_FEATURES
+    assert tuple(model["team"]["features"]) == TEAM_FEATURES
+    assert set(model["team"]) == {"features", "sd", "w"}          # no intercept, no centring
+    for part, keys in (("dead", ("mu", "sd", "w")), ("team", ("sd", "w"))):
+        for k in keys:
+            assert np.isfinite(model[part][k]).all() and len(model[part][k]) == len(
+                model[part]["features"])
+    assert len(model["fit"]["matches"]) == 7 and model["fit"]["source"].startswith("IDSSE")
+
+
+def _synthetic_tables(effect):
+    import pandas as pd
+
+    from tuning.idsse import MATCH_IDS
+    from tuning.stage5 import KINDS
+    from tuning.stage9 import P_PARAMS, p9_cells
+
+    rows = []
+    for c in p9_cells():
+        for i, m in enumerate(MATCH_IDS):
+            v = 0.40 + effect(c) + 0.001 * i
+            rows.append({**c, "match_id": m, "spell_f1_orig": v, "spell_f1_aligned": v})
+    table = pd.DataFrame(rows).set_index(P_PARAMS + ["match_id"]).sort_index()
+    return {k: table for k in KINDS}
+
+
+def _planted(c):
+    k = {0.0: 0.0, 0.03: 0.004, 0.1: 0.020, 0.3: 0.021}[c["kin_w_dead"]]
+    t = {0.0: 0.0, 0.03: 0.0, 0.1: -0.01, 0.3: -0.03}[c["kin_w_team"]]
+    return (0.01 * c["dwell_coalesce"] + k * (1.0 if c["gate_kin_support"] else 0.2) + t
+            + (0.006 if c["switch_delay_s"] == 0.96 else 0.0)
+            + 0.002 * (c["switch_delay_slope"] > 0))
+
+
+def test_gate9_rule_keeps_steps_in_order_with_the_pinned_tie_break():
+    from tuning import gate9
+
+    rule = gate9.apply_rule(_synthetic_tables(_planted))
+    assert rule["C"]["keep"] and rule["K"]["keep"] and rule["S"]["keep"]
+    assert not rule["T"]["keep"]
+    bundle = rule["bundle"]
+    assert bundle["kin_w_dead"] == 0.1 and bundle["gate_kin_support"] is True   # 0.3 is a tie
+    assert bundle["kin_w_team"] == 0.0
+    assert bundle["switch_delay_s"] == 0.96 and bundle["switch_delay_slope"] == 0.0
+    assert rule["adopt"] and abs(rule["bundle_primary"] - 0.036) < 1e-9
+    alone = gate9.step_alone(rule, "K")
+    assert alone["kin_w_dead"] == 0.1 and alone["dwell_coalesce"] is False
+
+
+def test_gate9_hold_switches_a_component_off_and_re_reads():
+    from tuning import gate9
+
+    tables = _synthetic_tables(_planted)
+    held = gate9.apply_rule(tables, frozenset({"K"}))
+    assert held["K"]["held"] and held["bundle"]["kin_w_dead"] == 0.0
+    assert held["bundle"]["gate_kin_support"] is False
+    assert not held["adopt"]                                      # 0.016 is below the bar
+    no_slope = gate9.candidates("S", dict(gate9.REFERENCE), frozenset({"slope"}))
+    assert all(c["switch_delay_slope"] == 0.0 for c in no_slope) and len(no_slope) == 3
+    assert len(gate9.candidates("S", dict(gate9.REFERENCE), frozenset())) == 11
+
+
+def test_committed_stage9_read():
+    """The recorded read: C, K, T kept, S dropped, bundle passes the bar on all 8 tables.
+    The adoption itself is HELD for the operator (own-output bucket > 20 %, dossier §7 P9),
+    so the shipped config still has every P9 key OFF."""
+    from pathlib import Path
+
+    import pytest
+
+    from tuning import gate9
+
+    if not (Path(gate9.RES) / "stage9_uniform.csv").exists():
+        pytest.skip("stage-9 matrices not present")
+    tables = gate9.load_tables()
+    assert gate9.harness_pin(tables) <= gate9.PIN_TOL
+    rule = gate9.apply_rule(tables)
+    assert rule["C"]["keep"] and rule["K"]["keep"] and rule["T"]["keep"]
+    assert not rule["S"]["keep"]
+    bundle = rule["bundle"]
+    assert (bundle["dwell_coalesce"], bundle["kin_w_dead"], bundle["kin_w_team"],
+            bundle["gate_kin_support"]) == (True, 0.3, 0.03, True)
+    assert rule["adopt"] and rule["bundle_primary"] > 0.02 and rule["bundle_wins"] == 7
+    assert all(v[0] > 0.08 and v[1] == 7 for v in rule["bundle_deltas"].values())
