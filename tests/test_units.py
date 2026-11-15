@@ -25,23 +25,27 @@ def _walkers(n=4000, k=22, speed_ms=2.0, seed=0):
 
 
 def test_factor_is_one_for_metres_per_second():
+    """Metre-per-second data yields factor 1."""
     players, true_ms = _walkers()
     assert speed_ratio(players, true_ms) == pytest.approx(1.0, rel=1e-6)
     assert speed_unit_factor(players, true_ms) == 1.0
 
 
 def test_factor_is_3_6_for_kilometres_per_hour():
+    """Kilometre-per-hour data is detected as 3.6x."""
     players, true_ms = _walkers()
     assert speed_unit_factor(players, true_ms * 3.6) == pytest.approx(3.6)
 
 
 def test_ambiguous_units_raise():
+    """Neither m/s nor km/h matches: the check raises."""
     players, true_ms = _walkers()
     with pytest.raises(ValueError, match="neither m/s nor km/h"):
         speed_unit_factor(players, true_ms * 2.0)
 
 
 def test_missing_slots_do_not_break_the_ratio():
+    """Tracker NaNs do not break unit detection."""
     players, true_ms = _walkers()
     players = players.copy()
     players[::7, :5] = np.nan                       # tracker dropouts
@@ -55,6 +59,7 @@ def test_provided_match_reports_metres_per_second(arrays):
 
 
 def test_idsse_loader_returns_metres_per_second():
+    """The external IDSSE loader returns m/s."""
     from tuning.idsse import load_match
 
     match_id = MATCH_IDS[0]
@@ -63,8 +68,10 @@ def test_idsse_loader_returns_metres_per_second():
     case = load_match(match_id)
     assert case.info["speed_units"] == "m/s"
     assert speed_unit_factor(case.players, case.players_s) == 1.0
+    # live-play players only
     alive = np.isin(case.letters, ("H", "A"))
     counts = np.sum(np.isfinite(case.players_s), axis=1)
+    # mean speed across visible players
     mean_speed = np.nansum(case.players_s, axis=1) / np.maximum(counts, 1)
     # mean player speed in live play is a couple of m/s, never the ~8 of a km/h column
     assert 1.5 < float(np.median(mean_speed[alive])) < 3.5

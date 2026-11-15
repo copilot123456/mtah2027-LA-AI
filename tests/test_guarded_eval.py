@@ -7,6 +7,7 @@ from tuning.guarded_eval import band_and_flags, count_bucket
 
 
 def _report(mid, poss=17, f1d=0.5, f1h=0.6, f1a=0.55, mean_lat=0.0):
+    """Minimal evaluator report for the wrapper."""
     return {
         "spell_bootstrap_low": mid - 0.01,
         "spell_bootstrap_high": mid + 0.01,
@@ -19,6 +20,7 @@ def _report(mid, poss=17, f1d=0.5, f1h=0.6, f1a=0.55, mean_lat=0.0):
 
 
 def test_band_boundaries_plan_1():
+    """Bands: A >= 0.43, B >= 0.30, C >= 0.15, else D."""
     assert band_and_flags(_report(0.43))[0] == "A"
     assert band_and_flags(_report(0.4299))[0] == "B"
     assert band_and_flags(_report(0.30))[0] == "B"
@@ -28,6 +30,7 @@ def test_band_boundaries_plan_1():
 
 
 def test_count_bucket_edges():
+    """Count bucket edges are inclusive."""
     assert count_bucket(10) == "<=10"
     assert count_bucket(11) == "11-13"
     assert count_bucket(13) == "11-13"
@@ -39,6 +42,7 @@ def test_count_bucket_edges():
 
 
 def test_f1_d_and_balance_flags():
+    """F1-D and balance flags trip below 0.30."""
     band, flags = band_and_flags(_report(0.35, f1d=0.3))
     assert flags["f1_D"] == "normal"
     _, flags = band_and_flags(_report(0.35, f1d=0.299))
@@ -47,11 +51,14 @@ def test_f1_d_and_balance_flags():
     assert flags["balance"] == "normal"
     _, flags = band_and_flags(_report(0.35, f1h=0.299))
     assert flags["balance"] == "collapsed"
+    # 0.35 sits in band B
     assert band == "B"
 
 
 def test_latency_flag_uses_tight_tau():
+    """Latency flag reads the mean against the tight tau."""
     _, flags = band_and_flags(_report(0.35, mean_lat=12.0))
+    # within +/-12 counts as on time
     assert flags["latency"] == "none"
     _, flags = band_and_flags(_report(0.35, mean_lat=-12.0))
     assert flags["latency"] == "none"
@@ -62,6 +69,7 @@ def test_latency_flag_uses_tight_tau():
 
 
 def test_missing_latency_reads_as_none():
+    """Missing latency data reads as no flag."""
     report = _report(0.35)
     report["transitions"] = {"25": {}}
     _, flags = band_and_flags(report)

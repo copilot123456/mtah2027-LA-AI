@@ -20,6 +20,7 @@ def _seq(*spec):
 
 
 def test_short_adjacent_run_is_absorbed_by_the_preceding_team():
+    """A sub-T control run folds into the preceding team."""
     original = _seq(("H", 10), ("A", 2), ("D", 5))
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     assert (out[: 10 * FPS] == "H").all()
@@ -29,12 +30,14 @@ def test_short_adjacent_run_is_absorbed_by_the_preceding_team():
 
 
 def test_run_at_or_above_t_is_a_genuine_possession_change():
+    """A run at exactly T counts as a real change."""
     original = _seq(("H", 10), ("A", 3), ("H", 10))   # exactly T = 3 s
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     assert (out[10 * FPS:13 * FPS] == "A").all(), "shorter than T is strict: ==T is kept"
 
 
 def test_first_alive_run_after_a_stoppage_is_never_absorbed():
+    """The first run after a stoppage keeps its team."""
     original = _seq(("H", 10), ("D", 6), ("A", 1), ("H", 10))
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     assert (out[10 * FPS:16 * FPS] == "D").all(), "stoppage untouched"
@@ -43,6 +46,7 @@ def test_first_alive_run_after_a_stoppage_is_never_absorbed():
 
 
 def test_chaining_folds_consecutive_short_runs_into_one_possession():
+    """Consecutive short flips chain into one possession."""
     original = _seq(("H", 10), ("A", 1), ("H", 1), ("A", 1), ("D", 5))
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     assert (out[: 13 * FPS] == "H").all(), "all three short flips chain into H"
@@ -50,6 +54,7 @@ def test_chaining_folds_consecutive_short_runs_into_one_possession():
 
 
 def test_long_change_then_short_flip_folds_into_the_new_team():
+    """A short flip after a long change folds into the new team."""
     original = _seq(("H", 10), ("A", 10), ("H", 2))
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     assert (out[10 * FPS:20 * FPS] == "A").all(), "genuine change stands"
@@ -57,6 +62,7 @@ def test_long_change_then_short_flip_folds_into_the_new_team():
 
 
 def test_dead_and_outside_frames_never_change():
+    """Dead/X frames never change; only alive runs may."""
     original = _seq(("D", 4), ("X", 3), ("D", 4))
     out = derive_letters_controlled(original, FPS, hold_s=3.0)
     np.testing.assert_array_equal(out, original)

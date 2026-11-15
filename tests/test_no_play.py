@@ -16,6 +16,7 @@ T = 10 * FPS  # 250 frames = cfg no_play_s * fps
 
 
 def test_run_at_threshold_becomes_d_including_its_first_seconds():
+    """A run exactly at the threshold becomes D in full."""
     n = 500
     activity = np.full(n, 5.0)
     activity[100:100 + T] = 0.5                      # exactly no_play_s of low activity
@@ -29,6 +30,7 @@ def test_run_at_threshold_becomes_d_including_its_first_seconds():
 
 
 def test_short_low_activity_run_is_untouched():
+    """One frame short of the threshold: nothing changes."""
     n = 300
     activity = np.full(n, 5.0)
     activity[50:50 + T - 1] = 0.5                    # one frame short of the threshold
@@ -39,6 +41,7 @@ def test_short_low_activity_run_is_untouched():
 
 
 def test_flag_off_is_a_noop():
+    """Rule off: no relabelling at all."""
     activity = np.zeros(300)                         # low everywhere would qualify
     labels = np.full(300, CODE_H, dtype=np.int8)
 
@@ -47,6 +50,7 @@ def test_flag_off_is_a_noop():
 
 
 def test_nonfinite_activity_breaks_runs():
+    """A NaN splits the run; neither half reaches the threshold."""
     n = 600
     activity = np.full(n, 5.0)
     activity[100:100 + T - 10] = 0.5                 # 240 frames (9.6 s) low
@@ -77,7 +81,7 @@ def test_real_pre_kickoff_window_is_mostly_d_when_enabled(arrays):
     on = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": True})
     off = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": False})
 
-    window = slice(110_808, 113_742)
+    window = slice(110_808, 113_742)                 # FAQ pre-kickoff window
     d_on = float((on.labels[window] == CODE_D).mean())
     d_off = float((off.labels[window] == CODE_D).mean())
     assert d_on >= 0.85, f"pre-kickoff window should be >=85% D with the rule on (got {d_on:.1%})"

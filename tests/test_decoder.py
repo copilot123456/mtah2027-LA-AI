@@ -39,6 +39,7 @@ def _emission_from_labels(codes, spread=6.0):
 
 
 def _brute_force_score(log_e, trans):
+    """Best score over every possible 3^T path."""
     best = -np.inf
     for path in itertools.product(range(3), repeat=len(log_e)):
         score = log_e[0, path[0]]
@@ -49,6 +50,7 @@ def _brute_force_score(log_e, trans):
 
 
 def _path_score(log_e, trans, path):
+    """Score of one fixed label path."""
     score = log_e[0, path[0]]
     for t in range(1, len(log_e)):
         score += trans[path[t - 1], path[t]] + log_e[t, path[t]]
@@ -56,6 +58,7 @@ def _path_score(log_e, trans, path):
 
 
 def test_zero_penalties_equals_argmax():
+    """No switch cost: each frame keeps its own best label."""
     rng = np.random.default_rng(7)
     log_e = rng.normal(size=(60, 3)) * 3.0
     trans = np.zeros((3, 3))
@@ -64,15 +67,18 @@ def test_zero_penalties_equals_argmax():
 
 
 def test_huge_penalties_give_one_segment():
+    """Huge switch cost: the whole match becomes one segment."""
     rng = np.random.default_rng(3)
     log_e = rng.normal(size=(200, 3)) * 4.0
     trans = transition_log({"switch_pen": 1e9, "dead_pen": 1e9})
     path = viterbi(log_e, trans)
     assert len(np.unique(path)) == 1
+    # the constant label with the best total evidence
     assert path[0] == np.argmax(log_e.sum(axis=0))
 
 
 def test_matches_brute_force_small_T():
+    """Decoder score matches exhaustive search on short sequences."""
     rng = np.random.default_rng(11)
     cfg = CFG
     trans = transition_log(cfg)
@@ -112,6 +118,7 @@ def test_gating_reverts_unsupported_switch():
 
 
 def test_gating_keeps_atd_supported_switch():
+    """Switch gate keeps a boundary backed by ATD frames."""
     labels = np.array([CODE_H] * 10 + [CODE_A] * 10, dtype=np.int8)
     source = np.full(20, SOURCE_ATD, dtype=np.int8)   # ATD frames favouring A at the boundary
     log_e = _emission_from_labels([CODE_H] * 10 + [CODE_A] * 10)
@@ -131,6 +138,7 @@ def test_gating_support_looks_at_emission_not_just_presence():
 
 
 def test_gating_disabled_passthrough():
+    """Gate off: labels pass through untouched."""
     labels = np.array([CODE_H] * 10 + [CODE_A] * 10, dtype=np.int8)
     source = np.full(20, SOURCE_NONE, dtype=np.int8)
     log_e = _emission_from_labels([CODE_H] * 10 + [CODE_A] * 10)
@@ -165,6 +173,7 @@ def test_gating_support_window_is_half_open():
 
 
 def test_gating_first_segment_is_never_reverted():
+    """The opening segment is never reverted away."""
     labels = np.array([CODE_A] * 5 + [CODE_H] * 30, dtype=np.int8)
     source = np.full(35, SOURCE_NONE, dtype=np.int8)
     log_e = _emission_from_labels([CODE_H] * 35)
@@ -174,17 +183,20 @@ def test_gating_first_segment_is_never_reverted():
 
 
 def test_min_dwell_all_short_collapses_to_one_segment():
+    """Min-dwell: every spell too short merges into one."""
     labels = np.array([CODE_H] * 3 + [CODE_A] * 4 + [CODE_D] * 2 + [CODE_H] * 3, dtype=np.int8)
     out = enforce_min_dwell(labels, min_len=25)
     assert len(np.unique(out)) == 1
 
 
 def test_min_dwell_one_is_a_noop():
+    """Min-dwell of 1 frame changes nothing."""
     labels = np.array([CODE_H, CODE_A, CODE_D, CODE_H], dtype=np.int8)
     np.testing.assert_array_equal(enforce_min_dwell(labels, min_len=1), labels)
 
 
 def test_decode_rejects_non_contiguous_half():
+    """A half split by a hole is rejected."""
     t_len = 40
     log_e = _emission_from_labels([CODE_H] * t_len)
     em = Emission(log_e=log_e, conf=np.ones(t_len), p_d=np.full(t_len, 0.2), ev=np.ones((t_len, 2)),
@@ -197,6 +209,7 @@ def test_decode_rejects_non_contiguous_half():
 
 
 def test_min_dwell_merges_short_into_longer_neighbour():
+    """Min-dwell merges a short spell into its longer neighbour."""
     # H(60) A(10) D(30) -> A (10 < 25) merges into the longer neighbour H(60)
     labels = np.array([CODE_H] * 60 + [CODE_A] * 10 + [CODE_D] * 30, dtype=np.int8)
     out = enforce_min_dwell(labels, min_len=25)
@@ -206,24 +219,29 @@ def test_min_dwell_merges_short_into_longer_neighbour():
 
 
 def test_min_dwell_edge_segment_merges_inward():
+    """A short spell at the edge merges inward."""
     labels = np.array([CODE_A] * 5 + [CODE_H] * 80, dtype=np.int8)
     out = enforce_min_dwell(labels, min_len=25)
     assert (out == CODE_H).all()
 
 
 def test_min_dwell_noop_when_all_long():
+    """Min-dwell leaves already-long spells alone."""
     labels = np.array([CODE_H] * 40 + [CODE_A] * 40, dtype=np.int8)
     out = enforce_min_dwell(labels, min_len=25)
     np.testing.assert_array_equal(out, labels)
 
 
 def test_segment_stats_counts():
+    """Stats count segments, possessions and shares."""
     labels = np.array([CODE_H] * 50 + [CODE_A] * 12 + [CODE_D] * 40, dtype=np.int8)
     stats = segment_stats(labels, fps=25)
     assert stats["n_segments"] == 3
     assert stats["n_possessions"] == 2
     assert stats["median_len_s"] == pytest.approx(40 / 25)
+    # one of three segments is sub-second
     assert stats["subsecond_share"] == pytest.approx(1 / 3)
+    # D frames over all frames
     assert stats["d_share"] == pytest.approx(40 / 102)
 
 

@@ -29,6 +29,7 @@ def _gap_case():
 
 
 def test_revert_mode_swallows_a_supported_segment():
+    """Revert mode drops the segment when its boundary sits in a gap."""
     labels, source, log_e = _gap_case()
     out, reverted = apply_gating(labels, source, log_e, {**CFG, "gate_mode": "revert"})
     assert reverted == 1
@@ -36,13 +37,16 @@ def test_revert_mode_swallows_a_supported_segment():
 
 
 def test_move_mode_keeps_the_segment_from_its_first_support():
+    """Move mode slides the boundary to the first supporting frame."""
     labels, source, log_e = _gap_case()
     out, reverted = apply_gating(labels, source, log_e, {**CFG, "gate_mode": "move"})
     assert reverted == 0
+    # boundary moved from gap start (60) to first A evidence (140)
     assert (out[:140] == H).all() and (out[140:] == A).all()
 
 
 def test_move_mode_still_merges_a_segment_without_any_support():
+    """Move mode still merges a segment with no support at all."""
     labels, source, log_e = _gap_case()
     log_e[140:] = _log_e(np.full(60, H))      # the ball never favours A
     out, reverted = apply_gating(labels, source, log_e, {**CFG, "gate_mode": "move"})
@@ -50,6 +54,7 @@ def test_move_mode_still_merges_a_segment_without_any_support():
 
 
 def test_move_mode_leaves_supported_boundaries_alone():
+    """Both modes leave an already-supported boundary alone."""
     labels = np.array([H] * 100 + [A] * 100, dtype=np.int8)
     source = np.full(200, SOURCE_ATD, dtype=np.int8)
     log_e = _log_e(labels)
@@ -59,6 +64,7 @@ def test_move_mode_leaves_supported_boundaries_alone():
 
 
 def test_gap_placement_middle_and_noop():
+    """Gap placement centres the switch in the gap; frac 0 is a no-op."""
     labels = np.array([H] * 140 + [A] * 60, dtype=np.int8)     # boundary at the gap end
     source = np.full(200, SOURCE_ATD, dtype=np.int8)
     source[60:140] = SOURCE_NONE
@@ -70,6 +76,7 @@ def test_gap_placement_middle_and_noop():
 
 
 def test_gap_placement_ignores_visible_and_dead_boundaries():
+    """Only ball-gap boundaries move; visible and dead ones stay."""
     source = np.full(200, SOURCE_ATD, dtype=np.int8)
     source[60:140] = SOURCE_NONE
     visible = np.array([H] * 30 + [A] * 170, dtype=np.int8)
@@ -79,6 +86,7 @@ def test_gap_placement_ignores_visible_and_dead_boundaries():
 
 
 def test_gap_placement_never_erases_a_segment():
+    """Gap placement never erases a whole segment."""
     labels = np.array([H] * 5 + [A] * 3 + [H] * 192, dtype=np.int8)
     source = np.full(200, SOURCE_NONE, dtype=np.int8)           # one gap over everything
     out = place_gap_switches(labels, source, 0.5)
@@ -87,6 +95,7 @@ def test_gap_placement_never_erases_a_segment():
 
 
 def test_d_minimum_merges_short_dead_runs_only():
+    """D min-dwell merges short stoppages and keeps long ones."""
     labels = np.array([H] * 100 + [D] * 60 + [H] * 100 + [D] * 200 + [A] * 100, dtype=np.int8)
     out = enforce_d_min_dwell(labels, 75)
     assert (out[:260] == H).all()             # H D H -> one possession
@@ -95,23 +104,28 @@ def test_d_minimum_merges_short_dead_runs_only():
 
 
 def test_d_minimum_between_two_teams_goes_to_the_longer_neighbour():
+    """A stoppage shorter than the minimum joins the longer side."""
     labels = np.array([H] * 100 + [D] * 60 + [A] * 300, dtype=np.int8)
     out = enforce_d_min_dwell(labels, 75)
     assert (out[:100] == H).all() and (out[100:] == A).all()
+    # 60-frame stoppage meets a 50 minimum: untouched
     untouched = enforce_d_min_dwell(labels, 50)
     assert (untouched == labels).all()
 
 
 def test_delay_moves_ball_placed_team_switches_only():
+    """Switch delay shifts ball-placed team switches, not D edges."""
     labels = np.array([H] * 100 + [A] * 100 + [D] * 100 + [H] * 100, dtype=np.int8)
     source = np.full(400, SOURCE_ATD, dtype=np.int8)
     out = delay_team_switches(labels, source, 12)
+    # H->A boundary delayed by 12 frames
     assert (out[:112] == H).all() and (out[112:200] == A).all()
     assert (out[200:] == labels[200:]).all()   # into and out of D: untouched
     assert delay_team_switches(labels, source, 0) is labels
 
 
 def test_delay_is_capped_and_skips_gap_boundaries():
+    """Delay is capped by segment size and skipped next to gaps."""
     labels = np.array([H] * 100 + [A] * 10 + [H] * 100, dtype=np.int8)
     source = np.full(210, SOURCE_ATD, dtype=np.int8)
     out = delay_team_switches(labels, source, 12)
@@ -126,6 +140,7 @@ def test_delay_is_capped_and_skips_gap_boundaries():
 # ---------------- stage 8: grid, rule, committed verdicts ----------------
 
 def test_stage8_grid_is_the_pinned_factorial():
+    """Stage-8 grid is the pinned 72-cell factorial."""
     from tuning.stage8 import REFERENCE, p8_cells
 
     cells = p8_cells()
@@ -154,6 +169,7 @@ def test_committed_stage8_verdicts_and_shipped_config():
     if not (Path(gate8.RES) / "stage8_uniform.csv").exists():
         pytest.skip("stage-8 matrices not present")
     tables = gate8.load_tables()
+    # tables reproduce the recorded harness pin
     assert gate8.harness_pin(tables) <= gate8.PIN_TOL
     rule = gate8.apply_rule(tables)
     assert rule["G"]["keep"] and rule["S"]["keep"] and not rule["M"]["keep"]
