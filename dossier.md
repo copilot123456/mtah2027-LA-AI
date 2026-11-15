@@ -30,6 +30,7 @@ Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_defa
 | 2026-11-14 | second guarded run via `tuning/guarded_eval.py` on `LA+AI.csv` md5 `1b0cf9e47af1947021fe470a422db46d` (public GT); full board archived `evaluation/reports/guarded_board_20261114_175609.txt`, operator eyes only | operator | **band B**; flags `count 14–22 · f1_D low · balance normal · latency none` → correctness gate **PASS** (sanity clean, band ∈ {A, B, C}); covers U1 + K1 of §7 P7. Not used to choose between the previous file and this one (RULES.md) — the choice was made on IDSSE before the run |
 | 2026-11-14 | the operator's improvement list, pasted into the assistant session, quotes public-window diagnostics of the 17:56 run (transition latency, share of false `D` predictions, fragmentation ratio, the `D` row of the confusion matrix, share error) | operator → assistant | **disclosure — provenance only**: those figures motivated hypotheses I1–I4 of §7 P8. None of them enters a grid, a rule or a parameter value; every P8 decision is taken on IDSSE under a rule pinned before the compute. The figures are not restated in this repository |
 | 2026-11-14 | third guarded run via `tuning/guarded_eval.py` on `LA+AI.csv` md5 `de14eb1ccb75d9cd713789da4abde664` (public GT); full board archived under `evaluation/reports/`, operator eyes only | operator | **band A**; flags `count 14–22 · f1_D low · balance normal · latency none` → correctness gate **PASS**; covers P8 (G + S). `latency none` = the 0.64 s team-switch delay does not overshoot on the window. Not used to choose between this file and the previous one — P8 was adopted on IDSSE before the run. The window holds 17 possessions; the band is not a forecast of the full-match score |
+| 2026-11-14 | the operator's second improvement list (four mechanisms and a qualitative ranking), pasted into the assistant session | operator → assistant | **disclosure — provenance only**: the list carries mechanisms and no evaluator figure; it is the source of hypotheses J1–J4 of §7 P9. Every P9 decision is taken on IDSSE under a rule pinned before the compute |
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
@@ -50,6 +51,7 @@ Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no
 - **Audit + P7 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. What crossed into the session from the provided match: three categorical checks (speed units = m/s; kick-off PASS/FAIL clauses; label-change bucket) and the own-output summary `src.submit` prints (label counts, possession count and mean length).
 - **P8 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. The operator's improvement list brought public-window diagnostics of the second guarded run into the session (§3, same date); they are treated as the provenance of four hypotheses and nothing else. From the provided match itself only categorical checks and the own-output summary cross into the session, as before.
 - **Operator statement 2026-11-14:** the improvement list of §3 was written in a single session with a general-purpose AI assistant (Gemini) that the operator used to interpret the evaluator output of the second guarded run. That assistant has no part in the pipeline or the repository; it saw evaluator output for the public window, not the provided tracking, tagging or video.
+- **P9 session 2026-11-14 (cloud assistant):** the provided match data, the ground truth, the evaluator board files and the video were not opened. The operator's second improvement list came from the same outside assistant session and carries mechanisms only. From the provided match the session receives the own-output summary and the PASS / FAIL results of the categorical checks pinned in §7 P9 (speed scale, dead share, team balance, team agreement, visible players, ball speed scale) — no per-frame value and no figure.
 - **Incident 2026-11-11 (disclosed, no use):** while preparing a local submission simulation the assistant read the gitignored `evaluation/scoreboard.csv`, which carries the full board of the 2026-11-09 guarded run; those numbers entered one AI session. They were never quoted, never used for a decision, and the file has never been in git or in any shared artifact. Standing fix: evaluator/board artifacts are never opened assistant-side — only the band letter and the categorical flags cross to the assistant.
 
 ## 5. Video statement
@@ -745,6 +747,195 @@ the operator, per the guard protocol.
 - **New limitation on file:** the frozen-ball artefact (disclosure above) also qualifies
   the P7 dead-ball tables — `uniform` and `phase_a2` overstate dead-ball detection; the
   U1 decision is unaffected (it passed on all eight tables).
+
+### P9 — second operator idea list + auditor additions (pre-declared 2026-11-14 night, before any stage-9 compute)
+
+- **Trigger / authorization:** operator instruction 2026-11-14 after the third guarded run
+  (band A, §3): take the second idea list through the same iteration as P8 — audit, add
+  the auditor's own, pre-declare, one pass on IDSSE, adopt only on a pass, then a guarded
+  run. Work stays on `ruiz-work`; `main` stays locked; no push without operator
+  instruction.
+- **Provenance:** the four ideas (J1–J4) come from the same outside assistant session as
+  the P8 list (§4). This list carries mechanisms and a qualitative ranking only — no
+  evaluator figure. They are hypotheses; every number in this section was measured on
+  IDSSE.
+- **Disclosure — probes run before this pin (IDSSE only, diagnostics; no shippable
+  candidate decoded or scored; the provided match touched only for the accepted
+  missing-run lengths of the mask simulator):**
+  - *Player-only separability (no ball input), logistic models fitted leave-one-match-out:*
+    dead vs alive — AUC 0.93–0.96, frame accuracy 0.85–0.90 with seven speed / motion
+    features; team in possession among alive frames — AUC 0.88–0.95, accuracy 0.78–0.89
+    with four antisymmetric features (the width difference alone reaches AUC 0.90). Hiding
+    7 % of player-frames in runs (22 → about 20.5 visible, the count DATA.md documents)
+    moves these by less than 0.01 for the dead model and about 0.01 for the team model.
+    The earlier low-activity feature (P7 U1) was an instantaneous threshold on the mean
+    speed applied on every frame; this is a different, smoothed, multi-feature signal.
+  - *Headroom on ball-less frames* (current decoder; oracle = aligned labels written on
+    ball-less frames only, 7-match mean spellF1, uniform / phase_a2 / cover_q50 /
+    cover_q90): now 0.41 / 0.40 / 0.38 / 0.38; true dead-alive split on those frames
+    0.46 / 0.45 / 0.51 / 0.55; true team 0.52 / 0.54 / 0.46 / 0.40; both 0.64 / 0.65 /
+    0.60 / 0.56. Oracles are bounds, not candidates.
+  - *Team-switch latency vs ball speed* (no mask, delay 0, 433 matched switches):
+    correlation −0.32; mean latency −6 / −14 / −22 frames in the slow / middle / fast
+    tercile of ball speed (edges 7.3 and 11.9 m/s), spread about 20 frames inside each.
+  - *Min-dwell defect:* `enforce_min_dwell` does not coalesce equal neighbours after a
+    merge, so a short segment can be merged away from a same-label neighbour that would
+    have made it long enough; coalescing changes 2.6–3.0 % of in-match frames per match
+    (no mask).
+  - *IDSSE set-piece rows:* only 3–45 % of the mapped set-piece events fall within ±3 s
+    of the end of a dead run (under 10 % on four matches), although the counts agree
+    (90–108 events, 92–113 dead runs). The event→row mapping is therefore unreliable
+    outside J03WPY / J03WMX / J03WQQ, and the E7 rejection of 2026-11-09 is weaker
+    evidence than recorded.
+
+#### Verdict on the four listed ideas (before compute)
+
+- **J1 — Smart Tagging anchors.** (1) *Pre-restart dead window* is E7 (tested, rejected);
+  given the mapping finding above a clean re-test needs a new analogue (restart = end of a
+  dead run plus timing noise, misses, spurious tags) whose timing-noise assumption cannot
+  be checked without comparing tag times against something on the provided match. (2) *Team
+  pulse at the restart:* `Team` is `N/A` on every throw-in (26 of 59 set pieces,
+  DATA.md), so at most 33 events, and it needs a tag to count as switch evidence.
+  (3) *Team-phase prior:* IDSSE has no tagging and the phases come from a proprietary
+  tagger; a simulated analogue would measure our own assumption about its accuracy.
+  → **no J1 cell in P9.** (1)+(2) are proposed to the operator as a separate iteration
+  with a label-free timing check; (3) is **not decidable on the external bed** and could
+  only enter as a documents-only prior by operator decision (as K1 did).
+- **J2 — collective player kinematics.** Decidable: the players are never masked and the
+  IDSSE dead label is the provider's ball state, independent of the frozen ball.
+  → components **K** (dead ball on ball-less frames) and **T** (team on ball-less frames,
+  antisymmetric by construction). The part "corroborate ball-at-rest when the ball is
+  visible" is not decidable (on this bed ball-at-rest *is* the dead label) → **record-only
+  cell** `R_kin_all`.
+- **J3 — kinematic reception.** Testable: the latency depends on ball speed on IDSSE.
+  → component **S** gains a speed slope, and the constant-delay grid is extended (the P8
+  gain was still rising at 0.8 s).
+- **J4 — broadcast shot-cut detector.** Rejected on the documents: the tracking we decode
+  comes from the tactical recording, which has no cuts; the broadcast recording is "not
+  synchronised" to it and "no mapping table is provided" (DATA.md); IDSSE has no video,
+  so nothing about it can be decided externally. → no cell.
+- **Auditor additions:** **C** (coalescing min-dwell, the defect above); the S grid
+  extension.
+
+#### Kinematic model (pinned)
+
+- **Inputs:** player positions and reported speeds only. Per frame: median speed of the
+  visible slots; share of visible slots below 1.5 m/s and above 4 m/s; per-slot
+  x-velocity by symmetric difference over ±12 frames (m/s; dropped when an endpoint is
+  missing or |v| > 12 m/s); per-team standard deviation of x and of y (metres); mean x of
+  all visible slots. Centred means over ±12, ±37 or ±62 frames, NaN-aware.
+- **Dead model — 7 features:** median speed (±12 and ±62), slow share (±62), fast share
+  (±62), |mean x-velocity| (±12 and ±62), change of the ±12 median speed over 3 s.
+  Logistic regression with intercept; target = `D` of the provider letters; every 5th
+  in-match frame; standardised features; L2 1e-3; IRLS. Output used by the decoder: the
+  log-likelihood ratio, i.e. the logit minus the logit of the training dead share.
+- **Team model — 4 features, each the home-minus-away form:** s · mean x-velocity (±37);
+  s · (mean x − half the pitch length) (±12); difference of the teams' x spread (±12);
+  difference of their y spread (±12); s = +1 when team 0's centroid sits on the low-x
+  side on the median over the half. Logistic regression **without intercept and without
+  centring**, target = `H` among alive frames of the aligned labels. Swapping the two
+  teams negates every feature and therefore the logit exactly.
+- **Non-finite** feature → that frame carries no kinematic evidence (0).
+- **In the pass:** leave-one-match-out — the test match's models are fitted on the other
+  six. **Shipped model:** fitted on all seven, coefficients in `src/kin_model.json`,
+  written by `tuning/kin_fit.py`.
+- **Bed handicap (a priori):** the test match's kinematic features are computed from
+  player tracks with simulated dropout — every slot hidden in exponential runs (mean 4 s)
+  so that about 7 % of visible player-frames vanish; one stream per match,
+  `default_rng(MASK_SEED + 900 + Σ ord(match_id))`. Training uses clean tracks; the ball
+  kernel keeps the clean players, so the reference cell is untouched.
+
+#### Components (all OFF by default; the reference cell must reproduce stage 8)
+
+- **C — coalescing min-dwell.** `dwell_coalesce ∈ {False, True}`: after every merge of the
+  min-dwell pass adjacent equal labels are joined before lengths are measured again.
+- **K — kinematic dead-ball term.** `kin_w_dead ∈ {0, 0.03, 0.1, 0.3}`: on frames with no
+  ball observation the dead logit gains `kin_w_dead ×` (dead log-likelihood ratio).
+  Ball-visible frames are untouched.
+- **T — kinematic team term.** `kin_w_team ∈ {0, 0.03, 0.1, 0.3}`: on frames with no ball
+  observation the H / A columns gain `kin_w_team × log σ(±team logit)`. Ball-visible
+  frames are untouched.
+- **Gate tier** (read inside K and T). `gate_kin_support ∈ {False, True}`: when True, a
+  ball-less frame whose emission favours a label through an active kinematic term counts
+  as support in the switch gate exactly like a raw ball frame (`D` needs `kin_w_dead > 0`,
+  a team needs `kin_w_team > 0`). False keeps today's rule — no switch without ball
+  evidence — so the kinematic terms can then only act through segments the ball supports.
+- **S — team-switch delay.** `switch_delay_s ∈ {0.64, 0.80, 0.96, 1.12}` ×
+  `switch_delay_slope ∈ {0, 0.03, 0.06}` s per m/s: the delay of a ball-placed H↔A
+  boundary becomes `clip(switch_delay_s + slope × (v − 9.5), 0, 1.6)` seconds, `v` = mean
+  finite ball speed over the six frames ending at the boundary (no finite speed → the
+  constant). Cap at half the following segment, as today.
+- **Order in the decoder:** unchanged — Viterbi → gate → gap placement (off) → min-dwell →
+  D minimum (off) → no-play (off) → switch delay → K1.
+
+#### Stage 9 — one pass
+
+- **Fixed:** the shipped configuration (frozen decoder cell, gate move, delay 0.64 s, fill
+  off), the stage-5 masks with the same seeds (`uniform`, `phase_a2`, `cover_q50`,
+  `cover_q90`), both label sets, 7 matches.
+- **Cells:** full factorial C (2) × K weight (4) × T weight (4) × gate tier (2) × S (12);
+  the tier is immaterial when both weights are 0 and is counted once. Plus the
+  record-only cell `R_kin_all` (`kin_w_dead = 0.1` on every frame, ball-visible ones
+  included, everything else at the reference). The harness calls the pipeline's own
+  functions (`build_emission`, `viterbi_paths`, `finish_paths`) and the official scorer
+  path (`_score`).
+- **Harness pin:** the reference cell (C off, weights 0, delay 0.64 s, slope 0) must
+  reproduce the stage-8 rows of the shipped cell (gate move · gap placement 0 · delay
+  0.64 s · D minimum 0) to 1e-9 on both spellF1 columns; otherwise the pass is void.
+- **Per cell:** spellF1 / macroF1 on both label sets, predicted `D` share, share of
+  in-match frames whose label differs from the reference cell, team-switch latency.
+  Diagnostics per (match, kind): team-swap mismatch for the reference and for the largest
+  T cell at each tier; agreement of the team logit with the reference decoder on
+  ball-visible frames (no mask) — the IDSSE side of check Q4 below.
+- **Outputs:** `tuning/results/stage9_<kind>.csv`, `stage9_record.csv`, `stage9_diag.csv`,
+  `stage9_verdicts.csv`, `report_stage9.md`; runner `tuning/stage9.py`, reader
+  `tuning/gate9.py`.
+
+#### Decision rule (pinned — the P8 rule, steps C, K, T, S)
+
+- Δ = 7-match mean of paired spellF1 differences; primary table = `phase_a2` × aligned;
+  `g(cell)` = minimum over the four mask kinds of the aligned-label Δ.
+- **Steps, in this order, each conditional on the values kept before it:** C; then K
+  (weight × tier, T weight 0); then T (weight × tier, at K's kept weight); then S. Within
+  a step the candidate is the argmax of `g` against the step's starting cell; candidates
+  within 0.005 of the best are tied and the tie goes to the smallest change — tier False
+  before True, then the smaller weight; for S, constant delays before sloped ones, then
+  the shorter delay, then the smaller slope.
+- **A step's candidate is kept iff** on the primary table its Δ against the step's starting
+  cell is > +0.005 with ≥ 5/7 matches positive, **and** Δ ≥ −0.02 on each of the other
+  seven tables. Otherwise the step keeps its current value.
+- **Adoption (the project bar, applied to what would actually ship):** the bundle of kept
+  steps is adopted iff against the reference cell its primary Δ is > 0.02 with ≥ 5/7
+  matches positive and Δ ≥ −0.02 on each of the other seven tables.
+- **Target parity checks (categorical; computed on the provided match by
+  `tuning/kin_parity.py`, which prints PASS / FAIL only; run only for components the
+  steps kept, before the adoption):**
+  - Q1 *speed scale* — median over graded frames of the per-frame median player speed
+    within [0.5 × min, 2 × max] of the seven IDSSE per-match values. Holds K and T.
+  - Q2 *dead share* — share of graded frames whose dead logit is positive within
+    [0.20, 0.65]. Holds K.
+  - Q3 *team balance* — share of graded frames whose team logit favours home within
+    [0.30, 0.70]. Holds T.
+  - Q4 *team agreement* — on graded frames with a ball observation that the current
+    submission labels H or A, the share where the team logit agrees is at least the
+    smallest IDSSE per-match value of the same statistic (no mask, leave-one-out model)
+    minus 0.05. Holds T.
+  - Q5 *visible players* — mean number of visible slots per graded frame ≥ 18. Holds K
+    and T.
+  - Q6 *ball speed scale* — median ball speed on graded frames the current submission
+    labels H or A within [0.5 × min, 2 × max] of the IDSSE per-match medians over alive
+    frames. Holds the slope of S (the constant delay is not affected).
+  - A held component is not adopted without the operator. The bundle is then re-read from
+    the same matrices with that component at its OFF value and the adoption bar is applied
+    to the reduced bundle — no new compute.
+- **Own-output checks after an adoption (categorical only):** share of graded labels
+  changed vs the current file, per kept step and for the bundle, as a bucket (< 2 % ·
+  2–5 % · 5–10 % · 10–20 % · > 20 %). **Parity hold:** if a step's bucket lower edge on
+  the provided match exceeds 3× the largest per-match external firing rate of that step,
+  or the bundle is > 20 %, the adoption is held for the operator. Validator PASS, test
+  suite green, byte-identity test moved to the new md5.
+- **Evaluator:** not run by the assistant. An adoption changes a code path, so a fourth
+  guarded run is owed (operator only, band + flags, correctness gate, never a selector).
 
 ## 8. Independent audit (2026-11-07)
 
