@@ -11,55 +11,55 @@ import numpy as np
 from config import CFG
 from src.decoder import CODE_A, CODE_D, CODE_H, apply_no_play
 
-FPS = 25
+FPS = 25                                          # 25 frames per second
 T = 10 * FPS  # 250 frames = cfg no_play_s * fps
 
 
 def test_run_at_threshold_becomes_d_including_its_first_seconds():
     """A run exactly at the threshold becomes D in full."""
-    n = 500
-    activity = np.full(n, 5.0)
+    n = 500                                       # 500-frame run
+    activity = np.full(n, 5.0)                    # active everywhere first
     activity[100:100 + T] = 0.5                      # exactly no_play_s of low activity
-    labels = np.full(n, CODE_H, dtype=np.int8)
+    labels = np.full(n, CODE_H, dtype=np.int8)    # all H labels
 
-    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True})
+    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True}) # run rule enabled
 
-    assert (out[100:100 + T] == CODE_D).all(), "whole qualifying run is marked"
-    assert (out[:100] == CODE_H).all() and (out[100 + T:] == CODE_H).all()
-    assert (labels == CODE_H).all(), "input must not be mutated"
+    assert (out[100:100 + T] == CODE_D).all(), "whole qualifying run is marked" # whole run marked D
+    assert (out[:100] == CODE_H).all() and (out[100 + T:] == CODE_H).all() # outside the run untouched
+    assert (labels == CODE_H).all(), "input must not be mutated" # input left unchanged
 
 
 def test_short_low_activity_run_is_untouched():
     """One frame short of the threshold: nothing changes."""
-    n = 300
-    activity = np.full(n, 5.0)
+    n = 300                                       # 300-frame run
+    activity = np.full(n, 5.0)                    # active everywhere first
     activity[50:50 + T - 1] = 0.5                    # one frame short of the threshold
-    labels = np.full(n, CODE_A, dtype=np.int8)
+    labels = np.full(n, CODE_A, dtype=np.int8)    # all A labels
 
-    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True})
-    np.testing.assert_array_equal(out, labels)
+    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True}) # run rule enabled
+    np.testing.assert_array_equal(out, labels)    # short run untouched
 
 
 def test_flag_off_is_a_noop():
     """Rule off: no relabelling at all."""
     activity = np.zeros(300)                         # low everywhere would qualify
-    labels = np.full(300, CODE_H, dtype=np.int8)
+    labels = np.full(300, CODE_H, dtype=np.int8)  # all H labels
 
-    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": False})
-    np.testing.assert_array_equal(out, labels)
+    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": False}) # rule turned off
+    np.testing.assert_array_equal(out, labels)    # labels unchanged
 
 
 def test_nonfinite_activity_breaks_runs():
     """A NaN splits the run; neither half reaches the threshold."""
-    n = 600
-    activity = np.full(n, 5.0)
+    n = 600                                       # 600-frame run
+    activity = np.full(n, 5.0)                    # active everywhere first
     activity[100:100 + T - 10] = 0.5                 # 240 frames (9.6 s) low
     activity[100 + T - 10] = np.nan                  # break ...
     activity[100 + T - 9:100 + 2 * T - 19] = 0.5     # ... then another 240 frames low
-    labels = np.full(n, CODE_H, dtype=np.int8)
+    labels = np.full(n, CODE_H, dtype=np.int8)    # all H labels
 
-    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True})
-    np.testing.assert_array_equal(out, labels)
+    out = apply_no_play(labels, activity, {**CFG, "no_play_rule": True}) # run rule enabled
+    np.testing.assert_array_equal(out, labels)    # NaN split the runs
 
 
 def test_real_pre_kickoff_window_is_mostly_d_when_enabled(arrays):
@@ -75,15 +75,15 @@ def test_real_pre_kickoff_window_is_mostly_d_when_enabled(arrays):
     from src.decoder import CODE_X, decode
     from src.emission import build_emission
 
-    track = build_ball_track(arrays.ball, arrays.half, CFG)
-    em = build_emission(track, arrays.players, arrays.players_s, arrays.slot_team, CFG)
+    track = build_ball_track(arrays.ball, arrays.half, CFG) # fill ball track
+    em = build_emission(track, arrays.players, arrays.players_s, arrays.slot_team, CFG) # build frame emissions
 
-    on = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": True})
-    off = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": False})
+    on = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": True}) # decode with rule on
+    off = decode(em, track.source, arrays.half, {**CFG, "no_play_rule": False}) # decode with rule off
 
     window = slice(110_808, 113_742)                 # FAQ pre-kickoff window
-    d_on = float((on.labels[window] == CODE_D).mean())
-    d_off = float((off.labels[window] == CODE_D).mean())
-    assert d_on >= 0.85, f"pre-kickoff window should be >=85% D with the rule on (got {d_on:.1%})"
-    assert d_on >= d_off + 0.4, "the rule must be what flips the window (37 % -> ~89 %)"
-    assert (on.labels[190_198:] == CODE_X).all(), "nothing after the graded half changes"
+    d_on = float((on.labels[window] == CODE_D).mean()) # D share, rule on
+    d_off = float((off.labels[window] == CODE_D).mean()) # D share, rule off
+    assert d_on >= 0.85, f"pre-kickoff window should be >=85% D with the rule on (got {d_on:.1%})" # meets 85% floor
+    assert d_on >= d_off + 0.4, "the rule must be what flips the window (37 % -> ~89 %)" # rule lifts the window
+    assert (on.labels[190_198:] == CODE_X).all(), "nothing after the graded half changes" # graded span untouched
