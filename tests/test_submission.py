@@ -25,17 +25,19 @@ def _fake_labels(n=199_319):
 
 
 def test_frame_table_contract():
+    """Frame table: exact columns, row count, 0-based range, valid labels."""
     labels = _fake_labels()
     table = labels_to_frame_table(labels)
     assert list(table.columns) == ["frame", "label"]
     assert len(table) == 199_319
-    assert table["frame"].iloc[0] == 0 and table["frame"].iloc[-1] == 199_318
+    assert table["frame"].iloc[0] == 0 and table["frame"].iloc[-1] == 199_318  # 0-based ids
     assert (np.diff(table["frame"].to_numpy()) == 1).all()
     assert set(table["label"].unique()) <= {"H", "A", "D", "X"}
     assert table["label"].notna().all()
 
 
 def test_frame_table_rejects_bad_input():
+    """Wrong length or unknown label codes raise clear errors."""
     with pytest.raises(ValueError, match="expected 199319 labels"):
         labels_to_frame_table(np.zeros(10, dtype=np.int8))
     bad = _fake_labels()
@@ -53,6 +55,7 @@ def test_validate_runs_from_another_cwd(tmp_path, monkeypatch):
 
 
 def test_official_reader_roundtrip(tmp_path):
+    """The official scorer reads back exactly the labels we wrote."""
     labels = _fake_labels()
     path = tmp_path / "toy.csv"
     write_submission(labels, str(path))
@@ -71,6 +74,7 @@ def test_official_reader_roundtrip(tmp_path):
 
 
 def test_x_policy_default_off_is_noop(arrays):
+    """Shipped config (x_use=False): the policy changes nothing."""
     from src.x_policy import apply_x_policy
 
     labels = _fake_labels()
@@ -80,6 +84,7 @@ def test_x_policy_default_off_is_noop(arrays):
 
 
 def test_x_policy_rule_when_enabled(arrays):
+    """Enabled: evidenced and near-edge labels survive; deep interior abstains."""
     from src.x_policy import apply_x_policy
 
     cfg = {**CFG, "x_use": True}
@@ -96,7 +101,7 @@ def test_x_policy_rule_when_enabled(arrays):
     assert out[evidence] == CODE_H
     interior = 50_000                         # conf=0, far from switch/edges -> X
     assert out[interior] == CODE_X
-    assert (out[arrays.half == 0] == CODE_X).all()
+    assert (out[arrays.half == 0] == CODE_X).all()  # ungraded frames untouched
 
 
 def test_x_policy_never_abstains_whole_half(arrays):

@@ -12,17 +12,19 @@ from src.x_policy import _distance_to_nearest_boundary, apply_x_policy
 
 
 def test_distance_without_switches_is_distance_to_span_edges():
+    """No switches: distance shrinks to zero at both span edges."""
     dist = _distance_to_nearest_boundary(7, np.array([], dtype=int))
     np.testing.assert_array_equal(dist, [0, 1, 2, 3, 2, 1, 0])
 
 
 def test_distance_to_nearest_switch_or_edge():
+    """Distance falls to zero at switches and at span edges."""
     # switches at 10 and 30 in a 50-frame span (index = first frame of the new segment)
     dist = _distance_to_nearest_boundary(50, np.array([10, 30]))
     assert dist[0] == 0 and dist[49] == 0            # span edges
     assert dist[5] == 5                              # min(edge 5, switch 10-5)
     assert dist[10] == 0 and dist[30] == 0           # on the switch frame
-    assert dist[12] == 2 and dist[29] == 1
+    assert dist[12] == 2 and dist[29] == 1           # offsets from the nearest switch
     assert dist[20] == 10                            # midway between the two switches
     assert dist[45] == 4                             # closer to the end edge than to 30
     assert (dist >= 0).all() and np.isfinite(dist).all()
@@ -38,6 +40,7 @@ def _one_switch_half(arrays, local_switch):
 
 
 def test_stable_distance_edge_is_inclusive(arrays):
+    """At exactly stable distance the frame abstains; one closer keeps its label."""
     cfg = {**CFG, "x_use": True}
     stable = int(round(cfg["x_stable_s"] * cfg["fps"]))
     idx, labels = _one_switch_half(arrays, 40_000)
@@ -50,11 +53,12 @@ def test_stable_distance_edge_is_inclusive(arrays):
     assert out[idx[40_000 - stable + 1]] == CODE_H
     assert out[idx[stable]] == CODE_X and out[idx[stable - 1]] == CODE_H, "half start"
     assert out[idx[-1 - stable]] == CODE_X and out[idx[-stable]] == CODE_A, "half end"
-    assert (out[arrays.half == 0] == CODE_X).all()
-    assert (out[arrays.half == 2] == CODE_X).all()
+    assert (out[arrays.half == 0] == CODE_X).all()   # ungraded frames untouched
+    assert (out[arrays.half == 2] == CODE_X).all()   # half 2 input was X, stays X
 
 
 def test_confidence_edge_is_inclusive(arrays):
+    """conf exactly at x_conf_max counts as low; just above it is kept."""
     cfg = {**CFG, "x_use": True}
     idx, labels = _one_switch_half(arrays, 40_000)
     conf = np.ones(arrays.n_frames)             # confident everywhere ...
@@ -67,6 +71,7 @@ def test_confidence_edge_is_inclusive(arrays):
 
 
 def test_policy_does_not_touch_inputs(arrays):
+    """The policy returns a copy; inputs are never mutated."""
     cfg = {**CFG, "x_use": True}
     _, labels = _one_switch_half(arrays, 40_000)
     conf = np.zeros(arrays.n_frames)

@@ -39,12 +39,14 @@ def test_atd_never_overwritten(arrays, track):
 
 
 def test_every_frame_has_exactly_one_source(track):
+    """Only allowed source codes appear, and they cover all frames."""
     assert set(np.unique(track.source)) <= {SOURCE_ATD, SOURCE_KINEMATIC, SOURCE_NONE}
     cov = coverage(track)
     assert cov["all_atd"] + cov["all_kinematic"] + cov["all_none"] == pytest.approx(1.0)
 
 
 def test_fill_stays_inside_halves(arrays, track):
+    """Fills stay inside a real half, never in ungraded frames."""
     kin = track.source == SOURCE_KINEMATIC
     assert kin.any(), "expected some fills"
     assert (arrays.half[kin] > 0).all(), "a fill crossed a half boundary"
@@ -52,7 +54,7 @@ def test_fill_stays_inside_halves(arrays, track):
 
 def _kinematic_runs(track):
     kin = track.source == SOURCE_KINEMATIC
-    edges = np.flatnonzero(np.diff(np.concatenate(([0], kin.view(np.int8), [0]))))
+    edges = np.flatnonzero(np.diff(np.concatenate(([0], kin.view(np.int8), [0]))))  # rising/falling fill edges
     return zip(edges[::2], edges[1::2])
 
 
@@ -64,10 +66,11 @@ def _brackets(known_idx, a, b):
 
 
 def test_filled_gaps_within_time_limit(arrays, track):
+    """No filled gap is longer than the configured time limit."""
     known = ~np.isnan(arrays.ball).any(axis=1)
     known_idx = np.flatnonzero(known)
     assert known_idx.size > 0
-    limit = FILL_ON["fill_long_gap_s"] * FILL_ON["fps"]
+    limit = FILL_ON["fill_long_gap_s"] * FILL_ON["fps"]  # seconds → frames
     runs = list(_kinematic_runs(track))
     assert runs, "expected some fills"
     for a, b in runs:
@@ -84,7 +87,7 @@ def test_overshoot_guard(arrays, track):
         i0, i1 = _brackets(known_idx, a, b)
         p0, p1 = arrays.ball[i0], arrays.ball[i1]
         span = np.abs(p1 - p0)
-        margin = np.maximum(pad, pad_frac * span)
+        margin = np.maximum(pad, pad_frac * span)  # absolute or proportional margin
         lo, hi = np.minimum(p0, p1) - margin, np.maximum(p0, p1) + margin
         live = ~np.isnan(track.xy[a:b]).any(axis=1)
         assert (track.xy[a:b][live] >= lo - 1e-12).all()
@@ -103,6 +106,7 @@ def test_drop_only_nulls_estimates(arrays, track):
 
 
 def test_out_of_pitch_flag_covers_atd(arrays, track):
+    """Every out-of-pitch ATD frame carries the out_of_pitch flag."""
     m = CFG["pitch_margin"]
     known = ~np.isnan(arrays.ball).any(axis=1)
     atd_out = (known
@@ -114,6 +118,7 @@ def test_out_of_pitch_flag_covers_atd(arrays, track):
 
 
 def test_age_s_provenance(arrays, track):
+    """Ball age: 0 on ATD frames, positive on fills, bounded by match length."""
     known = ~np.isnan(arrays.ball).any(axis=1)
     assert np.isfinite(track.age_s).all()
     assert (track.age_s[known] == 0).all(), "ATD frames are age 0 by definition"
@@ -123,6 +128,7 @@ def test_age_s_provenance(arrays, track):
 
 
 def test_deterministic(arrays):
+    """Two builds from the same input produce identical tracks."""
     a = build_ball_track(arrays.ball, arrays.half)
     b = build_ball_track(arrays.ball, arrays.half)
     np.testing.assert_array_equal(a.xy, b.xy)  # NaN == NaN by default here
@@ -132,6 +138,7 @@ def test_deterministic(arrays):
 
 
 def test_inputs_not_mutated(arrays):
+    """The build leaves the input ball array unchanged."""
     before = arrays.ball.copy()
     build_ball_track(arrays.ball, arrays.half)
     np.testing.assert_array_equal(arrays.ball, before)

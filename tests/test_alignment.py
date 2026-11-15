@@ -12,15 +12,18 @@ from src import data as D
 
 
 def test_row_count(arrays):
+    """Total frames match the frozen dataset count."""
     assert arrays.n_frames == D.N_FRAMES == 199_319
 
 
 def test_frame_id_is_one_based_sequence(arrays):
+    """frame_id is a gapless 1..N sequence (alignment contract)."""
     np.testing.assert_array_equal(arrays.frame_id, np.arange(1, D.N_FRAMES + 1))
     # submission row r corresponds to ATD frame r+1: video_frame = frame_id - 1
 
 
 def test_graded_spans(arrays):
+    """Graded span edges and the halftime hole match recorded spans."""
     graded = arrays.graded
     assert int(graded.sum()) == 158_857
     # half 1: 11185..90651 inclusive
@@ -33,17 +36,20 @@ def test_graded_spans(arrays):
 
 
 def test_half_label_counts(arrays):
+    """Per-half frame counts match the recorded totals."""
     assert int((arrays.half == 1).sum()) == 79_467
     assert int((arrays.half == 2).sum()) == 79_390
-    assert int((arrays.half == 0).sum()) == 40_462
+    assert int((arrays.half == 0).sum()) == 40_462  # ungraded frames
 
 
 def test_slot_teams_shape(arrays):
+    """Every slot carries a binary team code (0 or 1)."""
     assert arrays.slot_team.shape == (D.N_SLOTS,)
     assert set(np.unique(arrays.slot_team)) == {0, 1}
 
 
 def test_ball_missing_rates(arrays):
+    """Ball-missing rates sit within tolerance of the recorded aggregates."""
     ball_missing = np.isnan(arrays.ball).any(axis=1)
     overall = 100 * ball_missing.mean()
     graded = 100 * (ball_missing & arrays.graded).sum() / arrays.graded.sum()
@@ -52,6 +58,7 @@ def test_ball_missing_rates(arrays):
 
 
 def test_players_visible_mean(arrays):
+    """Visible-player mean on graded frames matches the aggregate."""
     nvis = (~np.isnan(arrays.players)).sum(axis=1)
     assert nvis[arrays.graded].mean() == pytest.approx(20.5, abs=0.3)
 
@@ -68,6 +75,7 @@ def test_provider_team_fields_are_empty(arrays):
 
 
 def test_homography_alignment():
+    """Homography covers every frame and stays fully valid."""
     hg = D.load_homography()
     assert len(hg) == D.N_FRAMES
     assert int(hg["frame"].iloc[0]) == 0 and int(hg["frame"].iloc[-1]) == D.N_FRAMES - 1
@@ -75,6 +83,7 @@ def test_homography_alignment():
 
 
 def test_smart_tagging_time_base():
+    """Tags stay inside the video range and end after they start."""
     tags = D.load_smart_tagging()
     assert len(tags) == 638
     assert int((tags["code"] == "SET PIECES").sum()) == 59
@@ -84,6 +93,7 @@ def test_smart_tagging_time_base():
 
 
 def test_arrays_consistent_shapes(arrays):
+    """All arrays share the frame axis with the expected shapes."""
     n = arrays.n_frames
     assert arrays.ball.shape == (n, 2)
     assert arrays.players.shape == (n, D.N_SLOTS, 2)

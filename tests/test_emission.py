@@ -19,6 +19,7 @@ def _slots_on_grid():
     return np.tile(xy, (N, 1, 1))          # (N, 46, 2)
 
 
+# defaults describe a clean track: all-ATD source, age 0, no flags
 def _track(ball_xy, source=None, age=None, out=None):
     n = len(ball_xy)
     source = np.full(n, SOURCE_ATD, dtype=np.int8) if source is None else source
@@ -28,6 +29,7 @@ def _track(ball_xy, source=None, age=None, out=None):
 
 
 def test_shape_and_finite():
+    """Emission is well-formed: right shape, finite, valid probabilities."""
     ball = np.full((N, 2), np.nan)
     ball[:, 0], ball[:, 1] = 0.5, 0.5
     track = _track(ball)
@@ -35,7 +37,7 @@ def test_shape_and_finite():
     em = build_emission(track, players, np.full((N, 46), 3.0), np.arange(46) % 2)
     assert em.log_e.shape == (N, 3)
     assert np.isfinite(em.log_e).all()
-    assert np.isfinite(em.p_d).all() and ((em.p_d > 0) & (em.p_d < 1)).all()
+    assert np.isfinite(em.p_d).all() and ((em.p_d > 0) & (em.p_d < 1)).all()  # strict probability
     assert (em.conf >= 0).all() and (em.conf <= 1).all()
 
 
@@ -53,7 +55,7 @@ def test_ha_swap_symmetry():
 
     np.testing.assert_allclose(em1.log_e[:, CLASS_H], em2.log_e[:, CLASS_A], rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(em1.log_e[:, CLASS_A], em2.log_e[:, CLASS_H], rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(em1.log_e[:, CLASS_D], em2.log_e[:, CLASS_D], rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(em1.log_e[:, CLASS_D], em2.log_e[:, CLASS_D], rtol=1e-12, atol=1e-12)  # D unchanged
 
 
 def test_no_ball_means_no_team_information():
@@ -106,9 +108,9 @@ def test_invisible_team_hits_the_log_floor_not_minus_inf():
     teams[1:] = 1
     em = build_emission(track, players, np.full((N, 46), 5.0), teams)
     assert np.isfinite(em.log_e).all()
-    assert (em.ev[:, 1] == 0).all()
+    assert (em.ev[:, 1] == 0).all()  # no team-A evidence visible
     assert (em.log_e[:, CLASS_H] > em.log_e[:, CLASS_A]).all()
-    assert em.log_e[0, CLASS_A] == pytest.approx(np.log(1e-12) + np.log(1 - em.p_d[0]))
+    assert em.log_e[0, CLASS_A] == pytest.approx(np.log(1e-12) + np.log(1 - em.p_d[0]))  # EPS floor, not -inf
 
 
 def test_ball_speed_nan_edges_do_not_count_as_stationary():
@@ -122,7 +124,7 @@ def test_ball_speed_nan_edges_do_not_count_as_stationary():
     assert np.isnan(speed[0]) and np.isnan(speed[5]) and np.isnan(speed[6])
     assert speed[1] == 0.0 and speed[10] == 0.0
     feats = _dead_features(track, np.full((N, 46), 3.0), CFG)
-    assert feats["stationary"][0] == 0.0 and feats["stationary"][5] == 0.0 and feats["stationary"][6] == 0.0
+    assert feats["stationary"][0] == 0.0 and feats["stationary"][5] == 0.0 and feats["stationary"][6] == 0.0  # NaN speed not at rest
     assert feats["stationary"][1] == 1.0
 
 
@@ -138,7 +140,7 @@ def test_confidence_semantics():
     conf = team_confidence(track)
     assert conf[0] == CFG["c0_atd"]
     assert conf[1] > conf[2] > 0, "kinematic confidence must decay with age"
-    assert conf[1] == pytest.approx(CFG["c0_kinematic"] * np.exp(-0.5 / CFG["tau_kinematic_s"]))
+    assert conf[1] == pytest.approx(CFG["c0_kinematic"] * np.exp(-0.5 / CFG["tau_kinematic_s"]))  # exponential decay
     assert conf[3] == 0.0
 
 
@@ -180,6 +182,7 @@ def test_dead_features_raise_pd():
 
 
 def test_deterministic_and_inputs_untouched():
+    """Same inputs reproduce identical emissions and leave inputs unmodified."""
     ball = np.full((N, 2), np.nan)
     ball[:, 0], ball[:, 1] = 0.5, 0.5
     track = _track(ball)
