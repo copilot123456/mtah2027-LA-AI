@@ -101,7 +101,7 @@ def _team_evidence(track: BallTrack, players: np.ndarray, slot_team: np.ndarray,
         masked = np.where(slot_team[None, :] == t, kernel, 0.0)  # zero out other team
         top = -np.sort(-masked, axis=1)[:, :k]      # largest k per row (zeros pad short teams)
         ev[has_ball, t] = top.sum(axis=1)  # store team's top-k mass
-    return ev
+    return ev                        # hand back team evidence
 
 
 def _ball_speed_ms(track: BallTrack, cfg: dict) -> np.ndarray:
@@ -197,11 +197,11 @@ def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
     z = np.full(n, cfg["d_bias"], dtype=np.float64)  # dead logit starts at bias
     # add each dead feature times its configured weight
     z += cfg["d_w_out_of_pitch"] * feats["out_of_pitch"]
-    z += cfg["d_w_stationary"] * feats["stationary"]
-    z += cfg["d_w_boundary"] * feats["near_boundary"]
-    z += cfg["d_w_long_missing"] * feats["long_missing"]
-    z += cfg["d_w_low_activity"] * feats["low_activity"]
-    z += cfg["d_w_set_piece"] * feats["set_piece"]
+    z += cfg["d_w_stationary"] * feats["stationary"]  # ball not moving
+    z += cfg["d_w_boundary"] * feats["near_boundary"]  # ball close to edge
+    z += cfg["d_w_long_missing"] * feats["long_missing"]  # ball missing a long time
+    z += cfg["d_w_low_activity"] * feats["low_activity"]  # players barely moving
+    z += cfg["d_w_set_piece"] * feats["set_piece"]  # near a set piece
 
     w_dead = float(cfg.get("kin_w_dead", 0.0)) if kin is not None else 0.0  # P9 dead weight
     w_team = float(cfg.get("kin_w_team", 0.0)) if kin is not None else 0.0  # P9 team weight

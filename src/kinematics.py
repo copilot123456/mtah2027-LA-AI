@@ -86,12 +86,12 @@ def base_series(players: np.ndarray, players_s: np.ndarray, slot_team: np.ndarra
         # +1 where team 0 sits on the low-x side (median over the half), -1 otherwise
         sign = np.zeros(n)                # side flag starts unassigned
         for h in (1, 2):                  # side decided per half
-            sel = half == h
+            sel = half == h            # frames of this half
             if sel.any():
                 d = np.nanmedian(out["cx0"][sel] - out["cx1"][sel])  # team0 minus team1 mean x
                 sign[sel] = 1.0 if d < 0 else -1.0  # low-x side gets +1
         out["s0"] = sign                  # store side flag
-    return out
+    return out                        # the per-frame series dict
 
 
 def dead_features(base: dict, cfg: dict = CFG) -> np.ndarray:
@@ -142,8 +142,8 @@ def load_model(path: Path = MODEL_PATH) -> dict:
 def apply_model(x_dead: np.ndarray, x_team: np.ndarray, model: dict) -> Kinematics:
     """Turn feature matrices into the two signals with the given coefficients."""
     d, t = model["dead"], model["team"]   # dead and team coefficient blocks
-    if tuple(d["features"]) != DEAD_FEATURES or tuple(t["features"]) != TEAM_FEATURES:
-        raise ValueError("kinematic model was fitted on a different feature list")
+    if tuple(d["features"]) != DEAD_FEATURES or tuple(t["features"]) != TEAM_FEATURES:  # model must match feature lists
+        raise ValueError("kinematic model was fitted on a different feature list")  # abort on feature mismatch
     dead_ok = np.isfinite(x_dead).all(axis=1)  # rows with all dead features finite
     team_ok = np.isfinite(x_team).all(axis=1)  # rows with all team features finite
     zd = (np.where(dead_ok[:, None], x_dead, 0.0) - np.asarray(d["mu"])) / np.asarray(d["sd"])  # standardise; bad rows zeroed

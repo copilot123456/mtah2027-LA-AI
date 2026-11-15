@@ -150,7 +150,7 @@ def coverage(track: BallTrack, graded: np.ndarray | None = None) -> dict:
         total = int(mask.sum()) or 1     # guard against empty mask
         for code, name in SOURCE_NAMES.items():
             out[f"{scope}_{name}"] = float(((track.source == code) & mask).sum()) / total  # tier share
-    return out
+    return out                        # share dict per scope
 
 
 def describe(track: BallTrack, graded: np.ndarray | None = None) -> str:
@@ -159,7 +159,7 @@ def describe(track: BallTrack, graded: np.ndarray | None = None) -> str:
     for scope in ("all", "graded"):       # one row per scope
         parts = "  ".join(f"{name} {100 * cov[f'{scope}_{name}']:.1f}%"  # three percentages
                           for name in ("atd", "kinematic", "none"))
-        lines.append(f"  {scope:6s} {parts}")
+        lines.append(f"  {scope:6s} {parts}")  # add this scope's row
     lines.append(f"  out_of_pitch flags: {int(track.out_of_pitch.sum())} frames "  # flag totals
                  f"(atd flagged: {int((track.out_of_pitch & (track.source == SOURCE_ATD)).sum())})")  # ATD subset
     return "\n".join(lines)               # join rows into one string
