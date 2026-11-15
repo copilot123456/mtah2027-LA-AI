@@ -1000,6 +1000,48 @@ the operator, per the guard protocol.
   six coarse statistics, not that the gain transfers. `kin_w_dead` sits at the grid edge.
   T costs about 0.01 if ball loss is almost entirely dead-ball loss.
 
+### P10 — K weight past the grid edge (pre-declared 2026-11-15, before any stage-10 compute)
+
+Open item (c) of the P9 record: `kin_w_dead = 0.3` sits at the grid edge and the gain was
+still rising there. This is the fresh pin that item calls for. Nothing else changes: every
+other key stays at the shipped bundle cell (coalesce on · K 0.3 · T 0.03 · tier kin ·
+delay 0.64 s · slope 0), fill off, frozen decoder cell, stage-5 masks and seeds.
+
+- **Data:** IDSSE only (7 matches), kinematic models fitted leave-one-match-out, the test
+  match's kinematic features from dropout-degraded tracks (the pinned bed handicap). The
+  provided match, ground truth, board files and video stay closed; nothing from the
+  provided match enters the grid or the rule.
+- **Cells:** `kin_w_dead ∈ {0.3, 0.4, 0.5, 0.6, 0.8, 1.0}`, everything else at the shipped
+  bundle cell; 0.3 is the in-harness reference. Record-only rows (never adopted):
+  `R_K05_all` (dead term at 0.5 on every frame, ball-visible included — continuity with
+  `R_kin_all`) and `R_K10_T0` (K 1.0 with `kin_w_team = 0` — the K×T interaction read).
+- **Harness pin:** the 0.3 cell must reproduce the stage-9 bundle row exactly (max |Δ| =
+  0 to 1e-9 on both spellF1 and macroF1 columns, every match × kind), otherwise the pass
+  is void.
+- **Decision rule (pinned now):** for each w > 0.3, Δ(w) = 7-match mean of paired spellF1
+  differences (w − 0.3), per table (four mask kinds × both label sets; primary =
+  `phase_a2` × aligned). **Adopt the smallest w** whose primary Δ is > +0.02 with ≥ 5/7
+  matches positive **and** Δ ≥ −0.02 on each of the other seven tables. If several pass,
+  the smallest w wins (conservative direction). If none passes, `kin_w_dead = 0.3` ships
+  unchanged and the matrices are report evidence — no post-hoc pick from the read.
+- **Parity checks:** the P9 target parity checks Q1–Q6 (`tuning/kin_parity.py`, PASS / FAIL
+  only) are re-run before any adoption; a FAIL holds the adoption for the operator.
+- **Own-output checks after an adoption (categorical only):** share of graded labels
+  changed vs the shipped file (md5 `c1217158…`) as a bucket (< 2 % · 2–5 % · 5–10 % ·
+  10–20 % · > 20 %), plus the external firing rate per match (E10 lesson). Pinned hold:
+  bundle > 20 % ⇒ held for the operator (P9 precedent).
+- **Per cell:** spellF1 / macroF1 on both label sets, predicted `D` share, share of
+  in-match frames changed vs the 0.3 cell, team-switch latency.
+- **Outputs:** `tuning/results/stage10_<kind>.csv`, `stage10_record.csv`,
+  `stage10_verdicts.csv`, `report_stage10.md`; runner `tuning/stage10.py`, reader
+  `tuning/gate10.py`.
+- **Evaluator:** not run by the assistant. An adoption changes a code path, so a guarded
+  run is owed (operator only, band + flags, correctness gate, never a selector).
+- **Limits fixed in advance:** T stays 0.03 whatever w wins (its optimum was read at
+  K 0.3; the `R_K10_T0` row only shows the interaction, it decides nothing); the bed's
+  frozen-ball caveat applies unchanged — this grid cannot judge dead-ball features on
+  ball-visible frames.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
