@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -46,7 +46,9 @@ from starter.load_homography import project, unproject
 # --------------------------------------------------------------------------- #
 # Parameters. Stage-local, NOT config.CFG keys: config.py is frozen framework
 # territory (tests/test_config.py owns its provenance table). Defaults are the
-# notebook's values; override per run via cfg["fot_*"].
+# notebook's values. Only a few are overridable per run via cfg["fot_*"]
+# (fot_profile, fot_max_kinematic_gap_s, the RTS keys below, the weights / imgsz
+# keys); see "Opt-in switches" further down for the full list.
 # --------------------------------------------------------------------------- #
 TILE_SIZE = 320                 # RT-DETR tile edge, pixels
 TILE_STRIDE = 260               # 60 px overlap between tiles
@@ -54,7 +56,8 @@ WINDOW_SIZE = 64                # FoT v2 sequence window
 PROGRESS_EVERY = 125            # frames between progress lines
 
 MASK_MARGIN = 0.05              # notebook MARGIN: +5% pitch margin for the video mask
-DET_CONF_FLOOR = 0.07           # low floor: rescue partly occluded balls near the track
+DET_CONF_FLOOR = 0.07           # predict floor: keeps the gate's track alive near the ball;
+                                # an output anchor still needs the profile's input threshold
 FAR_CONF_FLOOR = 0.18           # stricter floor away from the track (filters distant boots)
 MAX_BALL_SPEED_MPS = 36.0       # physical ceiling (~130 km/h)
 BASE_GATE_RADIUS_M = 3.2        # dribble/rebound radius, metres
@@ -64,16 +67,107 @@ MAX_REPROJ_ERROR = 5.0          # homography fit error tolerated for a frame
 SPIKE_SPEED_MPS = 32.0          # isolated 1-2 frame anchors above this are pruned
 MAX_LATERAL_DEV_M = 0.65        # allowed curve bow versus the straight chord, metres
 BRIDGE_SPEED_MPS = 35.0         # chord speed ceiling for a kinematic bridge
+RTS_Q = 18.0                    # RTS process noise (acceleration variance, m^2/s^4)
+RTS_R_DET_M = 0.22              # RTS measurement noise of DETECTED anchors, metres
+RTS_R_BRIDGE_M = 0.85           # RTS measurement noise of bridged anchors, metres
 
+# Opt-in switches (cfg keys). Every default reproduces the committed behaviour.
+#   fot_use_fot        True     False: skip the FoT v2 forward pass (ablation); no
+#                               FOT_BRIDGED frames, DETECTED confidence = raw score
+#   fot_rts_enabled    True     False: no RTS smoothing (detections keep their pixel)
+#   fot_rts_q / fot_rts_r_det / fot_rts_r_bridge   the three RTS noises above
+#   fot_bridged_tier   "kinematic"  "none": bridged frames are left out of the
+#                               BallTrack instead of entering the kinematic tier
+#   fot_age_clock      "atd+detector"  "atd": age_s counts to ATD frames only, as
+#                               src.ball_fill defines it
+#   fot_decode         "seek"   "sequential": reach the window start by decoding
+#                               every frame instead of a container seek
+#   fot_allow_short_window  False  True: accept a window cut short by a failed read
+#   fot_rtdetr_weights / fot_fot_weights / fot_imgsz   other checkpoints
 # profile -> (detector input threshold, max bridgeable gap, FoT confidence threshold)
 PROFILES = {
     "max_coverage": (0.30, 4, 0.45),
     "high_precision": (0.40, 2, 0.72),
 }
 
+# --------------------------------------------------------------------------- #
+# Provenance of the tunables above.
+#
+# config.py's rule — every tunable carries its origin, enforced by a test — did
+# not reach this module, because these values deliberately live outside CFG. This
+# table makes that gap explicit instead of leaving it invisible, and
+# tests/test_fot_video_gaps.py fails when a new module-level tunable is added
+# without an entry.
+#
+#   origin        "checkpoint"  the value is fixed by a committed checkpoint and
+#                               can be read back from it;
+#                 "run"         a run parameter (which clip), not a model tunable;
+#                 "notebook-unrecorded"  carried over from FotV2_videotest.ipynb;
+#                               nobody has written down on which footage it was
+#                               chosen. The competition rules require tunables to
+#                               be tuned on external data only, so each of these
+#                               must be confirmed external (or re-derived on
+#                               external games with training.eval_detector)
+#                               before this stage may influence a submission.
+#   score_scale   True when the value is a threshold on a model's confidence
+#                 output: it is tied to the committed checkpoints and has to be
+#                 re-chosen for any retrained detector / FoT model.
+#
+# Not listed: about 25 further literals inside the gate, the FoT pre-filter, the
+# spike pruning, the RTS smoother and the Hermite bridge (0.68, 0.72, 0.35/0.65,
+# q=18, 0.22/0.85 m, ...). They are equally unrecorded.
+# --------------------------------------------------------------------------- #
+_UNRECORDED = "notebook-unrecorded"
+TUNABLE_PROVENANCE = {
+    "TILE_SIZE": {"origin": "checkpoint", "score_scale": False,
+                  "note": "= imgsz recorded in models/rtdetr_fold0_best.pt"},
+    "WINDOW_SIZE": {"origin": "checkpoint", "score_scale": False,
+                    "note": "= pos_embed length of models/fot_v2_fold0.pt"},
+    "TILE_STRIDE": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "MASK_MARGIN": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "DET_CONF_FLOOR": {"origin": _UNRECORDED, "score_scale": True,
+                       "note": "RT-DETR confidence"},
+    "FAR_CONF_FLOOR": {"origin": _UNRECORDED, "score_scale": True,
+                       "note": "RT-DETR confidence"},
+    "MAX_BALL_SPEED_MPS": {"origin": _UNRECORDED, "score_scale": False,
+                           "note": "commented as a physical ceiling"},
+    "BASE_GATE_RADIUS_M": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "JUMP_CONFIRM_FRAMES": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "MAX_KINEMATIC_GAP_S": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "MAX_REPROJ_ERROR": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "SPIKE_SPEED_MPS": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "MAX_LATERAL_DEV_M": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "BRIDGE_SPEED_MPS": {"origin": _UNRECORDED, "score_scale": False, "note": ""},
+    "RTS_Q": {"origin": _UNRECORDED, "score_scale": False, "note": "was an inline literal"},
+    "RTS_R_DET_M": {"origin": _UNRECORDED, "score_scale": False,
+                    "note": "was an inline literal"},
+    "RTS_R_BRIDGE_M": {"origin": _UNRECORDED, "score_scale": False,
+                       "note": "was an inline literal"},
+    "PROFILES": {"origin": _UNRECORDED, "score_scale": True,
+                 "note": "RT-DETR input threshold, max gap, FoT hit5 threshold"},
+    "DEFAULT_SEED": {"origin": "run", "score_scale": False, "note": "clip pick"},
+    "DEFAULT_HALF": {"origin": "run", "score_scale": False, "note": "clip pick"},
+    "DEFAULT_CLIP_SECONDS": {"origin": "run", "score_scale": False, "note": "clip pick"},
+}
+
+
+def profile_params(profile: str) -> tuple:
+    """(detector input threshold, max bridgeable gap, FoT confidence threshold).
+
+    Raises on an unknown name: the old ``PROFILES.get(name, max_coverage)`` turned a
+    typo such as ``"high-precision"`` into the *less* conservative profile, silently.
+    """
+    try:
+        return PROFILES[profile]
+    except KeyError:
+        raise ValueError(f"unknown FoT profile {profile!r}; "
+                         f"choose one of {sorted(PROFILES)}") from None
+
+
 DEFAULT_SEED = 0                # reproducible clip selection
 DEFAULT_HALF = "1st_half"       # "1st_half", "2nd_half" or "any_half"
 DEFAULT_CLIP_SECONDS = 30.0
+DEFAULT_OUT_DIR = "runs/fot_video"   # git-ignored: exports never land in the repo root
 
 STATE_DETECTED = "DETECTED"
 STATE_FOT = "FOT_BRIDGED"
@@ -89,6 +183,10 @@ class DetectionPass:
     frame_w: int
     frame_h: int
     fps: float
+    # frame -> every merged candidate [(gx, gy, conf), ...] before the gate chose one,
+    # so the selection can be studied offline without another GPU pass. Empty when the
+    # pass was built by hand (older callers).
+    candidates: dict = field(default_factory=dict)
 
 
 def set_global_seed(seed: int) -> None:
@@ -177,6 +275,9 @@ def compute_tile_coords(frame_w: int, frame_h: int, tile_size: int = TILE_SIZE,
     ys = list(range(0, max(1, frame_h - tile_size + 1), stride))
     if ys[-1] != frame_h - tile_size:
         ys.append(max(0, frame_h - tile_size))
+    # A frame narrower (or shorter) than one tile used to get the same corner twice
+    # per axis; identical output for every frame at least one tile in size.
+    xs, ys = sorted(set(xs)), sorted(set(ys))
     return [(x, y) for y in ys for x in xs]
 
 
@@ -201,6 +302,13 @@ class PitchKinematicGate:
       before the track moves, unless it is an unequivocal hit (>= 0.68).
     * Confirmed far jumps rescue their buffered frames retroactively into
       ``det_history``, the notebook's anti-ghosting behaviour.
+
+    Known limitation (review 2026-11-14, reproduced on synthetic input): the far path,
+    including the >= 0.68 rule, is evaluated ONLY when no candidate is inside the
+    reachable radius. Any in-radius candidate above the predict floor (0.07) wins, so a
+    static ball-like object near the track can hold it against a confident real ball
+    elsewhere. Pinned by tests/test_fot_video_gaps.py; changing it needs evidence from
+    external games, not a guess.
     """
 
     def __init__(self, fps: float, pitch_length_m: float, pitch_width_m: float):
@@ -421,23 +529,26 @@ def build_fot_model(window_size: int = WINDOW_SIZE, weights=None, device="cpu"):
     model = FootballTransformerV2(in_features=12, d_model=160, nhead=8,
                                   num_layers=4, max_len=window_size)
     if weights is not None:
-        model.load_state_dict(torch.load(weights, map_location=device))
+        # weights_only=True: a state_dict needs no arbitrary unpickling, so a
+        # tampered file cannot run code here.
+        model.load_state_dict(torch.load(weights, map_location=device,
+                                         weights_only=True))
     model.to(device)
     model.eval()
     return model
 
 
-def run_fot_v2_sequence(fot_model, raw_dets, frame_w, frame_h, device,
-                        profile: str = "max_coverage"):
-    """Hann-windowed FoT v2 inference over one (sub-sampled) detection sequence.
+def prepare_fot_observations(raw_dets, frame_w, frame_h, profile: str = "max_coverage"):
+    """(obs_x, obs_y, scores, valid) — the detections FoT v2 is allowed to see.
 
-    ``raw_dets`` is a list of ``(frame, gx, gy, conf)``. Returns ``frame -> (px, py,
-    conf, state, gap)``: kept detections ride through as DETECTED with boosted
-    confidence, bridged frames as FOT_BRIDGED, everything else NONE.
+    The input side of :func:`run_fot_v2_sequence`, separated so that training
+    (``training.fot_data``) builds its windows from exactly the observations inference
+    uses. ``raw_dets`` is a list of ``(frame, gx, gy, conf)``; positions come back
+    normalised by the frame size. A detection is kept when its confidence reaches the
+    profile's input threshold, then isolated mid-gap anchors (fast in and fast out
+    while their neighbours agree) are dropped.
     """
-    import torch
-
-    det_input_thr, max_gap, conf_thr = PROFILES.get(profile, PROFILES["max_coverage"])
+    det_input_thr = profile_params(profile)[0]
 
     N = len(raw_dets)
     obs_x = np.zeros(N, dtype=np.float32)
@@ -449,7 +560,9 @@ def run_fot_v2_sequence(fot_model, raw_dets, frame_w, frame_h, device,
         if sc >= det_input_thr and not np.isnan(gx):
             obs_x[i], obs_y[i], scores[i], valid[i] = gx / frame_w, gy / frame_h, sc, True
 
-    # Drop isolated mid-gap anchors: fast in and fast out while the ends agree.
+    # Drop isolated anchors: one-shot, each anchor against its two ORIGINAL valid
+    # neighbours; dropped when the per-step pixel jump to both exceeds 160 px (scaled
+    # to the frame width) and its score is below 0.72. There is no "ends agree" test.
     max_jump_px = 160.0 * (frame_w / 1920.0)
     v_idx = np.where(valid)[0]
     for k in range(1, len(v_idx) - 1):
@@ -461,6 +574,29 @@ def run_fot_v2_sequence(fot_model, raw_dets, frame_w, frame_h, device,
                       (obs_y[i_n] - obs_y[i_c]) * frame_h) / s2
         if v1 > max_jump_px and v2 > max_jump_px and scores[i_c] < 0.72:
             valid[i_c] = False
+    return obs_x, obs_y, scores, valid
+
+
+def run_fot_v2_sequence(fot_model, raw_dets, frame_w, frame_h, device,
+                        profile: str = "max_coverage"):
+    """Hann-windowed FoT v2 inference over one (sub-sampled) detection sequence.
+
+    ``raw_dets`` is a list of ``(frame, gx, gy, conf)``. Returns ``frame -> (px, py,
+    conf, state, gap)``: kept detections ride through as DETECTED with boosted
+    confidence, bridged frames as FOT_BRIDGED, everything else NONE.
+
+    ``fot_model=None`` skips the transformer (ablation): the hit probability is 0
+    everywhere, so nothing is FOT_BRIDGED and a detection keeps its raw score. torch is
+    then not needed.
+    """
+    _, max_gap, conf_thr = profile_params(profile)
+    N = len(raw_dets)
+    if N == 0:
+        # An empty sub-sequence (the odd pass of a one-frame window) used to die in
+        # np.pad(mode="edge") with an unrelated numpy error. Nothing in, nothing out.
+        return {}
+    obs_x, obs_y, scores, valid = prepare_fot_observations(raw_dets, frame_w, frame_h,
+                                                          profile)
 
     win_weights = np.hanning(WINDOW_SIZE + 2)[1:-1].astype(np.float32)
     acc_xy = np.zeros((N, 2), dtype=np.float32)
@@ -471,7 +607,16 @@ def run_fot_v2_sequence(fot_model, raw_dets, frame_w, frame_h, device,
     if N > WINDOW_SIZE and starts[-1] != N - WINDOW_SIZE:
         starts.append(N - WINDOW_SIZE)
 
-    with torch.no_grad():
+    if fot_model is not None:
+        import torch
+
+        no_grad = torch.no_grad()
+    else:
+        import contextlib
+
+        no_grad = contextlib.nullcontext()
+        starts = []
+    with no_grad:
         for s0 in starts:
             s1 = min(N, s0 + WINDOW_SIZE)
             cur_len = s1 - s0
@@ -535,20 +680,47 @@ def models_dir() -> Path:
         "no models/ directory found; checked: " + ", ".join(str(c) for c in candidates))
 
 
+def weight_paths(cfg: dict = CFG) -> tuple[Path, Path]:
+    """(RT-DETR weights, FoT v2 weights): the committed fold-0 files unless overridden.
+
+    ``cfg["fot_rtdetr_weights"]`` / ``cfg["fot_fot_weights"]`` point the stage at
+    another checkpoint (a retrained detector under ``runs/``) without renaming files
+    or touching ``models/``.
+    """
+    rt_override = cfg.get("fot_rtdetr_weights")
+    fot_override = cfg.get("fot_fot_weights")
+    mdir = models_dir() if not (rt_override and fot_override) else None
+    rt_weights = Path(rt_override) if rt_override else mdir / "rtdetr_fold0_best.pt"
+    fot_weights = Path(fot_override) if fot_override else mdir / "fot_v2_fold0.pt"
+    return rt_weights, fot_weights
+
+
+def yolo_device(device):
+    """ultralytics ``device=`` value for a torch-style device string.
+
+    ``"cuda:1"`` -> ``1`` (the index used to be dropped, so every CUDA request ran on
+    GPU 0), ``"cuda"`` / ``"cuda:0"`` -> ``0``, anything else -> ``"cpu"``.
+    """
+    text = str(device)
+    if not text.startswith("cuda"):
+        return "cpu"
+    _, _, index = text.partition(":")
+    return int(index) if index.isdigit() else 0
+
+
 def load_models(cfg: dict = CFG):
     """(rt_model, fot_model, device) — RT-DETR and FoT v2 weights from models/."""
     import torch
     from ultralytics import RTDETR
 
     device = cfg.get("fot_device") or ("cuda:0" if torch.cuda.is_available() else "cpu")
-    mdir = models_dir()
-    rt_weights = mdir / "rtdetr_fold0_best.pt"
-    fot_weights = mdir / "fot_v2_fold0.pt"
+    rt_weights, fot_weights = weight_paths(cfg)
     missing = [str(p) for p in (rt_weights, fot_weights) if not p.exists()]
     if missing:
         raise FileNotFoundError(
             "missing FoT v2 weights:\n  " + "\n  ".join(missing)
-            + "\n(the .pt checkpoints are not committed; place them in " + str(mdir) + ")")
+            + "\n(defaults are the checkpoints committed under models/; override with"
+              " cfg['fot_rtdetr_weights'] / cfg['fot_fot_weights'])")
 
     rt_model = RTDETR(str(rt_weights))
     fot_model = build_fot_model(WINDOW_SIZE, weights=fot_weights, device=device)
@@ -591,6 +763,9 @@ def choose_window(valid: np.ndarray, cfg: dict, fps: float,
 
     roi_start, roi_end = blocks[half]
     roi_end = min(roi_end, n_video_frames - 1)
+    if roi_end < roi_start:
+        raise ValueError(f"video has {n_video_frames} frames; half {half} starts at"
+                         f" frame {roi_start} — wrong or truncated video file?")
 
     clip_len_frames = int(round(clip_seconds * fps))
     max_start = max(roi_start, roi_end - clip_len_frames)
@@ -608,6 +783,55 @@ def choose_window(valid: np.ndarray, cfg: dict, fps: float,
     return start, end, half
 
 
+def detect_frame_candidates(rt_model, frame: np.ndarray, tiles: list,
+                            mask_margin: np.ndarray | None = None,
+                            device=0, imgsz: int = TILE_SIZE) -> list:
+    """Tiled RT-DETR on one frame: merged candidates ``[(gx, gy, conf), ...]``.
+
+    ``frame`` is the image the tiles are cut from (already masked when a pitch mask
+    is in use), ``tiles`` the top-left corners to run, ``mask_margin`` the optional
+    pitch mask used to discard detections that fall outside it. Coordinates are
+    full-frame pixels; the list is sorted by confidence, duplicates from overlapping
+    tiles removed. This is the per-frame body of :func:`detect_window`, shared with
+    ``training.eval_detector`` so evaluation and inference cannot drift apart.
+
+    ``device`` is passed to ultralytics as given (``0``, ``"cpu"``, ...). ``imgsz`` is
+    the network input size: ``TILE_SIZE`` feeds tiles at native scale (what the
+    committed checkpoint was trained on); a checkpoint trained on up-sampled tiles
+    must be run at its own ``imgsz``. Detections are mapped back with each crop's real
+    size, so the result is in frame pixels whatever ``imgsz`` is.
+    """
+    if len(tiles) == 0:
+        return []
+    frame_h, frame_w = frame.shape[:2]
+    crops = [frame[ty:ty + TILE_SIZE, tx:tx + TILE_SIZE] for (tx, ty) in tiles]
+    results = rt_model.predict(
+        source=crops, imgsz=imgsz, conf=DET_CONF_FLOOR, max_det=4,
+        device=device, verbose=False
+    )
+
+    frame_cands = []
+    for (tx, ty), crop, r in zip(tiles, crops, results):
+        if r.boxes is not None and len(r.boxes) > 0:
+            confs = r.boxes.conf.cpu().numpy()
+            xywhn = r.boxes.xywhn.cpu().numpy()
+            # xywhn is normalised by the crop; a crop is TILE_SIZE square unless the
+            # frame itself is smaller than a tile.
+            crop_h, crop_w = crop.shape[:2]
+            for i in range(len(confs)):
+                sc = float(confs[i])
+                gx = tx + float(xywhn[i, 0]) * crop_w
+                gy = ty + float(xywhn[i, 1]) * crop_h
+                if mask_margin is not None:
+                    ix = min(max(int(round(gx)), 0), frame_w - 1)
+                    iy = min(max(int(round(gy)), 0), frame_h - 1)
+                    if mask_margin[iy, ix] == 0:
+                        continue
+                frame_cands.append((gx, gy, sc))
+
+    return nms_candidates(frame_cands, min_dist_px=14.0)
+
+
 def detect_window(rt_model, video: str, matrices: np.ndarray, reproj_err: np.ndarray,
                   valid: np.ndarray, start: int, end: int,
                   cfg: dict = CFG) -> DetectionPass:
@@ -615,8 +839,19 @@ def detect_window(rt_model, video: str, matrices: np.ndarray, reproj_err: np.nda
 
     Every frame of the window gets a history entry (NaN where nothing was kept), so
     downstream stages can bridge the gaps. Heavy cv2 use stays inside this function.
+
+    The window start is reached with a container seek by default, which is
+    frame-accurate only on regular constant-frame-rate files;
+    ``cfg["fot_decode"] = "sequential"`` decodes every frame up to ``start`` instead
+    (slow for late starts, never misaligned).
     """
     import cv2
+
+    if end < start:
+        raise ValueError(f"empty window: end {end} < start {start}")
+    decode = str(cfg.get("fot_decode", "seek"))
+    if decode not in ("seek", "sequential"):
+        raise ValueError(f"fot_decode must be 'seek' or 'sequential', got {decode!r}")
 
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
@@ -629,15 +864,24 @@ def detect_window(rt_model, video: str, matrices: np.ndarray, reproj_err: np.nda
     if device is None:
         import torch
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    yolo_device = 0 if str(device).startswith("cuda") else "cpu"
+    predict_device = yolo_device(device)
+    imgsz = int(cfg.get("fot_imgsz", TILE_SIZE))
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+    if decode == "seek":
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+    else:
+        for skipped in range(start):
+            if not cap.grab():
+                cap.release()
+                raise IOError(f"video ended at frame {skipped} while decoding up to"
+                              f" the window start {start}: {video}")
     all_tiles = compute_tile_coords(frame_w, frame_h, TILE_SIZE, TILE_STRIDE)
     gate = PitchKinematicGate(fps=fps,
                               pitch_length_m=float(cfg["pitch_length_m"]),
                               pitch_width_m=float(cfg["pitch_width_m"]))
 
     history: dict = {}
+    candidates: dict = {}
     verbose = bool(cfg.get("fot_verbose", True))
     t0 = time.perf_counter()
 
@@ -661,48 +905,40 @@ def detect_window(rt_model, video: str, matrices: np.ndarray, reproj_err: np.nda
 
         if len(active_tiles) == 0:
             history[fr_idx] = (fr_idx, np.nan, np.nan, 0.0)
+            candidates[fr_idx] = []
             continue
 
-        crops = [masked_frame[ty:ty + TILE_SIZE, tx:tx + TILE_SIZE]
-                 for (tx, ty) in active_tiles]
-        results = rt_model.predict(
-            source=crops, imgsz=TILE_SIZE, conf=DET_CONF_FLOOR, max_det=4,
-            device=yolo_device, verbose=False
-        )
-
-        frame_cands = []
-        for (tx, ty), r in zip(active_tiles, results):
-            if r.boxes is not None and len(r.boxes) > 0:
-                confs = r.boxes.conf.cpu().numpy()
-                xywhn = r.boxes.xywhn.cpu().numpy()
-                for i in range(len(confs)):
-                    sc = float(confs[i])
-                    gx = tx + float(xywhn[i, 0]) * TILE_SIZE
-                    gy = ty + float(xywhn[i, 1]) * TILE_SIZE
-                    if mask_margin is not None:
-                        ix = min(max(int(round(gx)), 0), frame_w - 1)
-                        iy = min(max(int(round(gy)), 0), frame_h - 1)
-                        if mask_margin[iy, ix] == 0:
-                            continue
-                    frame_cands.append((gx, gy, sc))
-
-        frame_cands = nms_candidates(frame_cands, min_dist_px=14.0)
+        frame_cands = detect_frame_candidates(rt_model, masked_frame, active_tiles,
+                                              mask_margin, predict_device, imgsz)
+        candidates[fr_idx] = list(frame_cands)
         gx, gy, sc = gate.step(fr_idx, frame_cands, H_cur, history)
         history[fr_idx] = (fr_idx, gx, gy, sc)
 
         if verbose and (fr_idx - start + 1) % PROGRESS_EVERY == 0:
-            print(f"  Procesados {fr_idx - start + 1}/{end - start + 1} frames"
+            print(f"  processed {fr_idx - start + 1}/{end - start + 1} frames"
                   f" | {time.perf_counter() - t0:.1f}s")
 
     cap.release()
-    return DetectionPass(history=history, frame_w=frame_w, frame_h=frame_h, fps=fps)
+    expected = end - start + 1
+    if len(history) < expected and not cfg.get("fot_allow_short_window", False):
+        # A failed read used to end the loop silently: the window came back short
+        # (or empty, which crashed later inside the FoT stage with a numpy error).
+        raise IOError(
+            f"video read stopped at frame {start + len(history)}: got {len(history)} of"
+            f" {expected} frames of [{start} .. {end}] from {video}. Set"
+            " cfg['fot_allow_short_window']=True to accept a truncated window.")
+    return DetectionPass(history=history, frame_w=frame_w, frame_h=frame_h, fps=fps,
+                         candidates=candidates)
 
 
 # --------------------------------------------------------------------------- #
 # Stage 2: FoT v2 fusion + pitch-space smoothing and bridging
 # --------------------------------------------------------------------------- #
 def prune_spikes(all_f: list, pts: dict, fps: float) -> None:
-    """Null 1-2 frame anchors that are fast in and fast out but whose ends agree (boots).
+    """Null single-frame anchors that are fast in and fast out but whose ends agree (boots).
+
+    Only single anchors: a 2-frame false-positive cluster passes here (the per-parity
+    pixel filter in :func:`prepare_fot_observations` catches some of them).
 
     ``pts`` maps frame -> [mx, my, conf, state, gap] in metres; modified in place.
     """
@@ -726,11 +962,19 @@ def prune_spikes(all_f: list, pts: dict, fps: float) -> None:
                 pts[f_cur] = None
 
 
-def rts_smooth_segment(seg_frames: list, pts: dict, fps: float) -> None:
+def rts_smooth_segment(seg_frames: list, pts: dict, fps: float, q: float = RTS_Q,
+                       r_det: float = RTS_R_DET_M,
+                       r_bridge: float = RTS_R_BRIDGE_M) -> None:
     """Bidirectional Kalman (RTS) smoothing of (mx, my) with a constant-velocity model.
 
-    Measurement noise differs by provenance: 0.22 m for DETECTED anchors, 0.85 m for
-    bridged ones. ``pts`` is modified in place; segments shorter than 3 are left alone.
+    Measurement noise differs by provenance: ``r_det`` (0.22 m) for DETECTED anchors,
+    ``r_bridge`` (0.85 m) for bridged ones. ``pts`` is modified in place; segments
+    shorter than 3 are left alone.
+
+    Note (review 2026-11-14): q = 18 models about 4 m/s^2 of acceleration, while a kick
+    or a trap is hundreds of m/s^2, so around a touch the smoother moves exact
+    detections by roughly 0.08 m per m/s of velocity change. ``cfg["fot_rts_enabled"]``
+    and the ``fot_rts_*`` keys exist so this can be measured on external games.
     """
     n = len(seg_frames)
     if n < 3:
@@ -742,7 +986,6 @@ def rts_smooth_segment(seg_frames: list, pts: dict, fps: float) -> None:
                   [0, 0, 0,  1]], dtype=np.float64)
     H_obs = np.array([[1, 0, 0, 0],
                       [0, 1, 0, 0]], dtype=np.float64)
-    q = 18.0  # process acceleration noise: allows real pass-speed changes without zig-zag
     G = np.array([[0.5 * dt ** 2, 0],
                   [0, 0.5 * dt ** 2],
                   [dt, 0],
@@ -766,7 +1009,7 @@ def rts_smooth_segment(seg_frames: list, pts: dict, fps: float) -> None:
         Ps_p.append(P.copy())
 
         obs = pts[fr]
-        r_std = 0.22 if obs[3] == STATE_DETECTED else 0.85
+        r_std = r_det if obs[3] == STATE_DETECTED else r_bridge
         R = np.eye(2) * (r_std ** 2)
         z = np.array([obs[0], obs[1]], dtype=np.float64)
         y_res = z - H_obs @ x
@@ -792,18 +1035,21 @@ def rts_smooth_segment(seg_frames: list, pts: dict, fps: float) -> None:
         pts[fr][1] = float(xs_s[k][1])
 
 
-def smooth_rts(all_f: list, pts: dict, fps: float) -> None:
-    """Apply :func:`rts_smooth_segment` to every contiguous block of tracked frames."""
+def smooth_rts(all_f: list, pts: dict, fps: float, **noise) -> None:
+    """Apply :func:`rts_smooth_segment` to every contiguous block of tracked frames.
+
+    ``noise`` (``q``, ``r_det``, ``r_bridge``) is passed through unchanged.
+    """
     cur_seg = []
     for f in all_f:
         if pts[f] is not None:
             cur_seg.append(f)
         else:
             if len(cur_seg) >= 3:
-                rts_smooth_segment(cur_seg, pts, fps)
+                rts_smooth_segment(cur_seg, pts, fps, **noise)
             cur_seg = []
     if len(cur_seg) >= 3:
-        rts_smooth_segment(cur_seg, pts, fps)
+        rts_smooth_segment(cur_seg, pts, fps, **noise)
 
 
 def bridge_kinematic_gaps(all_f: list, pts: dict, fps: float,
@@ -902,7 +1148,10 @@ def reproject_predictions(all_f: list, pts: dict, matrices: np.ndarray,
         H_f = get_valid_H(f, matrices, reproj_err, valid)
         if p is not None and H_f is not None:
             px_f, py_f = project(H_f, p[0] / pitch_length_m, p[1] / pitch_width_m)
-            preds[f] = (float(px_f), float(py_f), p[2], p[3], p[4])
+            if np.isfinite(px_f) and np.isfinite(py_f):
+                preds[f] = (float(px_f), float(py_f), p[2], p[3], p[4])
+            else:  # a degenerate homography must not surface as a DETECTED NaN row
+                preds[f] = (np.nan, np.nan, 0.0, STATE_NONE, 999)
         else:
             preds[f] = (np.nan, np.nan, 0.0, STATE_NONE, 999)
     return preds
@@ -915,7 +1164,8 @@ def fuse_predictions(fot_model, det_pass: DetectionPass, matrices: np.ndarray,
 
     Even/odd FoT v2 passes -> pitch metres -> spike pruning -> RTS smoothing ->
     Hermite gap bridging -> reprojection. Returns ``frame -> (px, py, conf, state,
-    gap)`` for every frame of the window.
+    gap)`` for every frame of the window. Opt-in switches: ``fot_use_fot``,
+    ``fot_rts_enabled``, ``fot_rts_q`` / ``fot_rts_r_det`` / ``fot_rts_r_bridge``.
     """
     fps = det_pass.fps
     length = float(cfg["pitch_length_m"])
@@ -923,6 +1173,8 @@ def fuse_predictions(fot_model, det_pass: DetectionPass, matrices: np.ndarray,
     profile = str(cfg.get("fot_profile", "max_coverage"))
 
     ordered = [det_pass.history[f] for f in sorted(det_pass.history)]
+    if not bool(cfg.get("fot_use_fot", True)):
+        fot_model = None
     fot_even = run_fot_v2_sequence(fot_model, ordered[0::2], det_pass.frame_w,
                                    det_pass.frame_h, device, profile=profile)
     fot_odd = run_fot_v2_sequence(fot_model, ordered[1::2], det_pass.frame_w,
@@ -938,15 +1190,24 @@ def fuse_predictions(fot_model, det_pass: DetectionPass, matrices: np.ndarray,
     for f in all_f:
         px, py, conf, st, gap = raw_merged[f]
         H_f = get_valid_H(f, matrices, reproj_err, valid)
-        if st != STATE_NONE and not np.isnan(px) and H_f is not None:
+        if (st != STATE_NONE and not np.isnan(px) and not np.isnan(py)
+                and H_f is not None):
             nx, ny = unproject(H_f, px, py)
-            pts[f] = [float(nx) * length, float(ny) * width, float(conf), st, int(gap)]
+            if np.isfinite(nx) and np.isfinite(ny):
+                pts[f] = [float(nx) * length, float(ny) * width, float(conf), st,
+                          int(gap)]
+            else:
+                pts[f] = None
         else:
             pts[f] = None
 
     # B: prune boots, then smooth each tracked block.
     prune_spikes(all_f, pts, fps)
-    smooth_rts(all_f, pts, fps)
+    if bool(cfg.get("fot_rts_enabled", True)):
+        smooth_rts(all_f, pts, fps,
+                   q=float(cfg.get("fot_rts_q", RTS_Q)),
+                   r_det=float(cfg.get("fot_rts_r_det", RTS_R_DET_M)),
+                   r_bridge=float(cfg.get("fot_rts_r_bridge", RTS_R_BRIDGE_M)))
 
     # C: bounded Hermite reconstruction of what is still missing.
     bridge_kinematic_gaps(all_f, pts, fps,
@@ -960,14 +1221,31 @@ def fuse_predictions(fot_model, det_pass: DetectionPass, matrices: np.ndarray,
 # --------------------------------------------------------------------------- #
 # Stage 3: the notebook's output as a framework BallTrack
 # --------------------------------------------------------------------------- #
+BRIDGED_TIERS = ("kinematic", "none")
+AGE_CLOCKS = ("atd+detector", "atd")
+
+
 def _overlay_video(xy: np.ndarray, source: np.ndarray, preds: dict,
                    matrices: np.ndarray, reproj_err: np.ndarray,
-                   valid: np.ndarray) -> None:
-    """Write video evidence into empty frames only; ATD and existing fills are never touched."""
+                   valid: np.ndarray, bridged_tier: str = "kinematic") -> None:
+    """Write video evidence into empty frames only; ATD and existing fills are never touched.
+
+    DETECTED frames become ``SOURCE_DETECTOR``. Bridged frames (FOT_BRIDGED,
+    KINEMATIC_BRIDGED) become ``SOURCE_KINEMATIC`` by default — note that
+    ``src/emission.py`` gives that tier team confidence (c0_kinematic / tau_kinematic_s,
+    untuned priors) while ``SOURCE_DETECTOR`` gets none, and that config's
+    ``fill_long_gap_s = 0`` does not govern these frames. ``bridged_tier="none"``
+    leaves bridged frames out of the track instead.
+    """
+    if bridged_tier not in BRIDGED_TIERS:
+        raise ValueError(f"fot_bridged_tier must be one of {BRIDGED_TIERS},"
+                         f" got {bridged_tier!r}")
     for f, (px, py, conf, state, gap) in preds.items():
         if not (0 <= f < len(source)):
             continue
         if state == STATE_NONE or np.isnan(px) or np.isnan(py):
+            continue
+        if state != STATE_DETECTED and bridged_tier == "none":
             continue
         if source[f] != SOURCE_NONE:
             continue  # raw ATD or an existing fill wins over the video
@@ -1003,7 +1281,12 @@ def _finalize_track(xy: np.ndarray, source: np.ndarray, cfg: dict) -> BallTrack:
     source[drop] = SOURCE_NONE
 
     idx = np.arange(n)
-    raw = (source == SOURCE_ATD) | (source == SOURCE_DETECTOR)
+    clock = str(cfg.get("fot_age_clock", "atd+detector"))
+    if clock not in AGE_CLOCKS:
+        raise ValueError(f"fot_age_clock must be one of {AGE_CLOCKS}, got {clock!r}")
+    raw = source == SOURCE_ATD
+    if clock == "atd+detector":
+        raw = raw | (source == SOURCE_DETECTOR)
     obs = np.flatnonzero(raw)
     if obs.size:
         pos = np.searchsorted(obs, idx)
@@ -1026,7 +1309,8 @@ def build_fot_ball_track(n_frames: int, preds: dict, matrices: np.ndarray,
     """
     xy = np.full((n_frames, 2), np.nan, dtype=np.float64)
     source = np.full(n_frames, SOURCE_NONE, dtype=np.int8)
-    _overlay_video(xy, source, preds, matrices, reproj_err, valid)
+    _overlay_video(xy, source, preds, matrices, reproj_err, valid,
+                   str(cfg.get("fot_bridged_tier", "kinematic")))
     return _finalize_track(xy, source, cfg)
 
 
@@ -1042,7 +1326,8 @@ def merge_video_into_track(base: BallTrack, preds: dict, matrices: np.ndarray,
     """
     xy = base.xy.copy()
     source = base.source.copy()
-    _overlay_video(xy, source, preds, matrices, reproj_err, valid)
+    _overlay_video(xy, source, preds, matrices, reproj_err, valid,
+                   str(cfg.get("fot_bridged_tier", "kinematic")))
     return _finalize_track(xy, source, cfg)
 
 
@@ -1286,7 +1571,13 @@ def fot_video_track(ctx, cfg: dict) -> None:
 
     table = export_frame_table(preds, matrices, reproj_err, valid, det_pass.fps, cfg)
     counts = table["state"].value_counts().to_dict()
+    rt_weights, fot_weights = weight_paths(cfg)
+    input_thr = profile_params(str(cfg.get("fot_profile", "max_coverage")))[0]
+    kept = [v[3] for v in det_pass.history.values() if not np.isnan(v[1])]
     ctx.extra["fot_video"] = {
+        "rtdetr_weights": str(rt_weights),
+        "fot_weights": str(fot_weights),
+        "imgsz": int(cfg.get("fot_imgsz", TILE_SIZE)),
         "half": half,
         "start_frame": start,
         "end_frame": end,
@@ -1294,6 +1585,11 @@ def fot_video_track(ctx, cfg: dict) -> None:
         "predictions": preds,
         "table": table,
         "state_counts": counts,
+        # Diagnostic only — never a reason to change a threshold (that would be tuning
+        # on the provided video): detections the gate kept, and how many of them sit
+        # below the FoT input threshold and therefore never reach the output.
+        "gate_kept": len(kept),
+        "gate_kept_below_input_threshold": int(sum(1 for c in kept if c < input_thr)),
     }
 
     if bool(cfg.get("fot_verbose", True)):
@@ -1313,12 +1609,24 @@ def main(argv: list[str] | None = None) -> int:
     """Run the FotV2_videotest flow on a seeded clip and export play_*.{mp4,csv}.
 
     Reproduces the notebook end to end — window pick, tiled RT-DETR pass, FoT v2
-    fusion, then the annotated video and the 12-column CSV — without a kernel:
+    fusion, then the 12-column CSV and, on request, the annotated video — without a
+    kernel:
 
-        python -m src.fot_video                       # seed 0, 1st_half, 30 s
+        python -m src.fot_video                        # seed 0, 1st_half, 30 s, CSV only
         python -m src.fot_video --half 2nd_half --seconds 20 --seed 3
-        python -m src.fot_video --csv-only            # skip the MP4 render
-        python -m src.fot_video --data-dir D:/mtah2027 # bundle elsewhere
+        python -m src.fot_video --render               # also write the annotated MP4
+        python -m src.fot_video --data-dir /data/mtah2027   # bundle elsewhere
+        python -m src.fot_video --rtdetr-weights runs/rtdetr/fold_0/weights/best.pt
+
+    Outputs go to ``runs/fot_video/`` (git-ignored) unless ``--out-dir`` says
+    otherwise: the CSV is a per-frame ball track of the provided match, i.e. derived
+    from provided data, and must not be committed.
+
+    The overlay video is opt-in (``--render``). Watching the detector's output on top
+    of the provided match is fine for *understanding* what it does; choosing or
+    adjusting any threshold from what you see there is tuning on the provided video,
+    which the competition rules forbid — tune on external games
+    (``python -m training.eval_detector``).
     """
     import argparse
 
@@ -1334,12 +1642,24 @@ def main(argv: list[str] | None = None) -> int:
                         help=f"clip length in seconds (default {DEFAULT_CLIP_SECONDS:g})")
     parser.add_argument("--profile", choices=sorted(PROFILES), default="max_coverage",
                         help="FoT v2 operating point")
-    parser.add_argument("--out-dir", default=".",
-                        help="directory for the outputs (created if missing)")
+    parser.add_argument("--out-dir", default=DEFAULT_OUT_DIR,
+                        help=f"directory for the outputs (default {DEFAULT_OUT_DIR},"
+                             " git-ignored; created if missing)")
     parser.add_argument("--prefix", default=None,
                         help="output basename; default play_{half}_seed{seed}_{start}_{end}")
+    parser.add_argument("--render", action="store_true",
+                        help="also write the annotated MP4 (off by default; for"
+                             " understanding only — never tune from it)")
     parser.add_argument("--csv-only", action="store_true",
-                        help="skip the annotated MP4 and write only the CSV")
+                        help="write only the CSV (now the default; kept so existing"
+                             " commands still work)")
+    parser.add_argument("--rtdetr-weights", default=None,
+                        help="detector checkpoint (default: models/rtdetr_fold0_best.pt)")
+    parser.add_argument("--fot-weights", default=None,
+                        help="FoT v2 state_dict (default: models/fot_v2_fold0.pt)")
+    parser.add_argument("--imgsz", type=int, default=None,
+                        help=f"detector input size (default {TILE_SIZE}; use the size"
+                             " the checkpoint was trained at)")
     parser.add_argument("--data-dir", default=None,
                         help="match bundle root (default: MTAH_DATA_DIR or ./data)")
     parser.add_argument("--device", default=None,
@@ -1354,6 +1674,14 @@ def main(argv: list[str] | None = None) -> int:
            "fot_verbose": True}
     if args.device:
         cfg["fot_device"] = args.device
+    if args.rtdetr_weights:
+        cfg["fot_rtdetr_weights"] = args.rtdetr_weights
+    if args.fot_weights:
+        cfg["fot_fot_weights"] = args.fot_weights
+    if args.imgsz:
+        cfg["fot_imgsz"] = args.imgsz
+    if args.render and args.csv_only:
+        parser.error("--render and --csv-only contradict each other")
 
     set_global_seed(args.seed)
 
@@ -1377,7 +1705,7 @@ def main(argv: list[str] | None = None) -> int:
     prefix = args.prefix or f"play_{half_name}_seed{args.seed}_{start}_{end}"
     out_csv = out_dir / f"{prefix}.csv"
 
-    if args.csv_only:
+    if not args.render:
         table = export_frame_table(preds, matrices, reproj_err, valid,
                                    det_pass.fps, cfg)
         table.to_csv(out_csv, index=False)
@@ -1389,9 +1717,11 @@ def main(argv: list[str] | None = None) -> int:
                             title=f"seed={args.seed} | {half_name}", cfg=cfg)
 
     if out_video is not None:
-        print(f"Video guardado: {out_video}")
-    print(f"CSV guardado  : {out_csv}")
-    print("\nDistribución de estados:")
+        print(f"video saved: {out_video}")
+        print("  (overlay on the provided match: for understanding only — do not"
+              " tune any threshold from it)")
+    print(f"CSV saved  : {out_csv}")
+    print("\nstate counts:")
     print(table["state"].value_counts())
     return 0
 

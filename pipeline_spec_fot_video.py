@@ -25,6 +25,18 @@ tier is implemented"), so video detections steer the dead-ball features and the
 kinematic confidence decay but contribute no H/A evidence on their own. Closing
 that gap means a config.py + emission.py change, which is a framework change and
 follows PIPELINE_STANDARD_AI.md §7 — not this branch.
+
+Review note (2026-11-14), so nobody scores labels from this spec by accident:
+* Bridged video frames (FOT_BRIDGED, KINEMATIC_BRIDGED) enter the KINEMATIC tier, which
+  emission DOES give team confidence (untuned priors) — so the H/A evidence from the
+  video comes only from interpolated frames, and falls as the detector gets better.
+  ``cfg["fot_bridged_tier"] = "none"`` keeps them out.
+* On this branch's framework base (de91a9f) the decoder's revert-only switch gate
+  accepts a boundary only near supporting ATD; a hand-over placed inside an ATD gap
+  from video-bridged frames is reverted and can swallow the next segment. The
+  adopted pipeline (ruiz-work, gate move mode) does not have that failure.
+* The handler covers one seeded 30 s clip (under 0.5 % of the graded frames).
+Labels from this spec are a clip-level experiment, not a submission.
 """
 
 from src import fot_video as F
