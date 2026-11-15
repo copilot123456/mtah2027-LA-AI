@@ -66,7 +66,7 @@ def transition_log(cfg: dict = CFG) -> np.ndarray:
 
 def viterbi(log_e: np.ndarray, trans: np.ndarray) -> np.ndarray:
     """Best state path for one contiguous span. log_e: (T,3), trans: (3,3) bonuses."""
-    t_len, n_states = log_e.shape
+    t_len, n_states = log_e.shape         # span length and label count
     score = log_e[0].copy()                # best score ending in each state at t=0
     ptr = np.zeros((t_len, n_states), dtype=np.int8)  # backpointer: best previous state
     states = np.arange(n_states)           # index of each current state
@@ -78,8 +78,8 @@ def viterbi(log_e: np.ndarray, trans: np.ndarray) -> np.ndarray:
     path = np.empty(t_len, dtype=np.int8)  # one label per frame
     path[-1] = int(np.argmax(score))       # start from the best final state
     for t in range(t_len - 1, 0, -1):      # walk backpointers backwards
-        path[t - 1] = ptr[t, path[t]]
-    return path
+        path[t - 1] = ptr[t, path[t]]     # fill previous frame
+    return path                            # finished label sequence
 
 
 def _segments(labels: np.ndarray) -> list[tuple[int, int, int]]:
@@ -99,7 +99,7 @@ def _supported(boundary: int, label: int, evidence: np.ndarray, log_e: np.ndarra
     `evidence` is a boolean mask of the frames allowed to speak (raw ATD frames; with
     `gate_kin_support` also ball-less frames carrying a kinematic term for this label)."""
     lo = max(0, boundary - window)         # clamp window to the span
-    hi = min(len(evidence), boundary + window)
+    hi = min(len(evidence), boundary + window)  # clamp upper edge too
     ev = evidence[lo:hi]                   # evidence frames inside the window
     if not ev.any():
         return False                       # no evidence nearby: unsupported
@@ -113,7 +113,7 @@ def _first_support(start: int, stop: int, label: int, evidence: np.ndarray,
     ev = evidence[start:stop]              # evidence frames in this segment
     if not ev.any():
         return None                        # no evidence at all in the segment
-    hits = np.flatnonzero(ev & (np.argmax(log_e[start:stop], axis=1) == label))
+    hits = np.flatnonzero(ev & (np.argmax(log_e[start:stop], axis=1) == label))  # winning frames
     return start + int(hits[0]) if len(hits) else None  # first hit's index, else None
 
 
@@ -154,13 +154,13 @@ def apply_gating(labels: np.ndarray, source: np.ndarray, log_e: np.ndarray,
                                    log_e) if move else None  # P8: first supporting frame
             if first is None:
                 out[-1] = (out[-1][0], stop, out[-1][2])   # revert: swallow into previous
-                reverted += 1
+                reverted += 1             # count this merge
             else:
                 out[-1] = (out[-1][0], first, out[-1][2])  # previous label holds until support
-                out.append((first, stop, lab))
+                out.append((first, stop, lab))  # start new segment
         else:
             out.append((start, stop, lab))  # supported boundary: keep it
-    return _rebuild(labels, out), reverted
+    return _rebuild(labels, out), reverted  # labels plus count
 
 
 def place_gap_switches(labels: np.ndarray, source: np.ndarray, frac: float) -> np.ndarray:
@@ -185,16 +185,16 @@ def place_gap_switches(labels: np.ndarray, source: np.ndarray, frac: float) -> n
             continue                       # both sides have ball: no gap touched
         anchor = start if not atd[start] else start - 1     # a frame of the touching gap
         g0 = anchor                        # walk left to the gap start
-        while g0 > 0 and not atd[g0 - 1]:
-            g0 -= 1
+        while g0 > 0 and not atd[g0 - 1]:  # still inside gap
+            g0 -= 1                        # step one frame left
         g1 = anchor + 1                    # walk right to the gap end
-        while g1 < n and not atd[g1]:
-            g1 += 1
+        while g1 < n and not atd[g1]:      # still inside gap
+            g1 += 1                        # step one frame right
         new = g0 + int(round(frac * (g1 - g0)))  # boundary at frac of the gap
         new = min(max(new, prev_start + 1), stop - 1)  # keep both segments non-empty
         segs[i - 1] = (prev_start, new, prev_lab)  # re-split at the new point
-        segs[i] = (new, stop, lab)
-    return _rebuild(labels, segs)
+        segs[i] = (new, stop, lab)         # right side of split
+    return _rebuild(labels, segs)          # labels with moved boundary
 
 
 def enforce_min_dwell(labels: np.ndarray, min_len: int, coalesce: bool = False) -> np.ndarray:
@@ -204,7 +204,7 @@ def enforce_min_dwell(labels: np.ndarray, min_len: int, coalesce: bool = False) 
     label are joined before lengths are measured again. Without it a merge can leave two
     equal neighbours standing as separate segments, and the shorter of them may then be
     merged into the *other* label although together they are long enough."""
-    segs = _segments(labels)
+    segs = _segments(labels)               # split into runs
     while len(segs) > 1:                   # repeat until no short segment remains
         lengths = [stop - start for start, stop, _ in segs]  # current run lengths
         short = [i for i, ln in enumerate(lengths) if ln < min_len]  # below the minimum
@@ -212,32 +212,32 @@ def enforce_min_dwell(labels: np.ndarray, min_len: int, coalesce: bool = False) 
             break                          # all segments long enough
         i = min(short, key=lambda j: lengths[j])  # merge the shortest first
         if i == 0:                         # edge segment: only one neighbour
-            j = 1
+            j = 1                          # right neighbour
         elif i == len(segs) - 1:
-            j = i - 1
+            j = i - 1                      # left neighbour
         else:  # merge into the longer neighbour; tie -> left
-            j = i - 1 if lengths[i - 1] >= lengths[i + 1] else i + 1
+            j = i - 1 if lengths[i - 1] >= lengths[i + 1] else i + 1  # longer neighbour wins
         a, b = (i, j) if i < j else (j, i)  # order left-to-right
         start, stop = segs[a][0], segs[b][1]  # span covering both segments
         lab = segs[j][2]                        # the neighbour we merge INTO
         segs[a] = (start, stop, lab)        # neighbour's label wins
-        del segs[b]
+        del segs[b]                        # drop merged segment
         if coalesce:                        # P9 C: re-join equal neighbours
-            joined: list[tuple[int, int, int]] = []
-            for seg in segs:
-                if joined and joined[-1][2] == seg[2]:
-                    joined[-1] = (joined[-1][0], seg[1], seg[2])
+            joined: list[tuple[int, int, int]] = []  # rebuilt run list
+            for seg in segs:               # scan runs
+                if joined and joined[-1][2] == seg[2]:  # same label as previous
+                    joined[-1] = (joined[-1][0], seg[1], seg[2])  # extend previous run
                 else:
-                    joined.append(seg)
-            segs = joined
-    return _rebuild(labels, segs)
+                    joined.append(seg)     # keep separate run
+            segs = joined                  # use coalesced runs
+    return _rebuild(labels, segs)          # labels after merging
 
 
 def _rebuild(template: np.ndarray, segs: list[tuple[int, int, int]]) -> np.ndarray:
     out = template.copy()                  # start from a copy (X-filled)
     for start, stop, lab in segs:
         out[start:stop] = lab              # paint each segment's label
-    return out
+    return out                             # painted copy
 
 
 def enforce_d_min_dwell(labels: np.ndarray, d_min_len: int) -> np.ndarray:
@@ -247,7 +247,7 @@ def enforce_d_min_dwell(labels: np.ndarray, d_min_len: int) -> np.ndarray:
     into their only neighbour), shortest first until stable; adjacent equal labels are
     coalesced after every merge, so H D H becomes one H segment. Pure.
     """
-    segs = _segments(labels)
+    segs = _segments(labels)               # split into runs
     while len(segs) > 1:                   # repeat until no short D remains
         short = [i for i, (start, stop, lab) in enumerate(segs)
                  if lab == CODE_D and stop - start < d_min_len]  # short D segments only
@@ -255,24 +255,24 @@ def enforce_d_min_dwell(labels: np.ndarray, d_min_len: int) -> np.ndarray:
             break                          # no D segment below the minimum
         i = min(short, key=lambda j: segs[j][1] - segs[j][0])  # shortest D first
         if i == 0:                         # edge segment: only one neighbour
-            j = 1
+            j = 1                          # right neighbour
         elif i == len(segs) - 1:
-            j = i - 1
+            j = i - 1                      # left neighbour
         else:
             left = segs[i - 1][1] - segs[i - 1][0]  # neighbour lengths
-            right = segs[i + 1][1] - segs[i + 1][0]
+            right = segs[i + 1][1] - segs[i + 1][0]  # right neighbour length
             j = i - 1 if left >= right else i + 1  # longer neighbour; tie -> left
         a, b = (i, j) if i < j else (j, i)  # order left-to-right
         segs[a] = (segs[a][0], segs[b][1], segs[j][2])  # neighbour's label wins
-        del segs[b]
-        merged: list[tuple[int, int, int]] = []
+        del segs[b]                        # drop merged segment
+        merged: list[tuple[int, int, int]] = []  # rebuilt run list
         for seg in segs:                                   # coalesce equal neighbours
-            if merged and merged[-1][2] == seg[2]:
-                merged[-1] = (merged[-1][0], seg[1], seg[2])
+            if merged and merged[-1][2] == seg[2]:  # same label as previous
+                merged[-1] = (merged[-1][0], seg[1], seg[2])  # extend previous run
             else:
-                merged.append(seg)
-        segs = merged
-    return _rebuild(labels, segs)
+                merged.append(seg)        # keep separate run
+        segs = merged                      # use coalesced runs
+    return _rebuild(labels, segs)          # labels after merging
 
 
 def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int, *,
@@ -297,7 +297,7 @@ def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int, *,
     if delay <= 0 and not sloped:
         return labels                      # nothing to delay: no-op
     out = labels.copy()                    # work on a copy (pure)
-    segs = _segments(labels)
+    segs = _segments(labels)               # split into runs
     atd = source == SOURCE_ATD             # raw ball frames
     for i in range(1, len(segs)):          # examine each boundary
         start, stop, lab = segs[i]         # segment after the boundary
@@ -311,11 +311,11 @@ def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int, *,
             window = ball_speed[max(start - 5, 0):start + 1]  # 6 frames ending here
             finite = np.isfinite(window)   # ignore missing speeds
             if finite.any():
-                seconds = delay / fps + slope_s * (float(window[finite].mean()) - ref_ms)
+                seconds = delay / fps + slope_s * (float(window[finite].mean()) - ref_ms)  # scaled
                 frames = int(round(min(max(seconds, 0.0), max_delay_s) * fps))  # clamp to frames
         shift = min(frames, (stop - start) // 2)  # cap at half the following segment
         out[start:start + shift] = prev_lab  # previous team holds through the shift
-    return out
+    return out                             # delayed labels
 
 
 def apply_no_play(labels: np.ndarray, activity: np.ndarray, cfg: dict = CFG) -> np.ndarray:
@@ -336,14 +336,14 @@ def apply_no_play(labels: np.ndarray, activity: np.ndarray, cfg: dict = CFG) -> 
     while i < n:                           # walk the low-activity runs
         if not low[i]:
             i += 1                         # skip active frames
-            continue
+            continue                       # end this iteration
         j = i                              # extend to the end of this run
-        while j < n and low[j]:
-            j += 1
+        while j < n and low[j]:            # extend over low frames
+            j += 1                         # step to next frame
         if j - i >= need:
             out[i:j] = CODE_D              # long enough: label the whole run D
         i = j                              # jump past the run
-    return out
+    return out                             # labels with D runs
 
 
 def apply_kickoff_rule(labels: np.ndarray, half: np.ndarray, kickoff_starts: np.ndarray,
@@ -369,7 +369,7 @@ def apply_kickoff_rule(labels: np.ndarray, half: np.ndarray, kickoff_starts: np.
         inside = starts[(starts >= first) & (starts <= last)]  # tags inside the half
         if len(inside):
             out[first:int(inside.min())] = CODE_D  # pre-kick-off frames are D
-    return out
+    return out                             # labels with pre-kick-off D
 
 
 @dataclass(frozen=True)
@@ -386,10 +386,10 @@ def viterbi_paths(emission: Emission, half: np.ndarray, cfg: dict = CFG) -> dict
         idx = np.flatnonzero(half == h)    # graded frames of this half
         if not len(idx):
             continue                       # half absent from the grading
-        if not (np.diff(idx) == 1).all():
-            raise ValueError(f"half {h} is not a contiguous span")
+        if not (np.diff(idx) == 1).all():  # frames must be contiguous
+            raise ValueError(f"half {h} is not a contiguous span")  # refuse gappy half
         paths[h] = (idx, viterbi(emission.log_e[idx], trans))  # Viterbi over this half
-    return paths
+    return paths                           # both halves mapped
 
 
 def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
@@ -397,7 +397,7 @@ def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
     """Gate, min-dwell and the post-passes on per-half Viterbi paths (see module docstring)."""
     n = len(emission.conf)                 # total frames
     labels = np.full(n, CODE_X, dtype=np.int8)  # X everywhere until a half is written in
-    fps = cfg["fps"]
+    fps = cfg["fps"]                       # frames per second
     min_len = max(1, int(round(cfg["min_dwell_s"] * fps)))  # min-dwell in frames
     d_min_len = int(round(float(cfg.get("d_min_dwell_s", 0.0)) * fps))  # P8 M: D minimum
     delay = int(round(float(cfg.get("switch_delay_s", 0.0)) * fps))  # P8 S: delay in frames
@@ -408,16 +408,17 @@ def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
     reverted_total = 0                     # gate merges across both halves
 
     for idx, viterbi_path in paths.values():  # process each half
-        # kinematic evidence only used when P9 K/T is on
+        # kinematics only when P9 K/T on
         kin_team = emission.kin_team[idx] if kin_gate and emission.kin_team is not None else None
+        # dead kinematics for the gate (P9); None when the tier is off
         kin_dead = emission.kin_dead[idx] if kin_gate and emission.kin_dead is not None else None
         path, reverted = apply_gating(viterbi_path, source[idx], emission.log_e[idx], cfg,
                                       kin_team=kin_team, kin_dead=kin_dead)  # switch gate
-        reverted_total += reverted
+        reverted_total += reverted        # accumulate across halves
         if gap_frac > 0:
             path = place_gap_switches(path, source[idx], gap_frac)  # P8 G gap placement
         path = enforce_min_dwell(path, min_len, coalesce)  # min-dwell pass
-        if d_min_len > min_len:            # only when P8 M sets a longer D minimum
+        if d_min_len > min_len:            # only if P8 M set longer D min
             path = enforce_d_min_dwell(path, d_min_len)  # D-only dwell pass
         if cfg["no_play_rule"]:
             path = apply_no_play(path, emission.activity[idx], cfg)  # E10 no-play pass
@@ -431,7 +432,7 @@ def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
                                        fps=int(fps))  # switch-delay pass
         labels[idx] = path                 # write the half back in place
 
-    return Decoded(labels=labels, reverted_switches=reverted_total)
+    return Decoded(labels=labels, reverted_switches=reverted_total)  # final labels and count
 
 
 def decode(emission: Emission, source: np.ndarray, half: np.ndarray,

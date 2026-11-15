@@ -37,8 +37,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]  # repo root
 # repo root and vendored scorer dir go on sys.path
 for p in (str(ROOT), str(ROOT / "evaluation")):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    if p not in sys.path:  # skip if already present
+        sys.path.insert(0, p)  # prepend for import priority
 
 # official metric code, vendored for pinning
 import possession_metrics as pm  # noqa: E402
@@ -80,12 +80,12 @@ PARAMS = list(GRID)              # swept parameter names, fixed order
 SCENARIOS = ["kinematic", "none"]  # fill tier on vs off
 MASK_SEED = 20261107              # fixed seed: reproducible masks
 # per-stage result matrices and report files
-RESULTS = ROOT / "tuning" / "results" / "sweep_results.csv"
-RESULTS_STG2 = ROOT / "tuning" / "results" / "sweep_results_stage2.csv"
-RESULTS_STG3 = ROOT / "tuning" / "results" / "sweep_results_stage3.csv"
-REPORT = ROOT / "tuning" / "results" / "report.md"
-REPORT_STG2 = ROOT / "tuning" / "results" / "report_stage2.md"
-REPORT_FINAL = ROOT / "tuning" / "results" / "report_final.md"
+RESULTS = ROOT / "tuning" / "results" / "sweep_results.csv"  # stage-1 matrix
+RESULTS_STG2 = ROOT / "tuning" / "results" / "sweep_results_stage2.csv"  # stage-2 matrix
+RESULTS_STG3 = ROOT / "tuning" / "results" / "sweep_results_stage3.csv"  # stage-3 matrix
+REPORT = ROOT / "tuning" / "results" / "report.md"  # stage-1 report
+REPORT_STG2 = ROOT / "tuning" / "results" / "report_stage2.md"  # stage-2 report
+REPORT_FINAL = ROOT / "tuning" / "results" / "report_final.md"  # stage-3 report
 
 _LETTERS = np.array(["X", "H", "A", "D"], dtype=object)  # index by internal code + 1
 
@@ -119,7 +119,7 @@ def _score(gt_codes: np.ndarray, pred_codes: np.ndarray) -> dict:
 
 def run_task(args) -> list[dict]:
     """All grid cells for one (match, scenario). Runs in a worker process."""
-    match_id, scenario, grid, run_lengths = args
+    match_id, scenario, grid, run_lengths = args  # unpack worker task
     t0 = time.time()  # runtime clock for the report
     case = load_match(match_id)  # cached parse of this match
     rng = np.random.default_rng(MASK_SEED + sum(ord(c) for c in match_id))  # per-match seed
@@ -153,7 +153,7 @@ def run_task(args) -> list[dict]:
             cfg = {**base, **cell}  # cell overrides on top of defaults
             decoded = decode(em, track.source, case.half, cfg)  # run the decoder
             pred = _LETTERS[np.asarray(decoded.labels, dtype=np.int8) + 1]  # codes -> letters
-            pred_codes = pm.label_codes(pred)
+            pred_codes = pm.label_codes(pred)  # letters as internal codes
             scores = _score(gt_codes, pred_codes)  # official spell/macro F1
             rows.append({
                 "match_id": match_id, "scenario": scenario, **cell, **scores,
@@ -195,50 +195,50 @@ def _neighbour_means(means: pd.Series) -> pd.Series:
                 if value == k[idx]:
                     continue  # skip the config itself
                 other = list(k)  # swap in the neighbour value
-                other[idx] = value
-                other_key = tuple(other) if len(PARAMS) > 1 else other[0]
-                if other_key in means.index:
-                    scores.append(means.loc[other_key])
+                other[idx] = value  # neighbour value written in
+                other_key = tuple(other) if len(PARAMS) > 1 else other[0]  # index-key form
+                if other_key in means.index:  # only swept neighbours count
+                    scores.append(means.loc[other_key])  # record its mean
         out[key] = min(scores) if scores else np.nan  # worst neighbour wins
-    return pd.Series(out, name="worst_neighbour")
+    return pd.Series(out, name="worst_neighbour")  # named result series
 
 
 def flat_select(df: pd.DataFrame, scenario: str = "kinematic",
                 metric: str = "spell_f1", tol: float = 0.01) -> tuple[dict, pd.DataFrame]:
     """Pre-declared plateau rule; returns (chosen_params, full_mean_table_with_details)."""
     sub = df[df["scenario"] == scenario]  # rows of the selection scenario
-    means = _mean_table(sub, metric).set_index(PARAMS)[["mean", "std"]]
+    means = _mean_table(sub, metric).set_index(PARAMS)[["mean", "std"]]  # indexed stats
     best = means["mean"].max()  # top mean here
     candidates = means[means["mean"] >= best - tol].copy()  # within 0.01 of best
     worst_nb = _neighbour_means(means["mean"])  # plateau-centre metric
-    candidates["worst_neighbour"] = worst_nb.reindex(candidates.index)
-    top = candidates.sort_values(["worst_neighbour", "mean"], ascending=False).iloc[0]
+    candidates["worst_neighbour"] = worst_nb.reindex(candidates.index)  # attach scores
+    top = candidates.sort_values(["worst_neighbour", "mean"], ascending=False).iloc[0]  # best-ranked
     chosen = {p: float(v) for p, v in zip(PARAMS, top.name)}   # params live in the MultiIndex
     detail = means.copy()  # full table for the report
-    detail["worst_neighbour"] = worst_nb
+    detail["worst_neighbour"] = worst_nb  # scores into detail table
     detail["selected"] = False  # flag column, all False...
     detail.loc[[top.name], "selected"] = True  # ...then mark the winner
-    return chosen, detail.reset_index()
+    return chosen, detail.reset_index()  # params plus flat detail
 
 
 def lomo(df: pd.DataFrame, chosen: dict, metric: str = "spell_f1",
          scenario: str = "kinematic") -> pd.DataFrame:
     """Pick on 6 matches (plateau rule), report on the held-out one; vs global chosen."""
     rows = []  # one row per held-out match
-    matches = sorted(df["match_id"].unique())
+    matches = sorted(df["match_id"].unique())  # every match, sorted
     for held in matches:  # leave one match out each fold
         train = df[df["match_id"] != held]  # the other 6 matches
         fold_chosen, _ = flat_select(train, metric=metric, scenario=scenario)  # pick on train
         test = df[df["match_id"] == held]  # held-out rows
         fold_pick = _cell_score(test, fold_chosen)  # fold choice scored on held-out
         global_pick = _cell_score(test, chosen)  # global choice on held-out
-        rows.append({"held_out": held, "fold_pick": _cell_str(fold_chosen),
+        rows.append({"held_out": held, "fold_pick": _cell_str(fold_chosen),  # fold result row
                      "fold_score": fold_pick, "global_score": global_pick})
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows)  # fold results as a table
 
 
 def _cell_score(df: pd.DataFrame, cell: dict) -> float:
-    sel = df
+    sel = df  # start with all rows
     for p, v in cell.items():
         sel = sel[sel[p] == v]  # keep rows matching this cell
     return float(sel["spell_f1"].mean())  # mean over the kept rows
@@ -251,8 +251,8 @@ def _cell_str(cell: dict) -> str:
 def bootstrap_ci(values: np.ndarray, n: int = 1000, seed: int = 7) -> tuple[float, float]:
     """Match-level bootstrap CI of the mean (matches are the sample unit)."""
     rng = np.random.default_rng(seed)  # reproducible resampling
-    values = np.asarray(values, dtype=float)
-    means = [rng.choice(values, size=len(values), replace=True).mean() for _ in range(n)]
+    values = np.asarray(values, dtype=float)  # ensure float array
+    means = [rng.choice(values, size=len(values), replace=True).mean() for _ in range(n)]  # n resamples
     return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))  # 95% CI
 
 
@@ -265,20 +265,20 @@ def load_union() -> pd.DataFrame:
 
 
 def smoke_grid() -> list[dict]:
-    full = grid_points()
+    full = grid_points()  # full stage-1 grid
     return [full[0], full[40], full[80], full[120], full[160], full[-1]]  # 6 spread cells
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])  # docstring line one as help
     parser.add_argument("--smoke", action="store_true", help="1 match, 6 cells")  # quick check
     parser.add_argument("--select-only", action="store_true")  # reuse existing results
-    parser.add_argument("--stage2", action="store_true",
+    parser.add_argument("--stage2", action="store_true",  # stage-2 flag
                         help="extended grid, none scenario only (fill tier dropped by ablation)")
-    parser.add_argument("--stage3", action="store_true",
+    parser.add_argument("--stage3", action="store_true",  # stage-3 flag
                         help="final focused grid (sigma floor); selection runs on stage2+3 union")
     parser.add_argument("--workers", type=int, default=7)  # pool size
-    args = parser.parse_args()
+    args = parser.parse_args()  # parsed flags
     if args.stage2 and args.stage3:
         parser.error("--stage2 and --stage3 are mutually exclusive")  # pick one stage
 
@@ -292,38 +292,38 @@ def main() -> int:
     else:
         from src import data as D  # array loader for mask statistics
 
-        arrays = D.load_arrays()
+        arrays = D.load_arrays()  # arrays for mask stats
         missing_graded = np.isnan(arrays.ball).any(axis=1) & arrays.graded  # frames lacking ball
         run_lengths = empirical_run_lengths(missing_graded)  # run lengths to simulate
-        print(f"empirical missing runs: n={len(run_lengths)} "
+        print(f"empirical missing runs: n={len(run_lengths)} "  # report run-length stats
               f"median={int(np.median(run_lengths))} max={int(run_lengths.max())}", flush=True)
 
         # pick matches, scenarios and grid for the requested mode
         if args.smoke:
-            matches, scenarios, grid = [MATCH_IDS[0]], ["kinematic"], smoke_grid()
-        elif args.stage3:
-            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_S3)
-        elif args.stage2:
-            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_EXT)
+            matches, scenarios, grid = [MATCH_IDS[0]], ["kinematic"], smoke_grid()  # smoke: 1 match, 6 cells
+        elif args.stage3:  # stage-3 mode
+            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_S3)  # final grid
+        elif args.stage2:  # stage-2 mode
+            matches, scenarios, grid = MATCH_IDS, ["none"], points_of(GRID_EXT)  # extended grid
         else:
-            matches, scenarios, grid = MATCH_IDS, SCENARIOS, grid_points()
+            matches, scenarios, grid = MATCH_IDS, SCENARIOS, grid_points()  # full stage-1 run
         for mid in matches:
             load_match(mid)   # ensure cache (parses if needed)
 
         # one worker task per (match, scenario); all share the same grid
         tasks = [(m, s, grid, run_lengths) for m in matches for s in scenarios]
-        print(f"{len(tasks)} tasks ({len(matches)} matches x {len(scenarios)} scenarios), "
+        print(f"{len(tasks)} tasks ({len(matches)} matches x {len(scenarios)} scenarios), "  # task/cell counts
               f"{len(grid)} cells each", flush=True)
 
         from multiprocessing import Pool  # parallel workers
 
         import time as _time  # clock for progress lines
-        t0 = _time.time()
+        t0 = _time.time()  # progress clock start
         all_rows: list[dict] = []  # every task's rows
         with Pool(processes=min(args.workers, len(tasks))) as pool:
             for i, rows in enumerate(pool.imap_unordered(run_task, tasks), 1):
                 all_rows.extend(rows)  # collect as tasks finish
-                print(f"[{i}/{len(tasks)}] {rows[0]['match_id']}/{rows[0]['scenario']} "
+                print(f"[{i}/{len(tasks)}] {rows[0]['match_id']}/{rows[0]['scenario']} "  # per-task progress
                       f"({len(rows)} cells, elapsed {_time.time() - t0:.0f}s)", flush=True)
 
         df = pd.DataFrame(all_rows)  # rows -> results table
@@ -331,7 +331,7 @@ def main() -> int:
             RESULTS_STG3 if args.stage3 else
             (RESULTS_STG2 if args.stage2 else RESULTS))  # stage-specific file
         df.to_csv(out_path, index=False)  # save the matrix
-        print(f"wrote {out_path} ({len(df)} rows)", flush=True)
+        print(f"wrote {out_path} ({len(df)} rows)", flush=True)  # confirm matrix written
         if args.smoke:
             return 0  # smoke stops before selection
 
@@ -344,10 +344,10 @@ def main() -> int:
                           suffixes=("_new", "_old"))  # join shared cells
         if len(merged):
             diff = (merged["spell_f1_new"] - merged["spell_f1_old"]).abs().max()  # worst drift
-            integrity = (f"{len(merged)} overlapping cells reproduce the prior stage "
+            integrity = (f"{len(merged)} overlapping cells reproduce the prior stage "  # check message
                          f"(max |Δ| {diff:.2e})")
             assert diff < 1e-9, integrity  # fail loudly on drift
-            print("integrity:", integrity, flush=True)
+            print("integrity:", integrity, flush=True)  # show check result
     if args.stage3:
         # final selection runs on the stage2+stage3 union (stage3 wins overlaps)
         df = load_union()
@@ -358,7 +358,7 @@ def main() -> int:
     for p, v in chosen.items():
         chosen_rows = chosen_rows[chosen_rows[p] == v]  # narrow to the chosen cell
     chosen_scores = chosen_rows["spell_f1"].to_numpy()  # per-match scores at chosen
-    chosen_mean = float(chosen_scores.mean())
+    chosen_mean = float(chosen_scores.mean())  # mean at chosen cell
     best_mean = float(df[df["scenario"] == select_scenario]
                       .groupby(PARAMS)["spell_f1"].mean().max())  # best cell, for the gap
     ci = bootstrap_ci(chosen_scores)  # match-level 95% CI
@@ -368,9 +368,9 @@ def main() -> int:
 
     robust = {}  # chosen cell's mean score per scenario
     for scenario in sorted(df["scenario"].unique()):
-        cell = df[df["scenario"] == scenario]
-        for p, v in chosen.items():
-            cell = cell[cell[p] == v]
+        cell = df[df["scenario"] == scenario]  # rows of this scenario
+        for p, v in chosen.items():  # narrow per parameter
+            cell = cell[cell[p] == v]  # keep matching value only
         robust[scenario] = float(cell["spell_f1"].mean()) if len(cell) else None  # None if absent
 
     n_cells = int(df[PARAMS].drop_duplicates().shape[0])  # unique configs
@@ -407,13 +407,13 @@ def main() -> int:
         "- third fill scenario (simulated detector) dropped with the detector tier (stretch)",
         "- mask placement uniform (real missingness correlates with phases we may not quantify)",
     ]
-    report_path = REPORT_FINAL if args.stage3 else (REPORT_STG2 if args.stage2 else REPORT)
+    report_path = REPORT_FINAL if args.stage3 else (REPORT_STG2 if args.stage2 else REPORT)  # stage-specific file
     report_path.write_text("\n".join(lines) + "\n")  # write the stage report
-    print(f"chosen: {_cell_str(chosen)}")
-    print(f"mean {chosen_mean:.4f} (best {best_mean:.4f}) CI {ci}")
-    print(f"wrote {report_path}")
+    print(f"chosen: {_cell_str(chosen)}")  # echo chosen cell
+    print(f"mean {chosen_mean:.4f} (best {best_mean:.4f}) CI {ci}")  # echo mean, best, CI
+    print(f"wrote {report_path}")  # confirm report written
     return 0  # success
 
 
 if __name__ == "__main__":  # CLI entry
-    raise SystemExit(main())
+    raise SystemExit(main())  # run CLI, exit with its status

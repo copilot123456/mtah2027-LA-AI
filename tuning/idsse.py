@@ -44,7 +44,7 @@ CACHE_DIR = _SRC / "data" / ".cache"  # local parse cache
 class IdsseMatch:
     """Pipeline-ready arrays for one IDSSE match (coordinates normalized 0-1)."""
 
-    match_id: str
+    match_id: str             # match identifier
     ball: np.ndarray       # (N, 2)
     players: np.ndarray    # (N, K, 2)
     players_s: np.ndarray  # (N, K) m/s
@@ -73,13 +73,13 @@ def speed_ratio(players: np.ndarray, players_s: np.ndarray, *, fps: int = 25,
     rep = players_s[:-lag:stride]  # reported speed, same frames
     ok = np.isfinite(chord) & np.isfinite(rep)  # usable slots only
     enough = ok.sum(axis=1) >= 10  # frames with >=10 good slots
-    if not enough.any():
-        raise ValueError("speed_ratio: no frame with 10 slots carrying position and speed")
+    if not enough.any():  # nothing measurable
+        raise ValueError("speed_ratio: no frame with 10 slots carrying position and speed")  # cannot self-check
     chord = np.where(ok, chord, np.nan)[enough]  # mask bad slots, keep good frames
-    rep = np.where(ok, rep, np.nan)[enough]
+    rep = np.where(ok, rep, np.nan)[enough]  # same masking for reported
     denom = float(np.median(np.nanmedian(chord, axis=1)))  # typical position speed
-    if denom <= 0:
-        raise ValueError("speed_ratio: position-derived speed is zero")
+    if denom <= 0:  # zero position speed
+        raise ValueError("speed_ratio: position-derived speed is zero")  # ratio undefined
     return float(np.median(np.nanmedian(rep, axis=1))) / denom  # ~1 m/s, ~3.6 km/h
 
 
@@ -98,19 +98,19 @@ def _speeds_to_ms(players: np.ndarray, players_s: np.ndarray, info: dict) -> np.
     """m/s speeds + the conversion logged in `info` (idempotent on m/s input)."""
     factor = speed_unit_factor(players, players_s)  # detect unit via self-check
     info["speed_units"] = "m/s"  # record outcome in the parse log
-    info["speed_source_factor"] = factor
+    info["speed_source_factor"] = factor  # log the divisor used
     return players_s / factor if factor != 1.0 else players_s  # divide only if km/h
 
 
 def _files(match_id: str) -> tuple[Path, Path]:
     com = _COM.get(match_id, "DFL-COM-000002")  # provider match code
-    meta = IDSSE_DIR / f"DFL_02_01_matchinformation_{com}_DFL-MAT-{match_id}.xml"
-    raw = IDSSE_DIR / f"DFL_04_03_positions_raw_observed_{com}_DFL-MAT-{match_id}.xml"
+    meta = IDSSE_DIR / f"DFL_02_01_matchinformation_{com}_DFL-MAT-{match_id}.xml"  # metadata path
+    raw = IDSSE_DIR / f"DFL_04_03_positions_raw_observed_{com}_DFL-MAT-{match_id}.xml"  # raw positions path
     return meta, raw  # metadata XML and raw positions XML
 
 
 def ensure_downloaded(match_id: str) -> tuple[Path, Path]:
-    meta, raw = _files(match_id)
+    meta, raw = _files(match_id)  # resolve both file paths
     for path in (meta, raw):
         if not path.exists():
             IDSSE_DIR.mkdir(parents=True, exist_ok=True)  # data dir may not exist yet
@@ -121,7 +121,7 @@ def ensure_downloaded(match_id: str) -> tuple[Path, Path]:
 def derive_letters(period: np.ndarray, state: np.ndarray, owner,
                    home_id: str, away_id: str) -> tuple[np.ndarray, dict]:
     """Algorithmic H/A/D/X labels from provider fields. state: 'alive'/'dead'."""
-    n = len(period)
+    n = len(period)  # frame count
     owner_arr = owner.to_numpy() if hasattr(owner, "to_numpy") else np.asarray(owner)  # plain array
     letters = np.full(n, "X", dtype=object)  # default X (unknown/outside)
     in_match = period >= 1  # frames inside a period
@@ -146,7 +146,7 @@ def derive_letters(period: np.ndarray, state: np.ndarray, owner,
     letters[~in_match] = "X"  # outside the match stays X
     counts = {k: int((letters == k).sum()) for k in ("H", "A", "D", "X")}  # label histogram
     counts["owner_filled"] = filled  # log the fill count
-    return letters, counts
+    return letters, counts  # labels plus counts
 
 
 def derive_letters_controlled(letters: np.ndarray, fps: int = 25,
@@ -176,9 +176,9 @@ def derive_letters_controlled(letters: np.ndarray, fps: int = 25,
         lab = out[i]  # label at the cursor
         if lab not in ("H", "A"):
             current = None                          # stoppage/outside: next run is fresh
-            i += 1
+            i += 1  # advance one frame
             continue  # step one frame through stoppages
-        j = i
+        j = i  # run starts here
         while j < n and out[j] == lab:
             j += 1                                 # maximal alive run [i, j)
         if current is None or current == lab:
@@ -199,26 +199,26 @@ def _parse(match_id: str) -> IdsseMatch:
     df = ds.to_df()  # tracking as a table
     info: dict = {"rows": len(df)}  # parse log starts with row count
 
-    home = next((t for t in ds.metadata.teams if t.ground == "home"), None)
-    away = next((t for t in ds.metadata.teams if t.ground == "away"), None)
+    home = next((t for t in ds.metadata.teams if t.ground == "home"), None)  # home by ground flag
+    away = next((t for t in ds.metadata.teams if t.ground == "away"), None)  # away by ground flag
     if home is None or away is None:  # ground flags missing
-        teams = list(ds.metadata.teams)
-        if len(teams) < 2:
-            raise ValueError(f"{match_id}: need 2 teams, got {len(teams)}")
+        teams = list(ds.metadata.teams)  # all listed teams
+        if len(teams) < 2:  # fewer than two teams
+            raise ValueError(f"{match_id}: need 2 teams, got {len(teams)}")  # cannot determine sides
         home, away = teams[0], teams[1]      # consistent sides even without ground flags
         info["side_source"] = "metadata-order-fallback"  # log the fallback
     info["teams"] = (home.name, away.name)  # team names for the log
 
     prefix_team: dict[str, int] = {}  # player_id -> side index
     for side_idx, team in ((0, home), (1, away)):  # 0 home, 1 away
-        for player in team.players:
-            prefix_team[player.player_id] = side_idx
+        for player in team.players:  # every player on this side
+            prefix_team[player.player_id] = side_idx  # map player to side
     groups = sorted({c.rsplit("_", 1)[0] for c in df.columns  # entity prefixes with x/y
                      if c.rsplit("_", 1)[-1] in ("x", "y")} - {"ball"})  # ball handled separately
     used = [g for g in groups if g in prefix_team]  # known players become slots
     unmapped = [g for g in groups if g not in prefix_team]  # skipped columns
-    info["slots"] = len(used)
-    info["unmapped_columns"] = unmapped
+    info["slots"] = len(used)  # log slot count
+    info["unmapped_columns"] = unmapped  # log skipped columns
 
     xs = df[[f"{g}_x" for g in used]].to_numpy(dtype=np.float64)  # x per slot
     ys = df[[f"{g}_y" for g in used]].to_numpy(dtype=np.float64)  # y per slot
@@ -273,27 +273,27 @@ def load_match(match_id: str, force: bool = False) -> IdsseMatch:
         if payload["info"].get("speed_units") != "m/s":
             # Cache written before the 2026-11-14 units fix: convert once, re-save.
             info = dict(payload["info"])
-            payload["players_s"] = _speeds_to_ms(payload["players"], payload["players_s"], info)
-            sample = payload["players_s"][np.isfinite(payload["players_s"])]
-            info["player_speed_p50"] = float(np.median(sample)) if sample.size else float("nan")
-            payload["info"] = info
+            payload["players_s"] = _speeds_to_ms(payload["players"], payload["players_s"], info)  # convert once
+            sample = payload["players_s"][np.isfinite(payload["players_s"])]  # finite speeds only
+            info["player_speed_p50"] = float(np.median(sample)) if sample.size else float("nan")  # refresh median
+            payload["info"] = info  # store updated log
             pd.to_pickle(payload, cache)  # persist the converted cache
         return IdsseMatch(**payload)  # rebuild the frozen record
     case = _parse(match_id)  # full parse (minutes)
     pd.to_pickle(case.__dict__, cache)  # cache for next time
-    return case
+    return case  # freshly parsed match
 
 
 if __name__ == "__main__":
     import argparse  # CLI to warm the cache
 
-    parser = argparse.ArgumentParser(description="Parse IDSSE matches into the local cache")
+    parser = argparse.ArgumentParser(description="Parse IDSSE matches into the local cache")  # CLI parser
     parser.add_argument("--matches", nargs="*", default=MATCH_IDS)  # default: all 7
     parser.add_argument("--force", action="store_true")  # reparse even if cached
-    args = parser.parse_args()
+    args = parser.parse_args()  # parsed flags
     for mid in args.matches:
-        print(f"parsing {mid} ...", flush=True)
-        case = load_match(mid, force=args.force)
+        print(f"parsing {mid} ...", flush=True)  # announce current match
+        case = load_match(mid, force=args.force)  # parse or reuse cache
         print(f"{mid}: rows={case.info['rows']} slots={case.info['slots']} "  # per-match summary
               f"periods={case.info['periods']} labels={case.info['labels']} "
               f"speed_p50={case.info['player_speed_p50']:.2f} "

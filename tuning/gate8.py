@@ -15,7 +15,7 @@ import pandas as pd  # committed matrix tables
 
 ROOT = Path(__file__).resolve().parents[1]  # repo root (above tuning/)
 if str(ROOT) not in sys.path:  # make the repo importable
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT))  # prepend repo root
 
 # stage-5 kinds and stage-8 grid constants, reused verbatim
 from tuning.stage5 import KINDS  # noqa: E402
@@ -35,14 +35,14 @@ def key(cell: dict) -> tuple:
 
 
 def load_tables(res: Path = RES) -> dict[str, pd.DataFrame]:
-    tables = {}
+    tables = {}  # collected tables
     for kind in KINDS:
         df = pd.read_csv(res / f"stage8_{kind}.csv")  # one committed matrix
         n_cells = df.groupby(P_PARAMS).ngroups  # distinct cells present
         if len(df) != n_cells * 7:  # every cell needs its 7 matches
-            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")
+            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")  # matrix truncated
         tables[kind] = df.set_index(P_PARAMS + ["match_id"]).sort_index()  # index for xs()
-    return tables
+    return tables  # all four loaded
 
 
 def cell_col(df: pd.DataFrame, cell: dict, col: str) -> pd.Series:
@@ -51,36 +51,36 @@ def cell_col(df: pd.DataFrame, cell: dict, col: str) -> pd.Series:
 
 def deltas(tables: dict, a: dict, b: dict) -> dict:
     """{(kind, label set): (mean paired spellF1 difference a − b, matches positive)}."""
-    out = {}
+    out = {}  # deltas storage
     for kind, lab in TABLES:
         d = (cell_col(tables[kind], a, f"spell_f1_{lab}")
              - cell_col(tables[kind], b, f"spell_f1_{lab}"))  # per-match delta a − b
         out[(kind, lab)] = (float(d.mean()), int((d > 0).sum()))  # mean, wins
-    return out
+    return out  # all eight deltas
 
 
 def harness_pin(tables: dict, res: Path = RES) -> float:
     """Largest |reference − stage-5 reference| over both spellF1 columns and all rows."""
-    worst = 0.0
+    worst = 0.0  # running worst drift
     for kind in KINDS:
         old = pd.read_csv(res / f"stage5_{kind}.csv")  # committed stage-5 matrix
         for p, v in S5_REF.items():  # reduce to the stage-5 reference rows
-            old = old[old[p] == v]
-        old = old.set_index("match_id")
+            old = old[old[p] == v]  # keep reference rows
+        old = old.set_index("match_id")  # index for reindexing
         for lab in ("orig", "aligned"):
             new = cell_col(tables[kind], REFERENCE, f"spell_f1_{lab}")  # same cell, new bed
-            worst = max(worst, float((new - old[f"spell_f1_{lab}"].reindex(new.index)).abs().max()))
+            worst = max(worst, float((new - old[f"spell_f1_{lab}"].reindex(new.index)).abs().max()))  # largest so far
     return worst  # largest drift seen
 
 
 def run_step(tables: dict, start: dict, candidates: list[dict]) -> dict:
     """One pinned step: maximin candidate (ties -> list order = smallest change), keep-test."""
-    rows = []
+    rows = []  # candidate rows
     for cand in candidates:
         d = deltas(tables, cand, start)  # candidate vs current start cell
         rows.append({"cell": cand, "deltas": d,
                      "g": min(d[(k, "aligned")][0] for k in KINDS)})  # maximin over kinds
-    best = max(r["g"] for r in rows)
+    best = max(r["g"] for r in rows)  # best maximin gain
     cand = next(r for r in rows if r["g"] >= best - TIE)      # candidates are in change order
     primary, wins = cand["deltas"][PRIMARY]  # primary-table gain
     harm_ok = all(v[0] >= HARM for t, v in cand["deltas"].items() if t != PRIMARY)  # no-harm
@@ -97,17 +97,17 @@ def apply_rule(tables: dict) -> dict:
     s = run_step(tables, g["cell"], [{**g["cell"], "switch_delay_s": d} for d in DELAYS[1:]])  # step S
     m = run_step(tables, s["cell"], [{**s["cell"], "d_min_dwell_s": d} for d in D_MINS[1:]])  # step M
     bundle = m["cell"]  # the cell that would ship after all three steps
-    out = {"G": g, "S": s, "M": m, "bundle": bundle}
+    out = {"G": g, "S": s, "M": m, "bundle": bundle}  # collect step results
     if key(bundle) == key(ref):  # nothing kept → nothing to adopt
-        out.update(bundle_deltas=None, adopt=False)
-        return out
+        out.update(bundle_deltas=None, adopt=False)  # nothing to evaluate
+        return out  # early exit
     d = deltas(tables, bundle, ref)  # bundle vs reference, all tables
-    primary, wins = d[PRIMARY]
+    primary, wins = d[PRIMARY]  # primary-table values
     harm_ok = all(v[0] >= HARM for t, v in d.items() if t != PRIMARY)  # no-harm
     out.update(bundle_deltas=d, bundle_primary=primary, bundle_wins=wins,
                bundle_harm_ok=harm_ok,
                adopt=bool(primary > BUNDLE_BAR and wins >= MIN_WINS and harm_ok))  # stricter bar
-    return out
+    return out  # rule results
 
 
 _LABELS = {"gate_mode": "gate {}", "gap_switch_frac": "gap placement {:g}",  # report labels
@@ -123,7 +123,7 @@ def cell_str(cell: dict, start: dict | None = None) -> str:
 
 def _header(first: str = "cell") -> list[str]:
     cols = [f"{k} × {lab}" for k, lab in TABLES]  # one column per table
-    return [f"| {first} | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
+    return [f"| {first} | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]  # header + separator
 
 
 def _row(name: str, d: dict) -> str:
@@ -135,12 +135,12 @@ def _mean(tables: dict, cell: dict, col: str) -> list[float]:
 
 
 def build_report(res: Path = RES) -> tuple[str, dict]:
-    tables = load_tables(res)
+    tables = load_tables(res)  # load the matrices
     pin = harness_pin(tables, res)  # reference must reproduce stage 5
     if pin > PIN_TOL:  # drift voids the whole pass
-        raise ValueError(f"harness pin failed: reference drifts {pin:.2e} from stage 5 — pass void")
+        raise ValueError(f"harness pin failed: reference drifts {pin:.2e} from stage 5 — pass void")  # pin failed
     rule = apply_rule(tables)  # pinned G → S → M → bundle
-    ref = dict(REFERENCE)
+    ref = dict(REFERENCE)  # local reference copy
     record = pd.read_csv(res / "stage8_record.csv")  # record-only cells (I2)
     diag = pd.read_csv(res / "stage8_diag.csv")  # equivariance + I4 diagnostics
 
@@ -150,14 +150,14 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
          "(n/7) = matches where the difference is positive.", "",
          f"Harness pin: the reference cell reproduces the stage-5 reference rows, max |Δ| = {pin:.1e}.",
          ""]
-    names = {"G": "G — switch gate", "S": "S — team-switch delay", "M": "M — dead-ball minimum"}
-    start = ref
+    names = {"G": "G — switch gate", "S": "S — team-switch delay", "M": "M — dead-ball minimum"}  # step titles
+    start = ref  # first step compares to reference
     for step in ("G", "S", "M"):  # one report section per pinned step
-        r = rule[step]
-        c = r["candidate"]
+        r = rule[step]  # this step's result
+        c = r["candidate"]  # shorthand for candidate
         L += [f"## {names[step]} (against: {cell_str(start)})", ""] + _header()
         for row in r["rows"]:  # every candidate cell tried at this step
-            L.append(_row(cell_str(row["cell"], start), row["deltas"]))
+            L.append(_row(cell_str(row["cell"], start), row["deltas"]))  # one candidate row
         L += ["", f"- candidate (maximin over the four mask kinds, aligned labels): "
               f"**{cell_str(c['cell'], start)}** — g = {c['g']:+.4f} (best {r['best_g']:+.4f})",
               f"- primary (phase_a2 × aligned): **{r['primary']:+.4f}**, positive {r['wins']}/7 "
@@ -169,7 +169,7 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
 
     L += ["## Bundle (the cell that would ship) against the reference", ""]  # bundle section
     if rule["bundle_deltas"] is None:  # no step kept
-        L += ["No step was kept — nothing to adopt.", ""]
+        L += ["No step was kept — nothing to adopt.", ""]  # nothing to evaluate
     else:
         L += _header() + [_row(cell_str(rule["bundle"]), rule["bundle_deltas"]), "",  # bundle row
               f"- primary: **{rule['bundle_primary']:+.4f}**, positive {rule['bundle_wins']}/7 "
@@ -181,39 +181,39 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
           "| cell | " + " | ".join(f"{k} spellF1 aligned" for k in KINDS) + " | "
           + " | ".join(f"{k} changed" for k in KINDS) + " |",
           "|---|" + "---|" * (2 * len(KINDS))]
-    shown = [("reference", ref)]
+    shown = [("reference", ref)]  # start with reference
     for step in ("G", "S", "M"):  # add the cell after each kept step
-        if rule[step]["keep"]:
-            shown.append((f"after {step}", rule[step]["cell"]))
+        if rule[step]["keep"]:  # only kept steps
+            shown.append((f"after {step}", rule[step]["cell"]))  # cell after this step
     for name, cell in shown:  # one row: aligned spellF1 + changed share per kind
         L.append(f"| {name} | " + " | ".join(f"{v:.4f}" for v in _mean(tables, cell, "spell_f1_aligned"))
-                 + " | " + " | ".join(f"{v:.1%}" for v in _mean(tables, cell, "changed_share")) + " |")
+                 + " | " + " | ".join(f"{v:.1%}" for v in _mean(tables, cell, "changed_share")) + " |")  # one levels row
     L += ["", "Largest per-match share of in-match frames changed by a kept step on its own "
-          "(the parity reference of the pinned hold):", ""]
+          "(the parity reference of the pinned hold):", ""]  # firing intro line
     step_cells = {"G": {**ref, **{p: rule["G"]["cell"][p] for p in ("gate_mode", "gap_switch_frac")}},
                   "S": {**ref, "switch_delay_s": rule["S"]["cell"]["switch_delay_s"]},
                   "M": {**ref, "d_min_dwell_s": rule["M"]["cell"]["d_min_dwell_s"]}}  # step alone
-    firing = {}
+    firing = {}  # firing shares
     for step in ("G", "S", "M"):
         if rule[step]["keep"]:  # only kept steps fire
             firing[step] = max(float(cell_col(tables[k], step_cells[step], "changed_share").max())
                                for k in KINDS)  # largest per-match changed share
             lo = min(float(cell_col(tables[k], step_cells[step], "changed_share").min())
-                     for k in KINDS)
-            L.append(f"- {step} alone ({cell_str(step_cells[step])}): {lo:.1%} … {firing[step]:.1%}")
+                     for k in KINDS)  # smallest changed share
+            L.append(f"- {step} alone ({cell_str(step_cells[step])}): {lo:.1%} … {firing[step]:.1%}")  # firing line
 
     L += ["", "## Team-switch latency (aligned labels, predicted − true, frames; G as kept, D minimum off)",  # latency section
           "", "| delay | " + " | ".join(KINDS) + " |", "|---|" + "---|" * len(KINDS)]
     for d in DELAYS:  # one row per delay, G as kept, M off
-        cell = {**rule["G"]["cell"], "switch_delay_s": d, "d_min_dwell_s": 0.0}
-        L.append(f"| {d:g} s | " + " | ".join(f"{v:+.1f}" for v in _mean(tables, cell, "lat_mean")) + " |")
+        cell = {**rule["G"]["cell"], "switch_delay_s": d, "d_min_dwell_s": 0.0}  # G kept, M off
+        L.append(f"| {d:g} s | " + " | ".join(f"{v:+.1f}" for v in _mean(tables, cell, "lat_mean")) + " |")  # one latency row
 
     L += ["", "## Team-swap equivariance (share of in-match frames not mirrored; 0 = symmetric)", "",  # equivariance section
           "| gate cell | " + " | ".join(KINDS) + " |", "|---|" + "---|" * len(KINDS)]
     for mode, frac in G_CELLS:  # one row per gate cell
-        col = f"equiv_mismatch_{mode}_{frac:g}"
+        col = f"equiv_mismatch_{mode}_{frac:g}"  # diag column for cell
         L.append(f"| {mode}, gap placement {frac:g} | "
-                 + " | ".join(f"{diag[diag['kind'] == k][col].mean():.2%}" for k in KINDS) + " |")
+                 + " | ".join(f"{diag[diag['kind'] == k][col].mean():.2%}" for k in KINDS) + " |")  # one equivariance row
     L += ["", "I4 — a missed stoppage inherits the team that had the ball: share of missed dead "  # I4 note
           "frames given to home vs home's share of live frames (reference, 7-match means): "
           + " · ".join(f"{k} {diag[diag['kind'] == k]['missed_dead_to_home'].mean():.3f} vs "
@@ -223,25 +223,25 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
           "these rows show the size of that dependence, not the value of the feature on real tracking.",
           ""] + _header()
     for name in RECORD:  # record-only cell vs reference, all tables
-        d = {}
+        d = {}  # deltas storage
         for kind, lab in TABLES:
-            r = record[(record["kind"] == kind) & (record["cell"] == name)].set_index("match_id")
-            diff = r[f"spell_f1_{lab}"] - cell_col(tables[kind], ref, f"spell_f1_{lab}")
+            r = record[(record["kind"] == kind) & (record["cell"] == name)].set_index("match_id")  # cell's rows
+            diff = r[f"spell_f1_{lab}"] - cell_col(tables[kind], ref, f"spell_f1_{lab}")  # delta vs reference
             d[(kind, lab)] = (float(diff.mean()), int((diff > 0).sum()))  # mean, wins
-        L.append(_row(name, d))
+        L.append(_row(name, d))  # one record-only row
     L += ["", "| cell | " + " | ".join(f"{k} predicted D share" for k in KINDS) + " |",  # D-share table
           "|---|" + "---|" * len(KINDS),
           "| reference | " + " | ".join(f"{v:.3f}" for v in _mean(tables, ref, "pred_d_share")) + " |"]
     for name in RECORD:  # one D-share row per record-only cell
         L.append(f"| {name} | " + " | ".join(
             f"{record[(record['kind'] == k) & (record['cell'] == name)]['pred_d_share'].mean():.3f}"
-            for k in KINDS) + " |")
+            for k in KINDS) + " |")  # one D-share row
     L += ["", "## Reproduce", "", "```bash",  # reproduce block
           ".venv/bin/python -m tuning.stage8          # full pass (~3 min, 6 workers)",
           ".venv/bin/python -m tuning.gate8           # this read + report", "```", ""]
     rule["firing"] = firing  # attach extras for the caller
-    rule["pin"] = pin
-    return "\n".join(L), rule
+    rule["pin"] = pin  # expose pin to caller
+    return "\n".join(L), rule  # report text + results
 
 
 def main() -> int:
@@ -255,7 +255,7 @@ def main() -> int:
                  "gain": round(rule.get("bundle_primary", 0.0), 4)})
     pd.DataFrame(rows).to_csv(RES / "stage8_verdicts.csv", index=False)  # machine-readable verdicts
     print(text)  # echo the report
-    return 0
+    return 0  # success
 
 
 if __name__ == "__main__":

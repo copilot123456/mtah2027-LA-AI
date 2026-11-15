@@ -19,8 +19,8 @@ import pandas as pd  # committed matrix tables
 
 ROOT = Path(__file__).resolve().parents[1]  # repo root (above tuning/)
 for p in (str(ROOT), str(ROOT / "evaluation")):  # make repo + evaluation importable
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    if p not in sys.path:  # avoid duplicate entries
+        sys.path.insert(0, p)  # prepend for imports
 
 # pinned P5 selection machinery, used verbatim as pre-declared
 from tuning.sweep import (PARAMS, bootstrap_ci, flat_select, lomo,  # noqa: E402
@@ -33,23 +33,23 @@ KINDS = ("uniform", "phase_a2", "phase_a3", "phase_a2_fill")  # the four stage-4
 
 
 def load_tables() -> dict[str, pd.DataFrame]:
-    tables = {}
+    tables = {}  # collected tables
     for kind in KINDS:
         df = pd.read_csv(RES / f"stage4_{kind}.csv")  # one committed matrix
         df["scenario"] = kind  # tag rows with their table name
         if len(df) != 144 * 7:  # 144 grid cells × 7 matches = 1008 rows
-            raise ValueError(f"{kind}: {len(df)} rows, expected 1008")
-        tables[kind] = df
-    return tables
+            raise ValueError(f"{kind}: {len(df)} rows, expected 1008")  # matrix truncated
+        tables[kind] = df  # store under its kind
+    return tables  # all four loaded
 
 
 def cell(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    sel = df
+    sel = df  # start from full table
     for k, v in params.items():  # keep rows matching this pinned value
-        sel = sel[sel[k] == v]
+        sel = sel[sel[k] == v]  # narrow to this value
     if len(sel) != 7:  # a cell must hold all 7 matches
-        raise ValueError(f"cell {params}: {len(sel)} rows, expected 7 matches")
-    return sel
+        raise ValueError(f"cell {params}: {len(sel)} rows, expected 7 matches")  # incomplete cell
+    return sel  # the cell's 7 rows
 
 
 def paired(df: pd.DataFrame, metric: str, a: dict, b: dict
@@ -61,11 +61,11 @@ def paired(df: pd.DataFrame, metric: str, a: dict, b: dict
 
 
 def gate1_read() -> dict:
-    tables = load_tables()
+    tables = load_tables()  # the four matrices
     u, p, pf, a3 = (tables["uniform"], tables["phase_a2"],  # the four matrices:
                     tables["phase_a2_fill"], tables["phase_a3"])  # uniform, phase, fill, α=3
 
-    prim = p.copy()
+    prim = p.copy()  # working copy of primary
     prim["spell_f1"] = prim["spell_f1_aligned"]  # primary metric = aligned labels
     chosen, detail = flat_select(prim, scenario="phase_a2", metric="spell_f1")  # plateau pick
     best = float(detail["mean"].max())  # best cell mean on the grid
@@ -75,26 +75,26 @@ def gate1_read() -> dict:
     d_mean, n_pos, deltas = paired(prim, "spell_f1", chosen, FROZEN)  # primary paired delta
     lo, hi = bootstrap_ci(deltas)  # 95 % CI over the 7 deltas
 
-    table_deltas = {}
+    table_deltas = {}  # per-table results
     for name, df, metric in (("uniform_orig", u, "spell_f1_orig"),
                              ("uniform_aligned", u, "spell_f1_aligned"),
                              ("phase_orig", p, "spell_f1_orig"),
                              ("phase_aligned", p, "spell_f1_aligned")):  # four tables
         dm, np_, _ = paired(df, metric, chosen, FROZEN)  # candidate − frozen
-        table_deltas[name] = (dm, np_)
+        table_deltas[name] = (dm, np_)  # mean delta and wins
 
     c1, c2 = d_mean > 0.02, n_pos >= 5  # conditions 1–2: bar and ≥ 5/7 wins
     c3 = all(v[0] >= -0.02 for v in table_deltas.values())  # condition 3: no table harmed
     if c1 and c2 and c3:
-        verdict = "ADOPT"
+        verdict = "ADOPT"  # every condition passed
     elif d_mean > 0.01:  # tie band → frozen cell stays
-        verdict = "TIE-KEEP"
+        verdict = "TIE-KEEP"  # inside the tie band
     else:
-        verdict = "REJECT-KEEP"
+        verdict = "REJECT-KEEP"  # below the tie band
 
     l = lomo(prim, chosen, metric="spell_f1", scenario="phase_a2")  # leave-one-out stability
 
-    twins = {}
+    twins = {}  # twin deltas storage
     for label, df, base in (("fill", pf, p), ("alpha3", a3, p)):  # reported, never selected
         mc = cell(df, chosen).merge(cell(base, chosen), on="match_id",  # twin vs phase,
                                     suffixes=("_t", "_b"))  # at the candidate cell
@@ -104,14 +104,14 @@ def gate1_read() -> dict:
         twins[label] = (
             float((mc["spell_f1_aligned_t"] - mc["spell_f1_aligned_b"]).mean()),
             float((mf["spell_f1_aligned_t"] - mf["spell_f1_aligned_b"]).mean()))
-    a3_alias = a3.copy()
+    a3_alias = a3.copy()  # working copy for α=3
     a3_alias["spell_f1"] = a3_alias["spell_f1_aligned"]  # primary metric on the α=3 twin
     chosen_a3, _ = flat_select(a3_alias, scenario="phase_a3", metric="spell_f1")  # twin only
 
     masks = pd.read_csv(RES / "stage4_masks.csv")  # committed mask statistics
-    mask_stats = {}
+    mask_stats = {}  # per-kind mask means
     for kind in ("uniform", "phase_a2", "phase_a3"):
-        s = masks[masks["kind"] == kind]
+        s = masks[masks["kind"] == kind]  # rows for this kind
         mask_stats[kind] = {  # 7-match mean removal fractions per cue and side
             "masked": float(s["masked_fraction"].mean()),
             **{f"cue{cue}_{side}": float(s[f"cue{cue}_removed_{side}"].mean())
@@ -139,8 +139,8 @@ def gate1_read() -> dict:
 
 
 def write_report(r: dict, path: Path = RES / "report_stage4.md") -> None:
-    t = r["table_deltas"]
-    m = r["masks"]
+    t = r["table_deltas"]  # shorthand for four tables
+    m = r["masks"]  # shorthand for mask stats
     lines = [  # report body assembled line by line
         "# Stage 4 — E2 + E3 + E11 combined pass (Gate 1 read)",
         "",
@@ -207,13 +207,13 @@ def write_report(r: dict, path: Path = RES / "report_stage4.md") -> None:
         "|---|---|---|---|---|---|",
     ]
     for kind in ("uniform", "phase_a2", "phase_a3"):  # one mask-stats table row per kind
-        s = m[kind]
-        lines.append(
+        s = m[kind]  # this kind's stats
+        lines.append(  # one mask-stats row
             f"| {kind} | {s['masked']:.3f} | {s['cue1_in']:.3f}/{s['cue1_out']:.3f} | "
             f"{s['cue2_in']:.3f}/{s['cue2_out']:.3f} | "
             f"{s['cue3_in']:.3f}/{s['cue3_out']:.3f} | "
             f"{s['anycue_in']:.3f}/{s['anycue_out']:.3f} |")
-    fs = r["frame_shares"]
+    fs = r["frame_shares"]  # shorthand for frame shares
     lines += [  # frame shares, context note, reproduce block
         "",
         f"Frame shares: cue1 {fs['cue1']:.3f}, cue2 {fs['cue2']:.3f}, "
@@ -233,20 +233,20 @@ def write_report(r: dict, path: Path = RES / "report_stage4.md") -> None:
         "",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")  # write the report file
-    print(f"wrote {path}")
+    print(f"wrote {path}")  # confirm the write
 
 
 def main() -> int:
     r = gate1_read()  # apply the pinned rule, read-only
     print(f"candidate : {_cell_str(r['chosen'])}")  # console summary below
-    print(f"means     : candidate {r['chosen_mean']:.4f}  frozen {r['frozen_mean']:.4f}")
+    print(f"means     : candidate {r['chosen_mean']:.4f}  frozen {r['frozen_mean']:.4f}")  # means line
     print(f"delta     : {r['delta']:+.4f}  positive {r['n_pos']}/7  "
-          f"CI [{r['ci'][0]:+.4f}, {r['ci'][1]:+.4f}]")
+          f"CI [{r['ci'][0]:+.4f}, {r['ci'][1]:+.4f}]")  # delta, wins, CI
     for k, (dm, np_) in r["table_deltas"].items():  # per-table paired deltas
-        print(f"  {k:18s} {dm:+.4f}  ({np_}/7)")
+        print(f"  {k:18s} {dm:+.4f}  ({np_}/7)")  # one table per line
     print(f"VERDICT   : {r['verdict']}")  # pinned verdict
-    write_report(r)
-    return 0
+    write_report(r)  # write report_stage4.md
+    return 0  # success
 
 
 if __name__ == "__main__":

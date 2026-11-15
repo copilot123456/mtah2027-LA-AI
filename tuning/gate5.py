@@ -16,7 +16,7 @@ import pandas as pd  # committed matrix tables
 
 ROOT = Path(__file__).resolve().parents[1]  # repo root (above tuning/)
 if str(ROOT) not in sys.path:  # make the repo importable
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT))  # prepend repo root
 
 # stage-5 constants (frozen decoder, params, kinds) reused verbatim
 from tuning.stage5 import AS_SHIPPED, D_PARAMS, FROZEN_DECODER, KINDS  # noqa: E402
@@ -37,14 +37,14 @@ def key(cell: dict) -> tuple:
 
 
 def load_tables(res: Path = RES) -> dict[str, pd.DataFrame]:
-    tables = {}
+    tables = {}  # collected tables
     for kind in KINDS:
         df = pd.read_csv(res / f"stage5_{kind}.csv")  # one committed matrix
         n_cells = df.groupby(D_PARAMS).ngroups  # distinct cells present
         if len(df) != n_cells * 7:  # every cell needs its 7 matches
-            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")
+            raise ValueError(f"{kind}: {len(df)} rows for {n_cells} cells x 7 matches")  # matrix truncated
         tables[kind] = df.set_index(D_PARAMS + ["match_id"]).sort_index()  # index for xs()
-    return tables
+    return tables  # all four loaded
 
 
 def cell_scores(df: pd.DataFrame, cell: dict, metric: str) -> pd.Series:
@@ -53,7 +53,7 @@ def cell_scores(df: pd.DataFrame, cell: dict, metric: str) -> pd.Series:
 
 
 def paired(df: pd.DataFrame, a: dict, b: dict, label: str) -> tuple[float, int]:
-    d = (cell_scores(df, a, f"spell_f1_{label}") - cell_scores(df, b, f"spell_f1_{label}"))
+    d = (cell_scores(df, a, f"spell_f1_{label}") - cell_scores(df, b, f"spell_f1_{label}"))  # per-match delta
     return float(d.mean()), int((d > 0).sum())  # mean delta, matches positive
 
 
@@ -72,15 +72,15 @@ def u1_verdict(tables: dict) -> dict:
 
 def n_changed(cell: dict, ref: dict) -> tuple[int, float]:
     """(effective parameters changed, summed weight change) — the pinned tie-break."""
-    changed = 0
+    changed = 0  # running change count
     w_lm, r_lm = cell["d_w_long_missing"], ref["d_w_long_missing"]  # long-missing weights
     w_la, r_la = cell["d_w_low_activity"], ref["d_w_low_activity"]  # low-activity weights
     changed += w_lm != r_lm  # toggling a weight counts as one change
-    changed += w_la != r_la
+    changed += w_la != r_la  # low-activity toggle counts
     if w_lm and r_lm:  # threshold only counts when the weight is on in both
-        changed += cell["d_missing_run_s"] != ref["d_missing_run_s"]
-    if w_la and r_la:
-        changed += cell["d_activity_thr_ms"] != ref["d_activity_thr_ms"]
+        changed += cell["d_missing_run_s"] != ref["d_missing_run_s"]  # run-length differs
+    if w_la and r_la:  # both low-activity weights on
+        changed += cell["d_activity_thr_ms"] != ref["d_activity_thr_ms"]  # threshold differs
     return int(changed), float(abs(w_lm - r_lm) + abs(w_la - r_la))  # changes, weight sum
 
 
@@ -91,11 +91,11 @@ def cells_of(tables: dict) -> list[dict]:
 
 def d1_reading(tables: dict, ref: dict, regimes: tuple[str, ...], veto_tables: list) -> dict:
     """Maximin candidate over `regimes` (aligned labels) + the pinned adoption conditions."""
-    rows = []
+    rows = []  # candidate rows
     for cell in cells_of(tables):
         if key(cell) == key(ref):  # never compare the reference to itself
-            continue
-        deltas = all_deltas(tables, cell, ref)
+            continue  # skip the reference
+        deltas = all_deltas(tables, cell, ref)  # all tables vs reference
         g = min(deltas[(r, "aligned")][0] for r in regimes)  # worst-regime gain
         rows.append({"cell": cell, "g": g, "deltas": deltas,
                      "tie": n_changed(cell, ref)})  # tie-break info
@@ -112,7 +112,7 @@ def d1_reading(tables: dict, ref: dict, regimes: tuple[str, ...], veto_tables: l
 
 def r1(tables: dict, ref: dict) -> dict:
     veto = [("phase_a2", "aligned")] + [(k, "orig") for k in KINDS]  # primary + all orig
-    return d1_reading(tables, ref, R1_REGIMES, veto)
+    return d1_reading(tables, ref, R1_REGIMES, veto)  # run R1 reading
 
 
 def r2(tables: dict, ref: dict) -> dict:
@@ -123,7 +123,7 @@ def cell_str(cell: dict) -> str:
     lm = (f"long-missing {cell['d_w_long_missing']:g} / {cell['d_missing_run_s']:g} s"  # in words
           if cell["d_w_long_missing"] else "long-missing off")
     la = (f"low-activity {cell['d_w_low_activity']:g} @ {cell['d_activity_thr_ms']:g} m/s"
-          if cell["d_w_low_activity"] else "low-activity off")
+          if cell["d_w_low_activity"] else "low-activity off")  # in words or off
     return f"{lm} · {la}"  # compact cell label
 
 
@@ -135,30 +135,30 @@ def _delta_row(name: str, deltas: dict) -> str:
 
 def _header() -> list[str]:
     cols = [f"{k} × {lab}" for k in KINDS for lab in ("orig", "aligned")]  # one per table
-    return ["| cell | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
+    return ["| cell | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]  # header + separator
 
 
 def stage4_drift(tables: dict, res: Path = RES) -> list[str]:
     """OFF on the corrected bed vs the committed (km/h bed) stage-4 frozen-cell rows."""
-    out = []
+    out = []  # drift lines
     for kind in ("uniform", "phase_a2"):
-        path = res / f"stage4_{kind}.csv"
+        path = res / f"stage4_{kind}.csv"  # stage-4 file path
         if not path.exists():  # stage-4 file is optional
-            continue
+            continue  # nothing to compare
         old = pd.read_csv(path)  # committed stage-4 matrix
         for p, v in FROZEN_DECODER.items():  # reduce to the frozen decoder cell
-            old = old[old[p] == v]
-        old = old.set_index("match_id")
+            old = old[old[p] == v]  # keep frozen-cell rows
+        old = old.set_index("match_id")  # index for reindexing
         for lab in ("orig", "aligned"):
             new = cell_scores(tables[kind], OFF, f"spell_f1_{lab}")  # OFF on corrected bed
             d = (new - old[f"spell_f1_{lab}"].reindex(new.index)).abs()  # per-match drift
             out.append(f"- {kind} × {lab}: mean |Δ| {d.mean():.4f}, max {d.max():.4f} "
-                       f"(corrected {new.mean():.4f} vs committed {old[f'spell_f1_{lab}'].mean():.4f})")
-    return out
+                       f"(corrected {new.mean():.4f} vs committed {old[f'spell_f1_{lab}'].mean():.4f})")  # one drift line
+    return out  # all drift lines
 
 
 def build_report(res: Path = RES) -> tuple[str, dict]:
-    tables = load_tables(res)
+    tables = load_tables(res)  # load the matrices
     u1 = u1_verdict(tables)  # U1 runs first: it sets the reference
     ref = OFF if u1["adopt"] else AS_SHIPPED  # D1 reference follows the U1 verdict
     read1, read2 = r1(tables, ref), r2(tables, ref)  # both D1 readings
@@ -173,9 +173,9 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
          "| kind | masked | P(missing given dead) | P(missing given alive) | P(dead given missing) |",
          "|---|---|---|---|---|"]
     for kind in KINDS:  # one mask-stats row per kind
-        m = masks[masks["kind"] == kind].mean(numeric_only=True)
+        m = masks[masks["kind"] == kind].mean(numeric_only=True)  # means for this kind
         L.append(f"| {kind} | {m['masked_fraction']:.3f} | {m['miss_given_dead']:.3f} | "
-                 f"{m['miss_given_alive']:.3f} | {m['dead_given_miss']:.3f} |")
+                 f"{m['miss_given_alive']:.3f} | {m['dead_given_miss']:.3f} |")  # one stats row
 
     L += ["", "## U1 — low-activity weight (OFF − as shipped)", ""] + _header()  # U1 section
     L.append(_delta_row("OFF − ON", u1["deltas"]))  # all eight tables
@@ -189,7 +189,7 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
     L += ["", f"## D1 — dead-ball term (reference: {cell_str(ref)})", ""]  # D1 section
     for name, read, regimes in (("R1 — regime-agnostic (automatic)", read1, R1_REGIMES),
                                 ("R2 — coupled-regime reading (operator option)", read2, R2_REGIMES)):
-        c = read["candidate"]
+        c = read["candidate"]  # shorthand for candidate
         L += [f"### {name}", "",  # one subsection per reading
               f"- regimes: {', '.join(regimes)} (aligned labels); best maximin gain "
               f"{read['best_g']:+.4f}; {read['n_tied']} cell(s) within {TIE} of it",
@@ -199,8 +199,8 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
               f"**{'yes' if read['harm_ok'] else 'no'}**",
               f"- **Verdict: {'PASS' if read['adopt'] else 'REJECT'}**", ""] + _header()
         for r in read["ranked"][:8]:  # top-8 ranked cells
-            L.append(_delta_row(cell_str(r["cell"]), r["deltas"]))
-        L.append("")
+            L.append(_delta_row(cell_str(r["cell"]), r["deltas"]))  # one ranked row
+        L.append("")  # blank separator line
 
     L += ["## Predicted dead share (7-match mean; true IDSSE dead share ≈ 0.45)", "",  # diagnostics
           "| cell | " + " | ".join(KINDS) + " |", "|---|" + "---|" * len(KINDS)]
@@ -208,29 +208,29 @@ def build_report(res: Path = RES) -> tuple[str, dict]:
              ("R1 candidate", read1["candidate"]["cell"]),
              ("R2 candidate", read2["candidate"]["cell"])]
     for name, cell in shown:  # one row per displayed cell
-        vals = [cell_scores(tables[k], cell, "pred_d_share").mean() for k in KINDS]
-        L.append(f"| {name} | " + " | ".join(f"{v:.3f}" for v in vals) + " |")
+        vals = [cell_scores(tables[k], cell, "pred_d_share").mean() for k in KINDS]  # D shares
+        L.append(f"| {name} | " + " | ".join(f"{v:.3f}" for v in vals) + " |")  # one cell row
 
     L += ["", "## B1 — organisers' baselines on the same bed (spellF1 / macroF1, aligned labels)",  # B1
           "", "| system | " + " | ".join(KINDS) + " | published full match |",
           "|---|" + "---|" * (len(KINDS) + 1)]
     for system, (pub_s, pub_m) in PUBLISHED.items():  # one row per baseline system
-        vals = []
-        for k in KINDS:
-            b = base[(base["kind"] == k) & (base["system"] == system)]
-            vals.append(f"{b['spell_f1_aligned'].mean():.3f} / {b['macro_f1_aligned'].mean():.3f}")
-        L.append(f"| {system} | " + " | ".join(vals) + f" | {pub_s:.3f} / {pub_m:.3f} |")
+        vals = []  # per-kind means
+        for k in KINDS:  # one kind per entry
+            b = base[(base["kind"] == k) & (base["system"] == system)]  # that system's rows
+            vals.append(f"{b['spell_f1_aligned'].mean():.3f} / {b['macro_f1_aligned'].mean():.3f}")  # spellF1 / macroF1
+        L.append(f"| {system} | " + " | ".join(vals) + f" | {pub_s:.3f} / {pub_m:.3f} |")  # baseline row
     for name, cell in shown[:2]:  # our two cells, same bed, for comparison
         vals = [f"{cell_scores(tables[k], cell, 'spell_f1_aligned').mean():.3f} / "
-                f"{cell_scores(tables[k], cell, 'macro_f1_aligned').mean():.3f}" for k in KINDS]
-        L.append(f"| ours, {name} | " + " | ".join(vals) + " | — |")
+                f"{cell_scores(tables[k], cell, 'macro_f1_aligned').mean():.3f}" for k in KINDS]  # our means
+        L.append(f"| ours, {name} | " + " | ".join(vals) + " | — |")  # our two rows
     L += ["", "The published column is the organisers' own figure for the provided match "
           "(EVALUATION.md); it is shown for orientation and selects nothing (dossier §7, Q5).",
           "", "## Reproduce", "", "```bash",  # orientation note + reproduce block
           ".venv/bin/python -m tuning.stage5          # full pass (~15 min, 6 workers)",
           ".venv/bin/python -m tuning.gate5           # this read + report", "```", ""]
     summary = {"u1": u1, "ref": ref, "r1": read1, "r2": read2}  # results for main()
-    return "\n".join(L), summary
+    return "\n".join(L), summary  # report text + results
 
 
 def main() -> int:
@@ -247,7 +247,7 @@ def main() -> int:
          "gain": round(summary["r2"]["candidate"]["g"], 4)},
     ]).to_csv(RES / "stage5_verdicts.csv", index=False)  # machine-readable verdicts
     print(text)  # echo the report
-    return 0
+    return 0  # success
 
 
 if __name__ == "__main__":
