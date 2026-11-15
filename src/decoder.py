@@ -26,6 +26,14 @@ byte-identical to the P7 decoder):
 Order per half: Viterbi -> gate -> gap placement -> min-dwell -> D minimum -> no-play ->
 switch delay.
 
+P9 components (dossier §7 P9, 2026-11-14; all OFF by default, so the default path is
+byte-identical to the P8 decoder):
+  C  dwell_coalesce: the min-dwell pass joins equal neighbours after every merge.
+  K/T gate_kin_support: a ball-less frame that carries an active kinematic term counts as
+     support in the switch gate like a raw ball frame (the terms themselves live in the
+     emission).
+  S  switch_delay_slope: the team-switch delay grows with the ball speed at the boundary.
+
 Frames outside the graded spans are CODE_X (free for the scorer).
 Pure function: inputs are not modified.
 """
@@ -81,30 +89,34 @@ def _segments(labels: np.ndarray) -> list[tuple[int, int, int]]:
             for i in range(len(bounds) - 1)]
 
 
-def _supported(boundary: int, label: int, source: np.ndarray, log_e: np.ndarray,
+def _supported(boundary: int, label: int, evidence: np.ndarray, log_e: np.ndarray,
                window: int) -> bool:
-    """True if an ATD frame within +/- window of the boundary favours `label`."""
+    """True if an evidence frame within +/- window of the boundary favours `label`.
+
+    `evidence` is a boolean mask of the frames allowed to speak (raw ATD frames; with
+    `gate_kin_support` also ball-less frames carrying a kinematic term for this label)."""
     lo = max(0, boundary - window)
-    hi = min(len(source), boundary + window)
-    atd = source[lo:hi] == SOURCE_ATD
-    if not atd.any():
+    hi = min(len(evidence), boundary + window)
+    ev = evidence[lo:hi]
+    if not ev.any():
         return False
-    winners = np.argmax(log_e[lo:hi][atd], axis=1)
+    winners = np.argmax(log_e[lo:hi][ev], axis=1)
     return bool((winners == label).any())
 
 
-def _first_support(start: int, stop: int, label: int, source: np.ndarray,
+def _first_support(start: int, stop: int, label: int, evidence: np.ndarray,
                    log_e: np.ndarray) -> int | None:
-    """First raw-ATD frame in [start, stop) whose own emission favours `label`, or None."""
-    atd = source[start:stop] == SOURCE_ATD
-    if not atd.any():
+    """First evidence frame in [start, stop) whose own emission favours `label`, or None."""
+    ev = evidence[start:stop]
+    if not ev.any():
         return None
-    hits = np.flatnonzero(atd & (np.argmax(log_e[start:stop], axis=1) == label))
+    hits = np.flatnonzero(ev & (np.argmax(log_e[start:stop], axis=1) == label))
     return start + int(hits[0]) if len(hits) else None
 
 
 def apply_gating(labels: np.ndarray, source: np.ndarray, log_e: np.ndarray,
-                 cfg: dict = CFG) -> tuple[np.ndarray, int]:
+                 cfg: dict = CFG, *, kin_team: np.ndarray | None = None,
+                 kin_dead: np.ndarray | None = None) -> tuple[np.ndarray, int]:
     """Gate segment boundaries on nearby ATD support. Returns (labels, n_reverted).
 
     `gate_mode = "revert"` (default): a segment whose start boundary lacks support is merged
@@ -112,18 +124,31 @@ def apply_gating(labels: np.ndarray, source: np.ndarray, log_e: np.ndarray,
     to the first raw-ATD frame of the segment that favours its label — the previous label
     holds until the ball shows the new one — and only a segment with no such frame is
     merged. `n_reverted` counts merged segments in both modes.
+
+    `gate_kin_support` (P9, OFF by default): `kin_team` / `kin_dead` mark the ball-less
+    frames whose emission carries a kinematic team / dead term; they then count as evidence
+    for a team label / for `D` exactly like raw ATD frames.
     """
     if not cfg["gate_switches"]:
         return labels.copy(), 0
     window = int(round(cfg["switch_support_s"] * cfg["fps"]))
     move = cfg.get("gate_mode", "revert") == "move"
+    atd = source == SOURCE_ATD
+    ev_team = ev_dead = atd
+    if cfg.get("gate_kin_support", False):
+        if kin_team is not None:
+            ev_team = atd | kin_team
+        if kin_dead is not None:
+            ev_dead = atd | kin_dead
     out: list[tuple[int, int, int]] = []
     reverted = 0
     for start, stop, lab in _segments(labels):
         if out and out[-1][2] == lab:
             out[-1] = (out[-1][0], stop, lab)          # no boundary: extend
-        elif out and not _supported(start, lab, source, log_e, window):
-            first = _first_support(start, stop, lab, source, log_e) if move else None
+        elif out and not _supported(start, lab, ev_dead if lab == CODE_D else ev_team,
+                                    log_e, window):
+            first = _first_support(start, stop, lab, ev_dead if lab == CODE_D else ev_team,
+                                   log_e) if move else None
             if first is None:
                 out[-1] = (out[-1][0], stop, out[-1][2])   # revert: swallow into previous
                 reverted += 1
@@ -169,8 +194,13 @@ def place_gap_switches(labels: np.ndarray, source: np.ndarray, frac: float) -> n
     return _rebuild(labels, segs)
 
 
-def enforce_min_dwell(labels: np.ndarray, min_len: int) -> np.ndarray:
-    """Merge segments shorter than min_len into a neighbour, shortest first, until stable."""
+def enforce_min_dwell(labels: np.ndarray, min_len: int, coalesce: bool = False) -> np.ndarray:
+    """Merge segments shorter than min_len into a neighbour, shortest first, until stable.
+
+    `coalesce` (P9 C, OFF by default): after every merge adjacent segments with the same
+    label are joined before lengths are measured again. Without it a merge can leave two
+    equal neighbours standing as separate segments, and the shorter of them may then be
+    merged into the *other* label although together they are long enough."""
     segs = _segments(labels)
     while len(segs) > 1:
         lengths = [stop - start for start, stop, _ in segs]
@@ -189,6 +219,14 @@ def enforce_min_dwell(labels: np.ndarray, min_len: int) -> np.ndarray:
         lab = segs[j][2]                        # the neighbour we merge INTO
         segs[a] = (start, stop, lab)
         del segs[b]
+        if coalesce:
+            joined: list[tuple[int, int, int]] = []
+            for seg in segs:
+                if joined and joined[-1][2] == seg[2]:
+                    joined[-1] = (joined[-1][0], seg[1], seg[2])
+                else:
+                    joined.append(seg)
+            segs = joined
     return _rebuild(labels, segs)
 
 
@@ -234,7 +272,10 @@ def enforce_d_min_dwell(labels: np.ndarray, d_min_len: int) -> np.ndarray:
     return _rebuild(labels, segs)
 
 
-def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int) -> np.ndarray:
+def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int, *,
+                        ball_speed: np.ndarray | None = None, slope_s: float = 0.0,
+                        ref_ms: float = 0.0, max_delay_s: float = 0.0,
+                        fps: int = 25) -> np.ndarray:
     """P8 S: move ball-placed H<->A boundaries `delay` frames later.
 
     The kernel hands the ball to the receiving team when it is nearer to it — mid-flight —
@@ -242,8 +283,15 @@ def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int) -> n
     whose two adjacent frames are raw ATD is moved (the ball evidence placed it); the move
     is capped at half the following segment. Boundaries touching a ball gap and every
     boundary into or out of D stay. Pure.
+
+    P9 S (`slope_s` > 0, OFF by default): a faster ball is handed over earlier in its
+    flight, so the delay of each boundary becomes
+    `clip(delay / fps + slope_s * (v - ref_ms), 0, max_delay_s)` seconds, `v` being the mean
+    finite ball speed over the six frames ending at the boundary; without a finite speed the
+    constant delay applies.
     """
-    if delay <= 0:
+    sloped = slope_s > 0 and ball_speed is not None
+    if delay <= 0 and not sloped:
         return labels
     out = labels.copy()
     segs = _segments(labels)
@@ -255,7 +303,14 @@ def delay_team_switches(labels: np.ndarray, source: np.ndarray, delay: int) -> n
             continue
         if not (atd[start] and atd[start - 1]):
             continue
-        shift = min(int(delay), (stop - start) // 2)
+        frames = int(delay)
+        if sloped:
+            window = ball_speed[max(start - 5, 0):start + 1]
+            finite = np.isfinite(window)
+            if finite.any():
+                seconds = delay / fps + slope_s * (float(window[finite].mean()) - ref_ms)
+                frames = int(round(min(max(seconds, 0.0), max_delay_s) * fps))
+        shift = min(frames, (stop - start) // 2)
         out[start:start + shift] = prev_lab
     return out
 
@@ -344,20 +399,32 @@ def finish_paths(paths: dict, emission: Emission, source: np.ndarray,
     d_min_len = int(round(float(cfg.get("d_min_dwell_s", 0.0)) * fps))
     delay = int(round(float(cfg.get("switch_delay_s", 0.0)) * fps))
     gap_frac = float(cfg.get("gap_switch_frac", 0.0))
+    coalesce = bool(cfg.get("dwell_coalesce", False))
+    slope = float(cfg.get("switch_delay_slope", 0.0))
+    kin_gate = bool(cfg.get("gate_kin_support", False))
     reverted_total = 0
 
     for idx, viterbi_path in paths.values():
-        path, reverted = apply_gating(viterbi_path, source[idx], emission.log_e[idx], cfg)
+        kin_team = emission.kin_team[idx] if kin_gate and emission.kin_team is not None else None
+        kin_dead = emission.kin_dead[idx] if kin_gate and emission.kin_dead is not None else None
+        path, reverted = apply_gating(viterbi_path, source[idx], emission.log_e[idx], cfg,
+                                      kin_team=kin_team, kin_dead=kin_dead)
         reverted_total += reverted
         if gap_frac > 0:
             path = place_gap_switches(path, source[idx], gap_frac)
-        path = enforce_min_dwell(path, min_len)
+        path = enforce_min_dwell(path, min_len, coalesce)
         if d_min_len > min_len:
             path = enforce_d_min_dwell(path, d_min_len)
         if cfg["no_play_rule"]:
             path = apply_no_play(path, emission.activity[idx], cfg)
-        if delay > 0:
-            path = delay_team_switches(path, source[idx], delay)
+        if delay > 0 or slope > 0:
+            speed = emission.ball_speed[idx] if slope > 0 and emission.ball_speed is not None \
+                else None
+            path = delay_team_switches(path, source[idx], delay, ball_speed=speed,
+                                       slope_s=slope,
+                                       ref_ms=float(cfg.get("switch_delay_ref_ms", 0.0)),
+                                       max_delay_s=float(cfg.get("switch_delay_max_s", 0.0)),
+                                       fps=int(fps))
         labels[idx] = path
 
     return Decoded(labels=labels, reverted_switches=reverted_total)

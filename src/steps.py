@@ -35,10 +35,17 @@ def ball_track(ctx: "Ctx", cfg: dict) -> None:
 
 
 def emission(ctx: "Ctx", cfg: dict) -> None:
-    """Build the per-frame H/A/D log-emission (team kernel, confidence, dead-ball)."""
+    """Build the per-frame H/A/D log-emission (team kernel, confidence, dead-ball); the
+    player-only kinematic terms are computed only when one of their weights is positive."""
+    kin = None
+    if cfg.get("kin_w_dead", 0.0) > 0 or cfg.get("kin_w_team", 0.0) > 0:
+        from src.kinematics import build_kinematics
+
+        kin = build_kinematics(ctx.arrays.players, ctx.arrays.players_s,
+                               ctx.arrays.slot_team, ctx.arrays.half, cfg)
     ctx.emission = build_emission(
         ctx.track, ctx.arrays.players, ctx.arrays.players_s, ctx.arrays.slot_team, cfg,
-        setpiece_starts=ctx.arrays.setpiece_starts,
+        setpiece_starts=ctx.arrays.setpiece_starts, kin=kin,
     )
 
 

@@ -41,6 +41,14 @@ CFG = dict(
                                   # the middle of that gap — NOT adopted (pinned maximin rule)
     switch_delay_s=0.64,          # P8 S (was 0): seconds a ball-placed H<->A boundary moves later
     d_min_dwell_s=0.0,            # P8 M: 0 = off (D uses min_dwell_s) — step dropped, no gain
+    dwell_coalesce=False,         # P9 C: join equal neighbours after every min-dwell merge (OFF)
+    kin_w_dead=0.0,               # P9 K: weight of the player-only dead-ball term on ball-less
+                                  # frames (0 = off; src/kinematics.py, src/kin_model.json)
+    kin_w_team=0.0,               # P9 T: weight of the player-only team term on ball-less frames
+    gate_kin_support=False,       # P9: kinematic frames count as support in the switch gate
+    switch_delay_slope=0.0,       # P9 S: extra delay in s per m/s of ball speed (0 = constant)
+    switch_delay_ref_ms=9.5,      # P9 S: ball speed (m/s) at which the delay equals switch_delay_s
+    switch_delay_max_s=1.6,       # P9 S: upper clip of a speed-scaled delay
     kickoff_rule=True,            # K1: D from a graded half's start up to its `Kick Off (Start)`
                                   # tag (dossier §7 P7); ON by operator decision 2026-11-14 with
                                   # the amended first-half check (tuning/kickoff_check.py)
@@ -130,6 +138,22 @@ PROVENANCE = {
                        "pinned tie rule (smallest delay within 0.005 of the best)"),
     "d_min_dwell_s": ("prior", "P8 M: OFF. Stage 8: +0.0001 on the primary table for 3 s, negative "
                       "under uniform masks for 4-5 s — step dropped (dossier §7 P8)"),
+    "dwell_coalesce": ("prior", "P9 C: OFF. The min-dwell pass leaves equal neighbours un-joined "
+                       "after a merge; joining them is the intended behaviour (dossier §7 P9)"),
+    "kin_w_dead": ("prior", "P9 K: OFF. Weight of the player-only dead log-likelihood ratio on "
+                   "ball-less frames; grid {0, 0.03, 0.1, 0.3} pre-declared in dossier §7 P9"),
+    "kin_w_team": ("prior", "P9 T: OFF. Weight of the player-only team log-odds on ball-less "
+                   "frames; grid {0, 0.03, 0.1, 0.3} pre-declared in dossier §7 P9"),
+    "gate_kin_support": ("prior", "P9: OFF = no switch without ball evidence (the standing tier "
+                         "rule); True lets a kinematic frame support a boundary (dossier §7 P9)"),
+    "switch_delay_slope": ("prior", "P9 S: OFF. On IDSSE the team-switch latency grows with ball "
+                           "speed (-6 / -14 / -22 frames by tercile at delay 0); grid {0, 0.03, "
+                           "0.06} s per m/s pre-declared in dossier §7 P9"),
+    "switch_delay_ref_ms": ("external_fit", "P9 S: 9.5 m/s, the middle of the IDSSE ball-speed "
+                            "terciles at matched team switches (edges 7.3 and 11.9 m/s, 433 "
+                            "switches, 7 matches; dossier §7 P9 probe); inert while the slope is 0"),
+    "switch_delay_max_s": ("prior", "P9 S: a speed-scaled delay never exceeds 1.6 s (a priori "
+                           "guard against a noisy ball speed); inert while the slope is 0"),
     "kickoff_rule": ("prior", "K1 documents-only rule (FAQ: the second half is graded before "
                      "its kick-off and those frames are all D; DATA.md: Smart Tagging "
                      "`Kick Off (Start)`, time base checked against both kickoffs). No "

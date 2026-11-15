@@ -21,6 +21,10 @@ Design notes (tests enforce the behaviours):
   * A constant added to all three columns of one frame cannot change any Viterbi
     path, so only the *contrast* matters; the formulation keeps that contrast
     proportional to conf for the team part and feature-driven for D.
+  * Kinematic terms (P9, dossier §7; both weights 0 by default, so the default output is
+    unchanged): on frames WITHOUT a ball observation the dead logit gains
+    kin_w_dead * (player-only dead log-likelihood ratio) and the H / A columns gain
+    kin_w_team * log sigmoid(+/- player-only team logit). Ball-visible frames are untouched.
 
 Pure function: inputs are never modified.
 """
@@ -51,6 +55,9 @@ class Emission:
     p_d: np.ndarray     # (N,) float64 in (0, 1)
     ev: np.ndarray      # (N, 2) raw team kernel masses (H, A)
     activity: np.ndarray  # (N,) per-frame mean player speed (m/s), NaN where unknown (E10)
+    ball_speed: np.ndarray | None = None  # (N,) backward-difference ball speed, m/s (P9 S)
+    kin_dead: np.ndarray | None = None    # (N,) bool: kinematic dead term applied (P9 K)
+    kin_team: np.ndarray | None = None    # (N,) bool: kinematic team term applied (P9 T)
 
     @property
     def margin(self) -> np.ndarray:
@@ -155,14 +162,25 @@ def _dead_features(track: BallTrack, players_s: np.ndarray, cfg: dict,
         "low_activity": low_activity.astype(np.float64),
         "set_piece": _set_piece_feature(setpiece_starts, n, cfg),
         "activity": activity,          # raw per-frame mean speed (E10 no-play rule)
+        "ball_speed": speed,           # m/s, NaN where an endpoint is missing (P9 S)
     }
+
+
+def _log_sigmoid(x: np.ndarray) -> np.ndarray:
+    return -np.logaddexp(0.0, -x)
 
 
 def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
                    slot_team: np.ndarray, cfg: dict = CFG,
-                   setpiece_starts: np.ndarray | None = None) -> Emission:
+                   setpiece_starts: np.ndarray | None = None,
+                   kin=None, *, kin_dead_all_frames: bool = False) -> Emission:
     """`setpiece_starts` feeds the E7 dead-logit term; with `d_w_set_piece = 0`
-    (the default) the output is identical to passing nothing."""
+    (the default) the output is identical to passing nothing.
+
+    `kin` (a `src.kinematics.Kinematics`) feeds the P9 terms on ball-less frames; with
+    `kin_w_dead = kin_w_team = 0` (the default) or `kin=None` the output is identical.
+    `kin_dead_all_frames` is the record-only variant of the stage-9 harness (the dead term
+    on every frame); the pipeline never sets it."""
     n = len(track.source)
     if not (len(players) == len(players_s) == n):
         raise ValueError("track and player arrays must have the same length")
@@ -183,6 +201,14 @@ def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
     z += cfg["d_w_long_missing"] * feats["long_missing"]
     z += cfg["d_w_low_activity"] * feats["low_activity"]
     z += cfg["d_w_set_piece"] * feats["set_piece"]
+
+    w_dead = float(cfg.get("kin_w_dead", 0.0)) if kin is not None else 0.0
+    w_team = float(cfg.get("kin_w_team", 0.0)) if kin is not None else 0.0
+    no_ball = track.source == SOURCE_NONE
+    kin_dead = kin_team = None
+    if w_dead > 0:
+        kin_dead = kin.dead_ok & (no_ball | kin_dead_all_frames)
+        z[kin_dead] += w_dead * kin.dead_llr[kin_dead]
     p_d = _sigmoid(z)
 
     log_e = np.empty((n, 3), dtype=np.float64)
@@ -190,5 +216,10 @@ def build_emission(track: BallTrack, players: np.ndarray, players_s: np.ndarray,
     log_e[:, CLASS_H] = conf * np.log(np.clip(p_team[:, 0], EPS, 1.0)) + alive
     log_e[:, CLASS_A] = conf * np.log(np.clip(p_team[:, 1], EPS, 1.0)) + alive
     log_e[:, CLASS_D] = np.log(np.clip(p_d, EPS, 1.0))
+    if w_team > 0:
+        kin_team = kin.team_ok & no_ball
+        log_e[kin_team, CLASS_H] += w_team * _log_sigmoid(kin.team_logit[kin_team])
+        log_e[kin_team, CLASS_A] += w_team * _log_sigmoid(-kin.team_logit[kin_team])
 
-    return Emission(log_e=log_e, conf=conf, p_d=p_d, ev=ev, activity=feats["activity"])
+    return Emission(log_e=log_e, conf=conf, p_d=p_d, ev=ev, activity=feats["activity"],
+                    ball_speed=feats["ball_speed"], kin_dead=kin_dead, kin_team=kin_team)
