@@ -1042,6 +1042,31 @@ delay 0.64 s · slope 0), fill off, frozen decoder cell, stage-5 masks and seeds
   frozen-ball caveat applies unchanged — this grid cannot judge dead-ball features on
   ball-visible frames.
 
+##### P10 read (2026-11-15 — `stage10_*.csv`, `stage10_record.csv`, `stage10_verdicts.csv`, `report_stage10.md`)
+
+- **Run:** 208 s wall, 7 workers; 6 cells × 7 matches × 4 mask kinds, both label sets,
+  plus the two record-only rows. **Harness pin: exact** — the 0.3 cell reproduces the
+  stage-9 bundle row with max |Δ| = 0. A one-match smoke run (three cells) preceded the
+  pass, after the pin; it selected nothing.
+- **K — REJECT: `kin_w_dead = 0.3` ships unchanged.** The rising trend at the grid edge
+  flattens immediately past it: primary (phase_a2 × aligned) +0.0108 at 0.4 (7/7), then
+  +0.0098 · +0.0067 · +0.0044 · +0.0019 (4/7) at 0.5 / 0.6 / 0.8 / 1.0 — every candidate
+  below the pinned +0.02 bar. No harm anywhere (all eight tables positive for every w,
+  worst +0.0059); the cover masks keep growing to +0.041 at K 1.0 (dead-tied ball loss),
+  but the primary table declines past 0.4. The pinned rule refuses; no post-hoc pick.
+- **Levels (aligned, 7-match mean):** 0.520 / 0.519 / 0.496 / 0.474 at 0.3 → 0.533 /
+  0.521 / 0.519 / 0.516 at 1.0; predicted D share 0.42 / 0.42 / 0.39 / 0.35 → 0.46 /
+  0.46 / 0.44 / 0.42 (true ≈ 0.45). External firing (frames changed vs the 0.3 cell):
+  1.3 … 2.7 % at 0.4 up to 3.5 … 8.0 % at 1.0 — the grid had firing opportunity.
+- **Record-only rows:** `R_K05_all` (dead term on every frame) sits below the 0.3 cell on
+  uniform/phase (0.502 / 0.498 vs 0.520 / 0.519) — consistent with the bed's frozen-ball
+  caveat, nothing judged. `R_K10_T0` (K 1.0, T 0) collapses on uniform/phase (0.425 /
+  0.423) while rising on cover_q90 (0.518): the K×T interaction read confirms T is doing
+  independent work; no decision attaches to either row, as pinned.
+- **State after the read:** `config.py` untouched, `LA+AI.csv` unchanged (md5
+  `c121715836ed603fc5792b85daf6f279`), 182 tests green, **no guarded run owed** (no code
+  path changed). The "K weight beyond 0.3" open item (c) of P9 is now closed.
+
 ## 8. Independent audit (2026-11-07)
 
 Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 state
