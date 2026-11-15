@@ -9,6 +9,7 @@ from src.emission import _set_piece_feature, build_emission
 
 
 def test_config_e7_defaults_are_off_and_pinned():
+    """Set-piece prior is OFF and every key provenance-pinned."""
     assert CFG["d_w_set_piece"] == 0.0          # OFF until the gate passes
     assert CFG["sp_pre_s"] == 2.0
     assert CFG["sp_post_s"] == 1.0
@@ -17,6 +18,7 @@ def test_config_e7_defaults_are_off_and_pinned():
 
 
 def test_set_piece_feature_window_and_clipping():
+    """Pre/post window maths, clipping, and empty input."""
     n = 300
     cfg = {"sp_pre_s": 2.0, "sp_post_s": 1.0, "fps": 25}
     f = _set_piece_feature(np.array([100]), n, cfg)
@@ -32,6 +34,7 @@ def test_set_piece_feature_window_and_clipping():
 
 
 def test_noisy_setpiece_is_seeded_deterministic_and_counted():
+    """Seeded noise sim: clipped, sorted, §7 draw order."""
     from tuning.e7 import noisy_setpiece
 
     raw = np.arange(0, 1000, 10)               # 100 events
@@ -52,6 +55,7 @@ def test_noisy_setpiece_is_seeded_deterministic_and_counted():
 
 
 def test_emission_off_is_identity_and_on_raises_p_d_in_window():
+    """OFF is identity; ON lifts p_d inside the window."""
     from test_emission import _slots_on_grid, _track
 
     n = 120
@@ -78,6 +82,7 @@ def test_emission_off_is_identity_and_on_raises_p_d_in_window():
 
 
 def test_arrays_carry_setpiece_starts():
+    """Set-piece starts are sorted and inside the match."""
     from src.data import N_FRAMES, load_arrays
 
     arrays = load_arrays()

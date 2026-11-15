@@ -24,14 +24,16 @@ FROZEN = {"switch_pen": 2.0, "dead_pen": 5.0, "sigma_m": 1.5,
 
 
 def test_grid6_is_144_and_contains_the_frozen_cell():
+    """G6 grid: 144 cells, frozen cell included."""
     points = grid6_points()
     assert set(GRID6) == set(PARAMS)
     assert len(points) == 144 == 3 * 3 * 2 * 4 * 2
-    assert FROZEN in points
+    assert FROZEN in points                      # frozen cell is swept
     assert KINDS == ("uniform", "phase_a2", "phase_a3", "phase_a2_fill")
 
 
 def test_possession_change_cue_exact_and_dilated():
+    """Cue flags exact changes; wide radius covers them all."""
     letters = np.array(list("HHDAAXA"), dtype=object)
     raw = possession_change_cue(letters, half_s=0.0, fps=1.0)
     assert raw.tolist() == [True, False, False, True, False, False, True]
@@ -41,14 +43,16 @@ def test_possession_change_cue_exact_and_dilated():
 
 
 def test_event_cue_window():
+    """Window spans half-width; out-of-range events ignored."""
     cue = event_cue(np.array([10]), 20, half_s=2.0, fps=1.0)
     expected = np.zeros(20, dtype=bool)
-    expected[8:13] = True
+    expected[8:13] = True        # 10 ± 2 frames, inclusive
     assert cue.tolist() == expected.tolist()
     assert not event_cue(np.array([-5, 99]), 20, half_s=2.0, fps=1.0).any()
 
 
 def test_crowding_cue_ball_anchor_and_count():
+    """Needs three nearby players and a visible ball."""
     # 3 frames, 4 slots; centre of pitch at (0.5, 0.5)
     players = np.full((3, 4, 2), np.nan)
     ball = np.array([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]])
@@ -64,6 +68,7 @@ def test_crowding_cue_ball_anchor_and_count():
 
 
 def test_phase_weights_are_one_plus_alpha_times_cue_sum():
+    """Weights are 1 + alpha × active cues."""
     c1 = np.array([True, False, True])
     c2 = np.array([False, False, True])
     c3 = np.array([False, False, False])
@@ -72,6 +77,7 @@ def test_phase_weights_are_one_plus_alpha_times_cue_sum():
 
 
 def test_map_event_rows_recovers_known_rows():
+    """Anchors map events to rows; no anchors give -1."""
     # two periods, 10 frames each, 40000 µs per frame, ts resets each period
     ts = np.tile(np.arange(10, dtype=np.float64) * 40_000.0, 2)
     fid = np.concatenate([np.arange(100, 110), np.arange(200, 210)])
@@ -88,6 +94,7 @@ def test_map_event_rows_recovers_known_rows():
 
 
 def test_mask_ball_weighted_concentrates_and_uniform_is_untouched():
+    """Weights focus masking; default path stays identical."""
     ball = np.zeros((200, 2))
     ball[::7] = np.nan
     runs = np.array([2, 3, 4])
@@ -125,7 +132,7 @@ def test_gate1_read_reproduces_the_recorded_verdict():
     from tuning.gate1 import gate1_read
 
     r = gate1_read()
-    assert r["verdict"] == "REJECT-KEEP"
+    assert r["verdict"] == "REJECT-KEEP"        # recorded verdict, pinned
     assert r["chosen"] == {"switch_pen": 1.0, "dead_pen": 12.0, "sigma_m": 1.5,
                            "min_dwell_s": 2.0, "switch_support_s": 1.0}
     assert r["delta"] < 0.01

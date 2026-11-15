@@ -22,6 +22,7 @@ from tuning.sweep import (
 
 
 def test_grid_has_243_unique_cells():
+    """Grid has 243 unique cells (3 values per param)."""
     points = grid_points()
     assert len(points) == 243 == 3 ** len(PARAMS)
     keys = {tuple(p[p_] for p_ in PARAMS) for p in points}
@@ -29,10 +30,12 @@ def test_grid_has_243_unique_cells():
 
 
 def test_smoke_grid_is_subset():
+    """Smoke grid holds exactly six cells."""
     assert len(smoke_grid()) == 6
 
 
 def test_derive_letters_rules():
+    """Period, state and owner map to letters."""
     from tuning.idsse import derive_letters
 
     period = np.array([1, 1, 1, 1, 1, 1, 0], dtype=np.int8)
@@ -50,6 +53,7 @@ def test_derive_letters_rules():
 
 
 def test_derive_letters_dead_priority_and_counts():
+    """Dead state overrides a known owner everywhere."""
     from tuning.idsse import derive_letters
 
     period = np.ones(6, dtype=np.int8)
@@ -83,11 +87,13 @@ def test_derive_letters_edge_cases():
 
 
 def test_empirical_runs_extraction():
+    """True-blocks in a mask become run lengths."""
     mask = np.array([0, 1, 1, 0, 1, 0, 1, 1, 1], dtype=bool)
     np.testing.assert_array_equal(empirical_run_lengths(mask), [2, 1, 3])
 
 
 def test_mask_ball_deterministic_and_surgical():
+    """Same seed masks identically; other frames untouched."""
     rng1 = np.random.default_rng(42)
     rng2 = np.random.default_rng(42)
     ball = np.stack([np.linspace(0, 1, 5000), np.linspace(1, 0, 5000)], axis=-1)
@@ -95,10 +101,10 @@ def test_mask_ball_deterministic_and_surgical():
     m1, s1 = mask_ball(ball, runs, rng1, target_fraction=0.3)
     m2, s2 = mask_ball(ball, runs, rng2, target_fraction=0.3)
     np.testing.assert_array_equal(np.isnan(m1), np.isnan(m2))
-    assert s1["masked_fraction"] >= 0.29
+    assert s1["masked_fraction"] >= 0.29        # reaches the 0.30 target
     untouched = ~np.isnan(m1)
     np.testing.assert_array_equal(m1[untouched], ball[untouched])
-    assert s1["n_runs"] > 0
+    assert s1["n_runs"] > 0                     # some runs drawn
 
 
 def test_mask_ball_never_touches_full_target_block_randomly():
@@ -129,6 +135,7 @@ def _toy_results(n_matches: int = 7) -> pd.DataFrame:
 
 
 def test_flat_select_prefers_plateau_over_isolated_spike():
+    """Plateau centre beats an isolated corner spike."""
     df = _toy_results()
     chosen, detail = flat_select(df, scenario="kinematic")
     center = {p: GRID[p][len(GRID[p]) // 2] for p in PARAMS}
@@ -137,10 +144,11 @@ def test_flat_select_prefers_plateau_over_isolated_spike():
 
 
 def test_lomo_returns_all_folds():
+    """LOMO scores each leave-one-match-out fold."""
     df = _toy_results()
     chosen, _ = flat_select(df, scenario="kinematic")
     table = lomo(df, chosen)
-    assert len(table) == 7
+    assert len(table) == 7                      # one fold per match
     assert table["fold_score"].notna().all()
     assert table["global_score"].notna().all()
 
@@ -193,12 +201,12 @@ def test_final_selection_reproduces_frozen_config():
     cell and the numbers quoted in dossier.md / report_final.md."""
     union = load_union()
     assert union[PARAMS].drop_duplicates().shape[0] == 930
-    chosen, detail = flat_select(union, scenario="none")
-    assert chosen == {p: float(CFG[p]) for p in PARAMS}
+    chosen, detail = flat_select(union, scenario="none")   # re-apply the pinned plateau rule
+    assert chosen == {p: float(CFG[p]) for p in PARAMS}   # exactly the shipped cell
     rows = union[union["scenario"] == "none"]
     for p, v in chosen.items():
         rows = rows[rows[p] == v]
-    assert len(rows) == 7
+    assert len(rows) == 7                       # one row per match
     assert rows["spell_f1"].mean() == pytest.approx(0.2759, abs=5e-4)
     lo, hi = bootstrap_ci(rows["spell_f1"].to_numpy())
     assert (lo, hi) == pytest.approx((0.2578, 0.2932), abs=5e-4)
@@ -207,7 +215,8 @@ def test_final_selection_reproduces_frozen_config():
 
 
 def test_bootstrap_ci_brackets_the_mean():
+    """Bootstrap interval brackets the sample mean."""
     values = np.array([0.30, 0.32, 0.31, 0.33, 0.29, 0.32, 0.31])
     lo, hi = bootstrap_ci(values, n=500, seed=3)
     assert lo <= values.mean() <= hi
-    assert 0.0 < hi - lo < 0.05
+    assert 0.0 < hi - lo < 0.05                 # tight interval
