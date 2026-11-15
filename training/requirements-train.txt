@@ -1,0 +1,26 @@
+# Training / video-inference path (src/fot_video.py, training/). NOT needed for the
+# default pipeline or for `python -m src.submit` — those use requirements-pipeline.txt.
+#
+# Validated together on CPython 3.14.4 (Linux x86-64), 2026-11-14: the committed
+# checkpoints load, src/fot_video.py runs end to end, and the training smoke test
+# passes with exactly these versions (CPU build of torch for that check).
+#
+# torch / torchvision are deliberately NOT listed: the right wheel depends on the
+# machine (CUDA build for the GPU box, CPU build elsewhere). Install them FIRST from
+# the PyTorch index that matches the machine, then this file:
+#
+#   pip install torch==2.15.0 torchvision==0.29.2 --index-url <pytorch index for your CUDA>
+#   pip install -r training/requirements-train.txt
+#
+# See training/SOP_RTX_AGENT.md for the exact commands and how to pick the index.
+-r ../requirements-pipeline.txt
+
+# The detector checkpoint (models/rtdetr_fold0_best.pt) was trained with this exact
+# version; keeping it removes one variable from a reproduction.
+ultralytics==8.4.212
+
+# Pulled in by ultralytics; pinned to the version the validation used.
+opencv-python==5.0.0.93
+
+# Test runner (the training tests live in tests/test_training.py).
+pytest==9.2.0

@@ -72,3 +72,13 @@ tuning/results/smoke.csv
 
 # local-only copies of the challenge docs for reference (upstream: metrica-sports/more-than-a-hack-2027)
 reference-docs/
+
+# -- detector training and video inference (training/, src/fot_video.py) --------------------------
+# Training runs, evaluation caches and ultralytics' default dataset folder are generated output:
+# large, machine-specific, and — for anything derived from a dataset — subject to that dataset's
+# licence. External datasets themselves live under data/external/ (already covered by data/*).
+runs/
+datasets/
+# The video CLI exports a per-frame ball track of whatever video it is given. When that video is
+# the provided match, the export is derived from provided data and must never be committed.
+play_*.csv
