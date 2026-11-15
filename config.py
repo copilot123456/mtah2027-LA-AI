@@ -10,11 +10,12 @@ Rules (see dossier.md):
   * tests/test_config.py fails the build if a key lacks provenance.
 """
 
+# --- tunable parameters: every key must appear in PROVENANCE below ---
 CFG = dict(
     # --- frame / geometry (fixed) ---
     fps=25,                       # ATD metadata FrameRate=25.0
     pitch_length_m=105.3,         # games.py GAMES["BAR-ATH"]["pitch"] (measured)
-    pitch_width_m=68.0,
+    pitch_width_m=68.0,           # games.py pitch width, measured
 
     # --- geometry / evidence ---
     topk=3,                       # nearest slots used for team evidence
@@ -76,10 +77,10 @@ CFG = dict(
 
     # --- dead-ball term (sigmoid: p_d = sigmoid(d_bias + sum w_i f_i)) ---
     d_bias=-0.70,                 # logit(≈1/3): dead ball is about a third of football
-    d_w_out_of_pitch=1.0,
-    d_w_stationary=1.0,
-    d_w_boundary=0.5,
-    d_w_long_missing=0.5,
+    d_w_out_of_pitch=1.0,         # ball out of pitch => dead
+    d_w_stationary=1.0,           # ball at rest => dead
+    d_w_boundary=0.5,             # ball on the line => dead
+    d_w_long_missing=0.5,         # long no-ball run => dead
     d_w_low_activity=0.0,         # OFF (was 0.5 prior): the IDSSE bed ran this feature on km/h, so it
                                   # was never validated; on the units-corrected bed weight 0 beats
                                   # 0.5 on 8/8 tables, 7/7 matches (dossier §7 P7 U1, 2026-11-14)
@@ -98,6 +99,7 @@ CFG = dict(
     x_conf_max=0.3,               # posterior margin below this counts as "low"
 )
 
+# --- provenance registry ---
 # key -> (origin, one-line justification)
 PROVENANCE = {
     "fps": ("fixed_default", "ATD metadata FrameRate=25.0"),
@@ -211,24 +213,27 @@ PROVENANCE = {
     "x_conf_max": ("prior", "abstain only when the decoder is genuinely unsure"),
 }
 
-VALID_ORIGINS = ("prior", "fixed_default", "external_fit")
+VALID_ORIGINS = ("prior", "fixed_default", "external_fit")  # origins PROVENANCE may use
 
 
 def provenance_problems():
-    """Empty list = every CFG key is documented with a valid origin."""
-    problems = []
-    for key in CFG:
+    """Empty list = every CFG key is documented with a valid origin.
+
+    Run by tests/test_config.py as a build gate.
+    """
+    problems = []                  # collected error messages
+    for key in CFG:                # every parameter must be documented
         if key not in PROVENANCE:
             problems.append(f"{key}: missing provenance")
-            continue
-        origin, note = PROVENANCE[key]
-        if origin not in VALID_ORIGINS:
+            continue               # nothing to check without an entry
+        origin, note = PROVENANCE[key]  # unpack origin and justification
+        if origin not in VALID_ORIGINS:  # only the three allowed origins
             problems.append(f"{key}: invalid origin {origin!r}")
-        if origin == "external_fit" and not note:
+        if origin == "external_fit" and not note:  # fitted values need evidence text
             problems.append(f"{key}: external_fit requires IDSSE evidence in the note")
-        if str(origin).startswith("provided"):
+        if str(origin).startswith("provided"):  # never fit on the provided match
             problems.append(f"{key}: provided_* origins are forbidden")
-    for key in PROVENANCE:
+    for key in PROVENANCE:         # stale entries for removed CFG keys
         if key not in CFG:
             problems.append(f"{key}: provenance for unknown CFG key")
-    return problems
+    return problems                # empty list = clean

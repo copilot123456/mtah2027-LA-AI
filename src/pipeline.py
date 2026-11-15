@@ -18,37 +18,37 @@ The only inputs are the provided match files and cfg; nothing here reads ground
 truth or the video.
 """
 
-from __future__ import annotations
+from __future__ import annotations    # postponed evaluation of annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from dataclasses import dataclass, field  # state containers below
+from typing import Callable           # step function type hint
 
-import numpy as np
+import numpy as np                   # labels are numpy arrays
 
-from config import CFG
+from config import CFG                # default configuration
 
 
 @dataclass
 class Ctx:
     """State handed from step to step; `extra` is free space for new steps."""
 
-    arrays: object = None
-    track: object = None
-    emission: object = None
-    decoded: object = None
-    labels: np.ndarray | None = None
-    summary: dict | None = None
-    extra: dict = field(default_factory=dict)
+    arrays: object = None            # aligned match arrays (ATD, players, spans)
+    track: object = None             # reconstructed ball track
+    emission: object = None          # per-frame H/A/D log-scores
+    decoded: object = None           # Viterbi output (labels + switch stats)
+    labels: np.ndarray | None = None # final per-frame labels
+    summary: dict | None = None      # run statistics for reporting
+    extra: dict = field(default_factory=dict)  # scratch space for new steps
 
 
 @dataclass(frozen=True)
 class Step:
     """One pipeline stage: `fn(ctx, cfg) -> None` plus its data-flow declaration."""
 
-    name: str
-    fn: Callable[..., None]
-    requires: tuple[str, ...] = ()
-    provides: tuple[str, ...] = ()
+    name: str                        # unique step id
+    fn: Callable[..., None]          # handler: fn(ctx, cfg) -> None
+    requires: tuple[str, ...] = ()   # Ctx fields that must already exist
+    provides: tuple[str, ...] = ()   # Ctx fields this step writes
 
 
 def validate_spec(spec: list[Step]) -> list[str]:
@@ -57,24 +57,24 @@ def validate_spec(spec: list[Step]) -> list[str]:
     Runs before any step executes so a mis-declared spec fails fast with the
     offending step named, not with an AttributeError in the middle of a run.
     """
-    problems: list[str] = []
-    provided: set[str] = set()
-    seen: set[str] = set()
+    problems: list[str] = []         # error messages; empty list = valid
+    provided: set[str] = set()       # fields available from earlier steps
+    seen: set[str] = set()           # step names used so far
     for step in spec:
-        if step.name in seen:
+        if step.name in seen:        # names must be unique
             problems.append(f"step {step.name!r}: duplicate step name")
         seen.add(step.name)
-        if not (getattr(step.fn, "__doc__", "") or "").strip():
+        if not (getattr(step.fn, "__doc__", "") or "").strip():  # fn must self-document
             problems.append(
                 f"step {step.name!r}: fn {getattr(step.fn, '__name__', step.fn)!r} has no "
                 "docstring — every step must document itself"
             )
         missing = [r for r in step.requires if r not in provided]
-        if missing:
+        if missing:                  # required field never provided earlier
             problems.append(
                 f"step {step.name!r}: requires {missing} but no earlier step provides it"
             )
-        provided.update(step.provides)
+        provided.update(step.provides)  # publish this step's outputs
     return problems
 
 
@@ -85,19 +85,19 @@ def run(cfg: dict = CFG, spec: list[Step] | None = None) -> tuple[np.ndarray, di
     before the first step runs.
     """
     if spec is None:
-        from pipeline_spec import SPEC
+        from pipeline_spec import SPEC  # default spec; imported lazily (it imports this module)
         spec = SPEC
     problems = validate_spec(spec)
-    if problems:
+    if problems:                     # fail fast, before any step runs
         raise ValueError("invalid pipeline spec:\n  - " + "\n  - ".join(problems))
 
-    ctx = Ctx()
-    for step in spec:
+    ctx = Ctx()                      # fresh state for this run
+    for step in spec:                # execute stages in declaration order
         step.fn(ctx, cfg)
 
-    if ctx.labels is None or ctx.summary is None:
+    if ctx.labels is None or ctx.summary is None:  # both outputs are mandatory
         raise ValueError(
             "pipeline produced no labels/summary — steps must provide both "
             f"(labels={ctx.labels is not None}, summary={ctx.summary is not None})"
         )
-    return ctx.labels, ctx.summary
+    return ctx.labels, ctx.summary   # final labels plus run statistics

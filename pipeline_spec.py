@@ -20,18 +20,19 @@ Rules that bind (full list in PIPELINE_STANDARD_AI.md):
     merges (adoption step, see PIPELINE_STANDARD.html).
 """
 
-from src import steps as S
-from src.pipeline import Step
+from src import steps as S            # step handler implementations
+from src.pipeline import Step         # dataclass used to declare each stage
 
+# Frozen default declaration: stages run top to bottom.
 SPEC: list[Step] = [
-    Step("load",      S.load,        provides=("arrays",)),
-    Step("ball_fill", S.ball_track,  requires=("arrays",), provides=("track",)),
+    Step("load",      S.load,        provides=("arrays",)),          # read match files
+    Step("ball_fill", S.ball_track,  requires=("arrays",), provides=("track",)),  # raw ATD + fills
     Step("emission",  S.emission,    requires=("arrays", "track"),
-         provides=("emission",)),
+         provides=("emission",)),                                    # per-frame H/A/D scores
     Step("decode",    S.decode_step, requires=("arrays", "track", "emission"),
-         provides=("decoded",)),
+         provides=("decoded",)),                                     # Viterbi + gating + dwell
     Step("x_policy",  S.x_policy,    requires=("arrays", "emission", "decoded"),
-         provides=("labels",)),
+         provides=("labels",)),                                      # abstention policy
     Step("summary",   S.summarize,   requires=("arrays", "track", "decoded", "labels"),
-         provides=("summary",)),
+         provides=("summary",)),                                     # run statistics
 ]
