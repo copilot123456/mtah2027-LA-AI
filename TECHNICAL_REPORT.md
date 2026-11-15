@@ -1,5 +1,8 @@
 # Technical report — LA+AI
 
+> **New to the project?** Start at [README.md](README.md) → the guided path in
+> [docs/](docs/01-the-challenge.md). This document is the submission-facing summary.
+
 Frame-level team possession labeling (`H`/`A`/`D`/`X`) for FC Barcelona vs Athletic Club
 (BAR-ATH), More Than A Hack 2027 Initial Challenge. Ranking metric: `spellF1`.
 
