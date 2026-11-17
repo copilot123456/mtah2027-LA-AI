@@ -1,4 +1,4 @@
-# MTAH 2027 — LA+AI possession decoder
+# MTAH 2027 — LA+IA possession decoder
 
 Frame-level team-possession labeling (`H`/`A`/`D`/`X`) for FC Barcelona vs Athletic Club,
 built for the **More Than A Hack 2027** Initial Challenge (Mobile World Capital / Talent
@@ -8,6 +8,11 @@ Arena). Ranked on **spellF1** (possession-segment F1); `macroF1` tiebreak.
 byte-identically by `python -m src.submit`, md5 `c121715836ed603fc5792b85daf6f279`,
 182 tests green, guarded evaluator band **A**. Every decision that produced it is on
 record.
+
+> **Team name: LA+IA.** The repository writes the submission as `LA+AI.csv` — the two
+> letters are swapped in that file name, and it is kept as it is so the frozen code and
+> tests stay untouched. The file submitted to the organizers, `LA+IA.csv`, is the same
+> file byte for byte (md5 `c121715836ed603fc5792b85daf6f279`).
 
 ---
 

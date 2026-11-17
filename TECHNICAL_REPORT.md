@@ -1,10 +1,15 @@
-# Technical report — LA+AI
+# Technical report — LA+IA
 
 > **New to the project?** Start at [README.md](README.md) → the guided path in
 > [docs/](docs/01-the-challenge.md). This document is the submission-facing summary.
 
 Frame-level team possession labeling (`H`/`A`/`D`/`X`) for FC Barcelona vs Athletic Club
 (BAR-ATH), More Than A Hack 2027 Initial Challenge. Ranking metric: `spellF1`.
+
+> **Team name: LA+IA.** The repository writes the submission as `LA+AI.csv` — the two
+> letters are swapped in that file name, and it is kept as it is so the frozen code and
+> tests stay untouched. The file submitted to the organizers, `LA+IA.csv`, is the same
+> file byte for byte (md5 `c121715836ed603fc5792b85daf6f279`).
 
 ## Approach — what we built and why
 
