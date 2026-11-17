@@ -9,6 +9,14 @@ python starter/baseline.py                  # regenerates the four baselines
 python starter/make_dummy_submission.py     # three trivial ones, to see the loop work
 ```
 
+**Closing every iteration (amended 2026-11-11, GT freeze):** close with the GT-free
+diagnostics (`evaluation/gt_free_diagnostics.py`) against the IDSSE reference — NOT with the
+public scoreboard. Looking at public-GT numbers each cycle and picking the next fix from them
+is selection on the GT even when no parameter is calibrated on it. The public-GT comparison
+against `baseline_smooth50` (the published floor) is the FINAL report: run it then, print the
+head-to-head with deltas, report `macroF1` and `spellF1` both — but its numbers never choose
+the next objective. Objectives come from GT-free diagnostics; GT is for evaluation only.
+
 ## What is already here
 
 Four baselines, committed on purpose. They are the output of `starter/baseline.py` — nearest

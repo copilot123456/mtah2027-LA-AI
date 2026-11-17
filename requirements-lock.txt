@@ -1,0 +1,16 @@
+# Pinned environment for the notebook-Viterbi track and the evaluation harness.
+#
+# requirements.txt stays deliberately unpinned (scorer portability, see its header); this
+# lock records the exact versions every recorded run of notebooks/viterbi.ipynb,
+# evaluation/*.py and tuning/*.py was executed with, for reproduction only.
+# Check with:  python reproduce.py --check-deps
+python==3.10.4
+numpy==2.2.6
+pandas==2.2.3
+pyarrow==21.0.0
+matplotlib==3.10.1
+scikit-learn==1.6.1
+scipy==1.15.2
+kloppy==3.18.0
+opencv-python==4.11.0.86
+pytest==9.2.0

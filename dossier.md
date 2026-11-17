@@ -19,12 +19,22 @@ Statements:
 Authoritative table: `config.py` → `PROVENANCE` (origin ∈ prior | fixed_default | external_fit).
 `tests/test_config.py` fails the build if a key is undocumented or marked `provided_*`.
 
+Notebook-Viterbi track (separate from the pipeline above): authoritative table in
+`tuning/results/report_viterbi_idsse_lomo.md`, section *Parameter provenance* — every value
+sourced from LOMO-IDSSE (spellF1, 7 folds), IDSSE statistics, quantile-matched transfer, or an
+explicit design spec; no value from the challenge GT.
+
 ## 3. Ground-truth looks (append-only)
 
 | date | what ran | by | result used for |
 |---|---|---|---|
 | 2026-11-07 | `evaluation/run_evaluation.py` on shipped baselines (repo smoke test) | assistant | environment validation only — no design decision taken from it |
 | 2026-11-07 | `evaluation/run_evaluation.py` after baseline regeneration (byte-identical check) | assistant | reproducibility check only |
+| 2026-11-16 | `run_viterbi_vs_gt` baseline (notebook track) | assistant | reproduced the notebook's stored decode output — logic/equivalence check, no decision |
+| 2026-11-16 | `run_viterbi_vs_gt` + `run_evaluation` after the D-channel sweep | assistant | **used for selection — not permitted under the 2026-11-03 clarification; remediated**: all five swept parameters recalibrated on IDSSE afterwards; compliance banner in `tuning/results/report_viterbi_d.md` |
+| 2026-11-16 | `run_viterbi_vs_gt` + `run_evaluation` after the IDSSE-only redesign (a–g) | assistant | report only; the following cycle was pre-declared GT-free |
+| 2026-11-16 | `run_viterbi_vs_gt` + `run_evaluation`, frozen config (final report) | assistant | report only; no change made after seeing it — recorded in `tuning/results/report_viterbi_idsse_lomo.md` |
+| 2026-11-16 | `run_viterbi_vs_gt` + `run_evaluation` after C1/C2/C3 round (frozen config) | assistant | report only; no change after seeing it |
 
 Any future evaluator run on the provided match: operator only, via the guard, result archived and never fed back into development.
 
@@ -36,6 +46,7 @@ Audit session 2026-11-07 (section 8): no evaluator run, no ground-truth read, no
 - Diagnostics run locally; only coarse aggregates (rounded percentages, binned counts) appear in local documents.
 - Background research agents performed web/GitHub search only; their model endpoint issues are logged in the session history.
 - Organizers' clarification (2026-11-03): no uploading provided data to AI services — our operating rule is stricter than needed (coarse aggregates only) pending organizer Q3.
+- Development of the notebook-Viterbi track used local LLM assistants only; the same rules apply — they read local code and coarse aggregates, never per-frame provided-match values.
 
 ## 5. Video statement
 
@@ -138,3 +149,29 @@ Scope: correctness, compliance, reproducibility, tests, docs of the frozen P5 st
   neighbour rule in the selection code (same outcome); X-policy edge clause on a
   switch-free half (dormant, x_use=False); pinned requirements; README made true for a
   clean clone.
+
+
+## 9. Notebook-Viterbi track (closed 2026-11-16)
+
+A separate 3-state (H/A/D, no X) Viterbi decoder lives in otebooks/viterbi.ipynb\; the
+evaluation harnesses exec that cell directly, so the notebook is the single source of truth
+for its logic. Record:
+
+- **Selection: 100% GT-free.** LOMO over 7 IDSSE matches (spellF1 on the algorithmic
+  possession labels, \evaluation/select_viterbi_idsse.py\), external rate anchors
+  (physics-dead 41.1%, design-compatible change rate 2.07-3.12/min -- both computed on
+  IDSSE only, provenance in \gt_free_diagnostics.py\ part C), quantile-matched transfer
+  (part E), and explicit design specs. Provenance table:
+  \	uning/results/report_viterbi_idsse_lomo.md\.
+- **Incident and remediation:** an early D-channel sweep selected five parameters on the
+  public GT window (pre-clarification interpretation); after the organizer clarification
+  all five were recalibrated externally and the historical report carries a compliance
+  banner (\	uning/results/report_viterbi_d.md\). Logged in section 3 above.
+- **GT use:** public GT for evaluation only; one final report run with the frozen config,
+  no change made after seeing it (eport_viterbi_idsse_lomo.md\, final section).
+- **Reproduction:** \python reproduce.py\ regenerates \evaluation/results/viterbi.csv  from the notebook and validates it with the official validator, without opening the GT;
+  \--evaluate\ runs the report. Deterministic - no RNG in the decoder path.
+  Dependencies pinned in equirements-lock.txt\ (\python reproduce.py --check-deps\).
+- **No manual annotation** anywhere in this track: IDSSE labels are algorithmic (provider
+  fields), the provided match's GT window is used only by the scorer, and no human-produced
+  data about the provided game enters selection or development.
